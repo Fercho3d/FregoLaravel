@@ -1,0 +1,47 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../../app/Livewire/**/*.php';
+
+@theme {
+    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+        'Segoe UI Symbol', 'Noto Color Emoji';
+
+    /* Marca FregoCargo — negros y grises con acento rojo (logo Frego). */
+    --color-frego-50: #f7f7f8;
+    --color-frego-100: #ededf0;
+    --color-frego-200: #d6d7dc;
+    --color-frego-300: #b0b2bb;
+    --color-frego-400: #83868f;
+    --color-frego-500: #63656e;
+    --color-frego-600: #4b4d55;
+    --color-frego-700: #3a3b41;
+    --color-frego-800: #26272b;
+    --color-frego-900: #18191c;
+    --color-frego-950: #0c0d0f;
+
+    --color-accent-400: #f04452;
+    --color-accent-500: #e11d2a;
+    --color-accent-600: #c11020;
+    --color-accent-700: #9e0c19;
+}
+
+/* Utilidades de marca reutilizables */
+@layer components {
+    .btn-accent {
+        @apply inline-flex items-center justify-center gap-2 rounded-lg bg-accent-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-accent-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 focus-visible:ring-offset-2 focus-visible:ring-offset-frego-950 disabled:opacity-60;
+    }
+
+    .btn-ghost {
+        @apply inline-flex items-center justify-center gap-2 rounded-lg border border-frego-700 px-4 py-2.5 text-sm font-semibold text-frego-100 transition hover:bg-frego-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-frego-500;
+    }
+
+    .field-label {
+        @apply block text-sm font-medium text-frego-200;
+    }
+
+    .field-input {
+        @apply block w-full rounded-lg border border-frego-700 bg-frego-900 px-3.5 py-2.5 text-frego-50 placeholder-frego-500 shadow-sm transition focus:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-500/40;
+    }
+}
