@@ -84,6 +84,19 @@ class TransactionTable extends Component
     /** Milisegundos que tardó la consulta de la última pintada. */
     public float $queryMs = 0;
 
+    /** Propiedades que cambian el conjunto de renglones (ver `updated()`). */
+    private const FILTERS = [
+        'tranNumber',
+        'bookingNumber',
+        'appliedTo',
+        'dates',
+        'companyId',
+        'accountId',
+        'paid',
+        'showCancelled',
+        'perPage',
+    ];
+
     /**
      * Livewire pisa `Paginator::defaultView()` con su propia vista en cada
      * render, así que la vista propia hay que declararla aquí; el registro del
@@ -108,7 +121,10 @@ class TransactionTable extends Component
     /** Cualquier cambio de filtro vuelve a la primera página e invalida totales. */
     public function updated(string $property): void
     {
-        if ($property === 'page') {
+        // Solo los FILTROS rehacen la consulta. El hook se dispara con cualquier
+        // propiedad, así que sin esta lista `selected` se vaciaba a sí misma en
+        // cuanto se marcaba una casilla (la casilla se veía "saltar" sola).
+        if (! in_array($property, self::FILTERS, true)) {
             return;
         }
 

@@ -13,6 +13,7 @@ use App\Http\Middleware\EnsureUserIsPortal;
 use App\Livewire\Catalogs\CatalogManager;
 use App\Livewire\Dashboard;
 use App\Livewire\Exchange\ExchangeManager;
+use App\Livewire\Notifications;
 use App\Livewire\Operations\BillingGenerator;
 use App\Livewire\Operations\BookingDetail;
 use App\Livewire\Operations\BookingForm;
@@ -70,6 +71,7 @@ Route::middleware(['auth', EnsureUserIsPortal::class])->prefix('portal')->group(
  */
 Route::middleware(['auth', EnsureUserIsInternal::class])->group(function () {
     Route::get('/dashboard', Dashboard::class)->name('dashboard');
+    Route::get('/avisos', Notifications::class)->name('notifications');
 
     /*
      * Operación: los embarques y lo que cuelga de ellos.

@@ -25,6 +25,15 @@ return [
         explode(',', (string) env('FREGO_MAIL_FACTURAS_BCC', 'hector.torres@frego.com.mx')),
     ))),
 
+    /**
+     * ¿Los avisos de tareas atrasadas se mandan además por correo?
+     *
+     * Apagado por omisión: la bandeja de la aplicación (`/avisos`) enseña lo
+     * mismo sin llenarle el buzón a nadie. Encenderlo manda **todo lo vencido
+     * acumulado** en la primera corrida.
+     */
+    'avisos_por_correo' => env('FREGO_AVISOS_CORREO', false),
+
     /** A dónde llegan los avisos de tareas atrasadas de operación. */
     'avisos_operacion' => array_values(array_filter(array_map(
         'trim',

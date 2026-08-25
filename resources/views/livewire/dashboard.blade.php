@@ -104,7 +104,12 @@
 
         {{-- Lo que espera a alguien --}}
         <section class="card p-5">
-            <h3 class="text-sm font-semibold text-ink">{{ __('Pendientes') }}</h3>
+            <div class="flex items-baseline justify-between gap-3">
+                <h3 class="text-sm font-semibold text-ink">{{ __('Pendientes') }}</h3>
+                <a href="{{ route('notifications') }}" wire:navigate class="text-xs text-brand hover:underline">
+                    {{ __('Ver todos los avisos') }}
+                </a>
+            </div>
 
             <ul class="mt-3 space-y-2">
                 @foreach ([

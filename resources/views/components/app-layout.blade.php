@@ -106,6 +106,8 @@
 
             <h1 class="min-w-0 flex-1 truncate text-sm font-semibold text-ink-soft">{{ $title }}</h1>
 
+            <x-notice-bell />
+
             <div class="hidden items-center gap-2 sm:flex">
                 <x-locale-toggle />
                 <x-theme-toggle />

@@ -50,6 +50,17 @@ pero adivinando por el nombre del servidor.
 
 ### Avisos de tareas atrasadas
 
+El camino normal es **la bandeja de la aplicación** (`/avisos`, con campana en la
+barra): enseña lo mismo sin llenarle el buzón a nadie y solo mira **embarques
+vivos** —abiertos y con carga en los últimos seis meses—, que es la diferencia
+entre algo útil y un montón de ruido: sobre los datos de hoy hay 1,394 tareas
+vencidas, casi todas de bookings de hace años que nadie cerró; acotado a lo vivo
+quedan tres.
+
+El correo automático es un extra **apagado por omisión** (`FREGO_AVISOS_CORREO`).
+Antes de encenderlo en producción hay que decidir si se acota, porque la primera
+corrida manda todo lo vencido acumulado.
+
 En Yii2 eran dos **direcciones web** que un cron llamaba desde fuera
 (`booking-continuity/notification` y `.../deadline`): cualquiera que diera con la
 dirección disparaba los correos. Aquí es un comando:
@@ -60,8 +71,9 @@ php artisan frego:avisos-continuidad vencido    # ya se cumplió o se pasó
 php artisan frego:avisos-continuidad aviso --simular   # enseña sin mandar
 ```
 
-**Falta programarlo**: hay que preguntar con qué frecuencia corre hoy el cron del
-sistema viejo antes de ponerlo en el `schedule`.
+Está programado una vez al día (07:00 y 07:05, hora de la operación), pero solo
+se registra si `FREGO_AVISOS_CORREO=true`. Sin eso, `schedule:list` no enseña
+nada y no se manda ningún correo.
 
 Rareza conservada: «Gated Out» aparece dos veces en la lista de hitos del
 original, así que ese hito manda dos correos iguales.
