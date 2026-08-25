@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Operations;
 
+use App\Models\Frego\Booking;
 use App\Queries\BookingFilters;
 use App\Queries\BookingQuery;
 use App\Queries\TransactionFilters;
@@ -241,6 +242,34 @@ class BookingDetail extends Component
     private function asOption(mixed $valor): string
     {
         return $valor === null ? '' : (string) $valor;
+    }
+
+    // ------------------------------------------------------------ Cierre
+
+    /**
+     * Cierra el booking: operación lo da por terminado y su facturación queda
+     * fija. Se puede reabrir, pero es una decisión consciente.
+     */
+    public function lock(): void
+    {
+        abort_unless(auth()->user()?->isAdmin() ?? false, 403);
+
+        Booking::whereKey($this->bookingId)->update(['locked' => 1, 'modified_by' => auth()->id()]);
+
+        $this->headerCache = null;
+        session()->flash('status', 'Booking cerrado.');
+    }
+
+    public function unlock(): void
+    {
+        // Reabrir permite volver a tocar importes ya conciliados, así que es
+        // exclusivo del super administrador.
+        abort_unless(auth()->user()?->isSuperAdmin() ?? false, 403);
+
+        Booking::whereKey($this->bookingId)->update(['locked' => 0, 'modified_by' => auth()->id()]);
+
+        $this->headerCache = null;
+        session()->flash('status', 'Booking reabierto.');
     }
 
     // -------------------------------------------------------- Documentos

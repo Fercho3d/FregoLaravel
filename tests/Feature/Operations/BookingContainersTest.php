@@ -124,4 +124,32 @@ class BookingContainersTest extends TestCase
 
         $this->assertSame(1, DB::table('containers')->count());
     }
+
+    // ------------------------------------------------------------ Cierre
+
+    public function test_cerrar_un_booking(): void
+    {
+        $this->detalle()->call('lock');
+
+        $this->assertSame(1, (int) DB::table('booking')->where('booking_id', 1)->value('locked'));
+    }
+
+    /** Reabrir permite tocar importes ya conciliados: es del super administrador. */
+    public function test_solo_el_super_administrador_reabre(): void
+    {
+        DB::table('booking')->where('booking_id', 1)->update(['locked' => 1]);
+
+        $this->detalle()->call('unlock')->assertForbidden();
+        $this->assertSame(1, (int) DB::table('booking')->where('booking_id', 1)->value('locked'));
+
+        $this->detalle(User::ROLE_SUPER_ADMIN)->call('unlock');
+        $this->assertSame(0, (int) DB::table('booking')->where('booking_id', 1)->value('locked'));
+    }
+
+    public function test_quien_no_es_administrador_no_cierra(): void
+    {
+        $this->detalle(User::ROLE_USER)->call('lock')->assertForbidden();
+
+        $this->assertSame(0, (int) DB::table('booking')->where('booking_id', 1)->value('locked'));
+    }
 }

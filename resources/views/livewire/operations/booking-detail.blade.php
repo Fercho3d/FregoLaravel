@@ -34,6 +34,14 @@
                     <a href="{{ route('operations.bookings.edit', $booking->booking_id) }}" wire:navigate class="btn-ghost px-3 py-1.5 text-xs">
                         Editar
                     </a>
+                    <button type="button" wire:click="lock"
+                            wire:confirm="Al cerrarlo ya no se podrán tocar sus contenedores ni sus documentos. ¿Continuar?"
+                            class="btn-ghost px-3 py-1.5 text-xs">Cerrar booking</button>
+                @endif
+                @if ($booking->locked && auth()->user()?->isSuperAdmin())
+                    <button type="button" wire:click="unlock"
+                            wire:confirm="Reabrir permite volver a tocar importes ya conciliados. ¿Continuar?"
+                            class="btn-ghost px-3 py-1.5 text-xs text-brand">Reabrir</button>
                 @endif
                 <a href="{{ route('transactions.booking', $booking->booking_id) }}" wire:navigate class="btn-ghost px-3 py-1.5 text-xs">
                     Ver facturación
