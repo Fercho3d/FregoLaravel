@@ -246,6 +246,10 @@ class FregoSchema
             $table->decimal('exchange_value', 11, 4);
             $table->date('date_exchange');
             $table->integer('account')->nullable();
+            $table->date('taken_date')->nullable();
+            $table->text('url')->nullable();
+            $table->integer('created_by')->nullable();
+            $table->integer('modified_by')->nullable();
         });
 
         Schema::create('transaction', function ($table) {

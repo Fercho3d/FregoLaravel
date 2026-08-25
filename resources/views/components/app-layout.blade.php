@@ -45,6 +45,7 @@
             ['Clientes y proveedores', route('parties.clients'), request()->routeIs('parties.clients', 'parties.providers'), 'usuarios'],
             ['Servicios y precios', route('parties.services'), request()->routeIs('parties.services'), 'costo'],
             ['Catálogos', route('catalogs.show', 'companias'), request()->routeIs('catalogs.*'), 'catalogo'],
+            ['Tipos de cambio', route('exchange'), request()->routeIs('exchange'), 'banco'],
             ['Operación', route('operations.bookings'), request()->routeIs('operations.*'), 'operacion'],
         ]
     );

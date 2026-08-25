@@ -7,6 +7,7 @@ use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Middleware\EnsureUserIsInternal;
 use App\Http\Middleware\EnsureUserIsPortal;
 use App\Livewire\Catalogs\CatalogManager;
+use App\Livewire\Exchange\ExchangeManager;
 use App\Livewire\Operations\BookingDetail;
 use App\Livewire\Operations\BookingForm;
 use App\Livewire\Operations\BookingList;
@@ -92,6 +93,14 @@ Route::middleware(['auth', EnsureUserIsInternal::class])->group(function () {
     Route::middleware(EnsureUserIsAdmin::class)
         ->get('/catalogos/{catalog}', CatalogManager::class)
         ->name('catalogs.show');
+
+    /*
+     * Tipos de cambio. Va aparte de los catálogos porque no es un catálogo: de
+     * aquí sale con cuánto se valúa cada documento.
+     */
+    Route::middleware(EnsureUserIsAdmin::class)
+        ->get('/tipos-de-cambio', ExchangeManager::class)
+        ->name('exchange');
 
     /*
      * Reportes de cobros y pagos. Viven aparte de las transacciones porque su
