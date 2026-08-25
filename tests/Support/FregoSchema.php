@@ -106,8 +106,19 @@ class FregoSchema
         Schema::create('booking_continuity', function ($table) {
             $table->increments('cont_id');
             $table->integer('booking')->nullable();
-            $table->dateTime('pickup_date')->nullable();
-            $table->dateTime('SI_date')->nullable();
+            $table->integer('modality')->nullable();
+            $table->string('vacuum_maneuver')->nullable();
+            $table->integer('modified_by')->nullable();
+            $table->dateTime('modified_at')->nullable();
+
+            // Un campo por hito de la continuidad.
+            foreach ([
+                'pickup_date', 'doc_cut_of', 'SI_date', 'draf_client', 'corrected_draft', 'vgm',
+                'gated_IN', 'cleared', 'departure', 'bl_payment', 'swb', 'delivered',
+                'gated_out', 'insurance',
+            ] as $hito) {
+                $table->dateTime($hito)->nullable();
+            }
         });
 
         Schema::create('vessel', function ($table) {
