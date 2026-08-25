@@ -48,6 +48,17 @@
                             wire:confirm="Reabrir permite volver a tocar importes ya conciliados. ¿Continuar?"
                             class="btn-ghost px-3 py-1.5 text-xs text-brand">Reabrir</button>
                 @endif
+                <a href="{{ route('operations.bookings.pdf', $booking->booking_id) }}" target="_blank"
+                   class="btn-ghost px-3 py-1.5 text-xs">Confirmación PDF</a>
+                @if (auth()->user()?->isAdmin())
+                    <button type="button" wire:click="sendConfirmation"
+                            wire:confirm="Se le mandará al cliente la confirmación en PDF. ¿Continuar?"
+                            wire:loading.attr="disabled" wire:target="sendConfirmation"
+                            class="btn-ghost px-3 py-1.5 text-xs">
+                        <x-spinner wire:loading wire:target="sendConfirmation" class="h-3.5 w-3.5" />
+                        Enviar al cliente
+                    </button>
+                @endif
                 <a href="{{ route('transactions.booking', $booking->booking_id) }}" wire:navigate class="btn-ghost px-3 py-1.5 text-xs">
                     Ver facturación
                 </a>

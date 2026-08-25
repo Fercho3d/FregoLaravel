@@ -24,7 +24,15 @@ class StampTransaction
     public function __construct(
         private PacClient $pac,
         private TransactionFiles $archivos,
+        private SendInvoice $correo,
     ) {}
+
+    /**
+     * Cómo le fue al correo del último timbrado (una de las constantes de
+     * `SendInvoice`), para que la pantalla lo pueda decir. Va aparte del valor de
+     * retorno porque el timbrado vale aunque el correo falle.
+     */
+    public ?string $mailStatus = null;
 
     public function handle(Transaction $transaccion): string
     {
@@ -48,6 +56,13 @@ class StampTransaction
             'xml_attach' => $comprobante->uuid.'.xml',
             'pdf_attach' => $comprobante->uuid.'.pdf',
         ])->save();
+
+        // Timbrar y avisarle al cliente son un solo acto en el original: en
+        // cuanto el PAC responde bien, le sale su factura por correo.
+        $this->mailStatus = $this->correo->handle(
+            $transaccion,
+            (string) ($transaccion->bookingModel?->booking_number ?? ''),
+        );
 
         return $comprobante->uuid;
     }

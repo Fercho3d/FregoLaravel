@@ -1,6 +1,8 @@
 <?php
 
+use App\Http\Controllers\BookingConfirmationController;
 use App\Http\Controllers\BookingFileController;
+use App\Http\Controllers\PaymentRequestDocumentController;
 use App\Http\Controllers\PortalFileController;
 use App\Http\Controllers\ThemeController;
 use App\Http\Controllers\TransactionFileController;
@@ -73,6 +75,8 @@ Route::middleware(['auth', EnsureUserIsInternal::class])->group(function () {
         Route::get('/bookings/{booking}/editar', BookingForm::class)->whereNumber('booking')->name('bookings.edit');
         Route::get('/bookings/{booking}/generar', BillingGenerator::class)->whereNumber('booking')->name('bookings.generate');
         Route::get('/bookings/{booking}', BookingDetail::class)->whereNumber('booking')->name('bookings.show');
+        Route::get('/bookings/{booking}/confirmacion.pdf', BookingConfirmationController::class)
+            ->whereNumber('booking')->name('bookings.pdf');
         Route::get('/bookings/{booking}/documento/{nombre}', BookingFileController::class)
             ->whereNumber('booking')->name('bookings.file');
     });
@@ -116,6 +120,8 @@ Route::middleware(['auth', EnsureUserIsInternal::class])->group(function () {
     Route::middleware(EnsureUserIsAdmin::class)->prefix('pagos')->name('payments.')->group(function () {
         Route::get('/solicitudes', PaymentRequestList::class)->name('requests');
         Route::get('/solicitudes/nueva', PaymentRequestForm::class)->name('requests.create');
+        Route::get('/solicitudes/{request}/documento.pdf', PaymentRequestDocumentController::class)
+            ->whereNumber('request')->name('requests.document');
         Route::get('/reporte/clientes', PaymentsReport::class)->defaults('mode', 'customer')->name('report.customer');
         Route::get('/reporte/proveedores', PaymentsReport::class)->defaults('mode', 'vendor')->name('report.vendor');
         Route::get('/reporte/general', PaymentsReport::class)->defaults('mode', 'general')->name('report.general');

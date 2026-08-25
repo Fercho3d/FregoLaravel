@@ -169,6 +169,8 @@
                             @if ($esAdmin)
                                 <td class="whitespace-nowrap px-3 py-2 text-right" wire:click.stop>
                                     <div class="flex justify-end gap-3 text-xs">
+                                        <a href="{{ route('payments.requests.document', $fila->request_id) }}" target="_blank"
+                                           class="text-ink-muted transition hover:text-brand">Imprimir</a>
                                         @if ($fila->paid)
                                             <button type="button" wire:click="reopen({{ $fila->request_id }})"
                                                     wire:confirm="Reabrir la solicitud para poder corregirla. ¿Continuar?"

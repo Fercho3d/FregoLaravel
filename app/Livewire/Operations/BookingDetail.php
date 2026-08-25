@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Operations;
 
+use App\Actions\Bookings\SendBookingConfirmation;
 use App\Models\Frego\Booking;
 use App\Queries\BookingFilters;
 use App\Queries\BookingQuery;
@@ -250,6 +251,25 @@ class BookingDetail extends Component
      * Cierra el booking: operación lo da por terminado y su facturación queda
      * fija. Se puede reabrir, pero es una decisión consciente.
      */
+    /**
+     * Vuelve a mandarle al cliente la confirmación en PDF.
+     *
+     * En Yii2 esto era `actionMail`, que mandaba el correo **a una dirección
+     * escrita en el código** (la de Héctor) y de paso abría el PDF. Aquí va a
+     * quien corresponde: los correos de notificación del cliente, los mismos que
+     * reciben el aviso de alta.
+     */
+    public function sendConfirmation(SendBookingConfirmation $enviar): void
+    {
+        abort_unless(auth()->user()?->isAdmin() ?? false, 403);
+
+        $avisados = $enviar->handle(Booking::findOrFail($this->bookingId));
+
+        session()->flash('status', $avisados === []
+            ? 'No se mandó: el cliente no tiene correos de notificación.'
+            : 'Confirmación enviada a '.implode(', ', $avisados).'.');
+    }
+
     public function lock(): void
     {
         abort_unless(auth()->user()?->isAdmin() ?? false, 403);

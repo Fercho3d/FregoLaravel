@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Operations;
 
+use App\Actions\Bookings\SendBookingConfirmation;
 use App\Models\Frego\Booking;
 use App\Models\Frego\Client;
 use App\Models\Frego\Provider;
@@ -177,9 +178,20 @@ class BookingForm extends Component
             ]);
         }
 
+        $esNuevo = $this->bookingId === null;
+
         $modelo->save();
 
-        session()->flash('status', $this->bookingId === null ? 'Booking creado.' : 'Booking actualizado.');
+        // El alta de un booking en firme le avisa al cliente con la confirmación
+        // en PDF, como en el original. Allá la condición era `is_draft = 0` y
+        // `mode != 9`; aquí todo booking nuevo nace así.
+        $avisados = $esNuevo ? app(SendBookingConfirmation::class)->handle($modelo) : [];
+
+        session()->flash('status', match (true) {
+            ! $esNuevo => 'Booking actualizado.',
+            $avisados !== [] => 'Booking creado. Se mandó la confirmación a '.implode(', ', $avisados).'.',
+            default => 'Booking creado.',
+        });
         $this->redirectRoute('operations.bookings.show', $modelo->booking_id, navigate: true);
     }
 

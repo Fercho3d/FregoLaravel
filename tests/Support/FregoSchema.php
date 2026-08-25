@@ -97,6 +97,10 @@ class FregoSchema
             $table->integer('custom_brocker_id')->nullable();
             $table->integer('final_destination_id')->nullable();
             $table->integer('container_type')->nullable();
+            // Columnas de texto anteriores a los catálogos; el correo de
+            // confirmación las sigue imprimiendo tal cual.
+            $table->string('dicharge_port')->nullable();
+            $table->string('final_destination')->nullable();
             $table->text('remarks')->nullable();
             $table->dateTime('created_at')->nullable();
             $table->dateTime('modified_at')->nullable();
@@ -141,6 +145,13 @@ class FregoSchema
         Schema::create('pickup_place', function ($table) {
             $table->integer('pick_id')->primary();
             $table->string('name')->nullable();
+            // La dirección completa la imprime la confirmación del booking.
+            $table->string('address1')->nullable();
+            $table->string('address2')->nullable();
+            $table->string('city')->nullable();
+            $table->string('state')->nullable();
+            $table->string('country')->nullable();
+            $table->string('postal_code')->nullable();
         });
 
         Schema::create('final_destination', function ($table) {
@@ -211,6 +222,8 @@ class FregoSchema
             $table->string('fullName');
             $table->string('email')->nullable();
             $table->string('email_notification')->nullable();
+            $table->text('notification_notes')->nullable();
+            $table->string('country')->nullable();
             $table->dateTime('created_at')->nullable();
             $table->dateTime('modified_at')->nullable();
             // Datos fiscales del receptor: los usa el layout CFDI.

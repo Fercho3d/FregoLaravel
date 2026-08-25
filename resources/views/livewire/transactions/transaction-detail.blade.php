@@ -53,6 +53,14 @@
                         Timbrar
                     </button>
                 @endif
+                @if ($transaccion->seal && auth()->user()?->isAdmin())
+                    <button type="button" wire:click="resend" wire:loading.attr="disabled" wire:target="resend"
+                            wire:confirm="Se le volverá a mandar al cliente la factura con su PDF y su XML. ¿Continuar?"
+                            class="btn-ghost px-3 py-1.5 text-xs">
+                        <x-spinner wire:loading wire:target="resend" class="h-3.5 w-3.5" />
+                        Reenviar al cliente
+                    </button>
+                @endif
                 @if ($this->canCancel())
                     <button type="button" wire:click="startCancel" class="btn-ghost px-3 py-1.5 text-xs text-brand">
                         Cancelar CFDI

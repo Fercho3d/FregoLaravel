@@ -3,6 +3,7 @@
 namespace App\Livewire\Transactions;
 
 use App\Actions\Transactions\CancelStamp;
+use App\Actions\Transactions\SendInvoice;
 use App\Actions\Transactions\StampTransaction;
 use App\Models\Frego\Charge;
 use App\Models\Frego\ChargeType;
@@ -315,8 +316,35 @@ class TransactionDetail extends Component
         $this->transactionCache = null;
         $this->headerCache = null;
 
-        session()->flash('status', 'Factura timbrada. Folio fiscal: '.$uuid);
+        session()->flash('status', 'Factura timbrada. Folio fiscal: '.$uuid.' '.$this->mailNote($timbrar->mailStatus));
         $this->redirectRoute('transactions.show', $this->transactionId, navigate: true);
+    }
+
+    /**
+     * Vuelve a mandarle al cliente la factura timbrada.
+     *
+     * Es `actionReenviar` de Yii2, que allá era una acción del listado sobre
+     * varias facturas a la vez; aquí vive donde se ve el documento.
+     */
+    public function resend(SendInvoice $enviar): void
+    {
+        abort_unless(auth()->user()?->isAdmin() ?? false, 403);
+
+        $estado = $enviar->handle($this->transaction(), (string) ($this->header()->booking_number ?? ''));
+
+        session()->flash('status', trim($this->mailNote($estado)));
+    }
+
+    /** Cómo contarle al usuario qué pasó con el correo. */
+    private function mailNote(?string $estado): string
+    {
+        return match ($estado) {
+            SendInvoice::ENVIADA => 'La factura se le mandó al cliente.',
+            SendInvoice::SIN_DOCUMENTOS => 'No se mandó por correo: la factura todavía no tiene documentos.',
+            SendInvoice::SIN_DESTINATARIOS => 'No se mandó por correo: el cliente no tiene correos de notificación.',
+            SendInvoice::ERROR => 'No se pudo mandar por correo; quedó anotado en la bitácora.',
+            default => '',
+        };
     }
 
     public function startCancel(): void
