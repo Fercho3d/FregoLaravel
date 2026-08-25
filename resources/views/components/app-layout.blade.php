@@ -25,29 +25,29 @@
     $esAdmin = auth()->user()?->isAdmin() ?? false;
 
     $nav = array_merge(
-        [['Panel', route('dashboard'), request()->routeIs('dashboard'), 'panel']],
+        [[__('Panel'), route('dashboard'), request()->routeIs('dashboard'), 'panel']],
         $esAdmin ? [
-            ['Facturas', route('transactions.invoice'), request()->routeIs('transactions.invoice'), 'factura'],
-            ['Costos', route('transactions.bill'), request()->routeIs('transactions.bill'), 'costo'],
-            ['Transacciones', route('transactions.all'), request()->routeIs('transactions.all', 'transactions.booking'), 'transaccion'],
-            ['Utilidad por booking', route('transactions.report.booking'), request()->routeIs('transactions.report.*'), 'reporte'],
-            ['Solicitudes de pago', route('payments.requests'), request()->routeIs('payments.requests'), 'banco'],
-            ['Cobros por cliente', route('payments.report.customer'), request()->routeIs('payments.report.customer'), 'banco'],
-            ['Pagos por proveedor', route('payments.report.vendor'), request()->routeIs('payments.report.vendor'), 'banco'],
-            ['Cobros y pagos', route('payments.report.general'), request()->routeIs('payments.report.general'), 'banco'],
+            [__('Facturas'), route('transactions.invoice'), request()->routeIs('transactions.invoice'), 'factura'],
+            [__('Costos'), route('transactions.bill'), request()->routeIs('transactions.bill'), 'costo'],
+            [__('Transacciones'), route('transactions.all'), request()->routeIs('transactions.all', 'transactions.booking'), 'transaccion'],
+            [__('Utilidad por booking'), route('transactions.report.booking'), request()->routeIs('transactions.report.*'), 'reporte'],
+            [__('Solicitudes de pago'), route('payments.requests'), request()->routeIs('payments.requests'), 'banco'],
+            [__('Cobros por cliente'), route('payments.report.customer'), request()->routeIs('payments.report.customer'), 'banco'],
+            [__('Pagos por proveedor'), route('payments.report.vendor'), request()->routeIs('payments.report.vendor'), 'banco'],
+            [__('Cobros y pagos'), route('payments.report.general'), request()->routeIs('payments.report.general'), 'banco'],
         ] : [],
         // Los usuarios los administra solo el super administrador; para el resto
         // la ruta responde 403, así que ni se lista.
         (auth()->user()?->isSuperAdmin() ?? false)
-            ? [['Usuarios', route('users'), request()->routeIs('users'), 'usuarios']]
+            ? [[__('Usuarios'), route('users'), request()->routeIs('users'), 'usuarios']]
             : [],
         [
-            ['Clientes y proveedores', route('parties.clients'), request()->routeIs('parties.clients', 'parties.providers'), 'usuarios'],
-            ['Servicios y precios', route('parties.services'), request()->routeIs('parties.services'), 'costo'],
-            ['Catálogos', route('catalogs.show', 'companias'), request()->routeIs('catalogs.*'), 'catalogo'],
-            ['Tipos de cambio', route('exchange'), request()->routeIs('exchange'), 'banco'],
-            ['Operación', route('operations.bookings'), request()->routeIs('operations.bookings*'), 'operacion'],
-            ['Continuidad', route('operations.continuity'), request()->routeIs('operations.continuity'), 'reporte'],
+            [__('Clientes y proveedores'), route('parties.clients'), request()->routeIs('parties.clients', 'parties.providers'), 'usuarios'],
+            [__('Servicios y precios'), route('parties.services'), request()->routeIs('parties.services'), 'costo'],
+            [__('Catálogos'), route('catalogs.show', 'companias'), request()->routeIs('catalogs.*'), 'catalogo'],
+            [__('Tipos de cambio'), route('exchange'), request()->routeIs('exchange'), 'banco'],
+            [__('Operación'), route('operations.bookings'), request()->routeIs('operations.bookings*'), 'operacion'],
+            [__('Continuidad'), route('operations.continuity'), request()->routeIs('operations.continuity'), 'reporte'],
         ]
     );
 @endphp
@@ -100,13 +100,14 @@
     <div class="flex min-w-0 flex-1 flex-col lg:pl-64">
         <header class="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-line bg-surface/85 px-4 backdrop-blur sm:px-6">
             <button class="-ml-1 rounded-lg p-2 text-ink-muted transition hover:bg-raised hover:text-ink lg:hidden"
-                    x-on:click="sidebar = true" aria-label="Abrir menú">
+                    x-on:click="sidebar = true" aria-label="{{ __('Abrir menú') }}">
                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
             </button>
 
             <h1 class="min-w-0 flex-1 truncate text-sm font-semibold text-ink-soft">{{ $title }}</h1>
 
-            <div class="hidden sm:block">
+            <div class="hidden items-center gap-2 sm:flex">
+                <x-locale-toggle />
                 <x-theme-toggle />
             </div>
 
@@ -130,19 +131,25 @@
                         <p class="truncate text-xs text-ink-faint">{{ auth()->user()->username }}</p>
                     </div>
 
-                    <div class="flex items-center justify-between gap-2 px-3 py-2 sm:hidden">
-                        <span class="text-sm text-ink-muted">Tema</span>
-                        <x-theme-toggle />
+                    <div class="space-y-2 px-3 py-2 sm:hidden">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-sm text-ink-muted">{{ __('Idioma') }}</span>
+                            <x-locale-toggle />
+                        </div>
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-sm text-ink-muted">{{ __('Tema') }}</span>
+                            <x-theme-toggle />
+                        </div>
                     </div>
 
                     <a href="{{ route('security.show') }}" wire:navigate
                        class="block rounded-lg px-3 py-2 text-sm text-ink-muted transition hover:bg-raised hover:text-ink">
-                        Seguridad y 2FA
+                        {{ __('Seguridad y 2FA') }}
                     </a>
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf
                         <button type="submit" class="block w-full rounded-lg px-3 py-2 text-left text-sm text-brand transition hover:bg-raised">
-                            Cerrar sesión
+                            {{ __('Cerrar sesión') }}
                         </button>
                     </form>
                 </div>

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\BookingConfirmationController;
 use App\Http\Controllers\BookingFileController;
+use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\PaymentRequestDocumentController;
 use App\Http\Controllers\PortalFileController;
 use App\Http\Controllers\ThemeController;
@@ -10,6 +11,7 @@ use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Middleware\EnsureUserIsInternal;
 use App\Http\Middleware\EnsureUserIsPortal;
 use App\Livewire\Catalogs\CatalogManager;
+use App\Livewire\Dashboard;
 use App\Livewire\Exchange\ExchangeManager;
 use App\Livewire\Operations\BillingGenerator;
 use App\Livewire\Operations\BookingDetail;
@@ -44,6 +46,9 @@ Route::get('/', function () {
 // deja elegirlo (se recuerda por cookie hasta que haya sesión).
 Route::put('/preferencias/tema', ThemeController::class)->name('preferences.theme');
 
+// Idioma de la interfaz, con la misma regla que el tema.
+Route::put('/preferencias/idioma', LocaleController::class)->name('preferences.locale');
+
 // Seguridad de la cuenta (contraseña + 2FA). Va fuera de los dos bloques porque
 // es de cualquiera con sesión, incluidas las cuentas de portal. Las acciones las
 // expone Laravel Fortify.
@@ -64,7 +69,7 @@ Route::middleware(['auth', EnsureUserIsPortal::class])->prefix('portal')->group(
  * sin esa puerta verían la operación completa de la empresa.
  */
 Route::middleware(['auth', EnsureUserIsInternal::class])->group(function () {
-    Route::view('/dashboard', 'dashboard')->name('dashboard');
+    Route::get('/dashboard', Dashboard::class)->name('dashboard');
 
     /*
      * Operación: los embarques y lo que cuelga de ellos.

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Locale;
 use App\Support\Theme;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -15,6 +16,7 @@ class UserPreference extends Model
     protected $fillable = [
         'usr_id',
         'theme',
+        'locale',
         'settings',
     ];
 
@@ -22,6 +24,7 @@ class UserPreference extends Model
     {
         return [
             'theme' => Theme::class,
+            'locale' => Locale::class,
             'settings' => 'array',
         ];
     }

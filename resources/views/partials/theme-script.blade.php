@@ -13,4 +13,5 @@
         raiz.style.colorScheme = oscuro ? 'dark' : 'light';
     })();
     window.rutaPreferenciaTema = @json(route('preferences.theme'));
+    window.rutaPreferenciaIdioma = @json(route('preferences.locale'));
 </script>

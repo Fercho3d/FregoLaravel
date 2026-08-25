@@ -80,3 +80,42 @@ document.addEventListener('alpine:init', () => {
         },
     }));
 });
+
+/**
+ * Idioma de la interfaz.
+ *
+ * A diferencia del tema, cambiar de idioma exige volver a pedir la página: los
+ * textos los pinta el servidor. Se guarda la preferencia y se recarga.
+ */
+document.addEventListener('alpine:init', () => {
+    window.Alpine.data('localeSwitcher', () => ({
+        idioma: document.documentElement.lang || 'es',
+
+        opciones: [
+            { valor: 'es', etiqueta: 'Español', corto: 'ES' },
+            { valor: 'en', etiqueta: 'English', corto: 'EN' },
+        ],
+
+        seleccionar(idioma) {
+            if (idioma === this.idioma) {
+                return;
+            }
+
+            this.idioma = idioma;
+
+            const token = document.querySelector('meta[name="csrf-token"]')?.content;
+
+            fetch(window.rutaPreferenciaIdioma, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-CSRF-TOKEN': token ?? '',
+                },
+                body: JSON.stringify({ locale: idioma }),
+            })
+                .then(() => window.location.reload())
+                .catch(() => window.location.reload());
+        },
+    }));
+});

@@ -141,3 +141,26 @@ Se detectó de paso que `mysqld` escucha en `0.0.0.0:3306` y existe el usuario
 `fregodb@%` (desde cualquier host). Si el security group deja pasar el 3306, la base
 de producción es alcanzable desde fuera. No se tocó nada de esto porque queda fuera
 del encargo, pero conviene revisarlo.
+
+## El planificador (correos automáticos)
+
+Los avisos de tareas atrasadas salen de `routes/console.php` una vez al día. Para
+que corran, el servidor necesita **una** línea de cron que despierte a Laravel
+cada minuto:
+
+```cron
+* * * * * cd /var/www/html/frego-laravel && php8.4 artisan schedule:run >> /dev/null 2>&1
+```
+
+Sin esa línea no se manda nada. Para ver qué hay programado y a qué hora:
+
+```bash
+php8.4 artisan schedule:list
+```
+
+La hora de los avisos es la de la operación (`America/Mexico_City`), aunque el
+servidor corra en UTC. Para probar sin mandar correo:
+
+```bash
+php8.4 artisan frego:avisos-continuidad vencido --simular
+```

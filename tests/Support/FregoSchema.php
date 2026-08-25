@@ -42,14 +42,18 @@ class FregoSchema
     public static function create(): void
     {
         // No es del esquema heredado, pero cualquier prueba que pinte una
-        // pantalla la necesita: el layout consulta ahí el tema del usuario.
-        Schema::create('user_preferences', function ($table) {
-            $table->id();
-            $table->unsignedInteger('usr_id')->unique();
-            $table->string('theme', 10)->default('system');
-            $table->json('settings')->nullable();
-            $table->timestamps();
-        });
+        // pantalla la necesita: el layout consulta ahí el tema y el idioma del
+        // usuario. Hay pruebas que la crean por su cuenta, así que no se repite.
+        if (! Schema::hasTable('user_preferences')) {
+            Schema::create('user_preferences', function ($table) {
+                $table->id();
+                $table->unsignedInteger('usr_id')->unique();
+                $table->string('theme', 10)->default('system');
+                $table->string('locale', 5)->nullable();
+                $table->json('settings')->nullable();
+                $table->timestamps();
+            });
+        }
 
         Schema::create('account', function ($table) {
             $table->integer('account_id')->primary();
