@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Support\Cfdi\FacturacionModernaClient;
+use App\Support\Cfdi\PacClient;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\ServiceProvider;
 
@@ -12,7 +14,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // El PAC se resuelve por interfaz para poder sustituirlo en pruebas: nada
+        // de lo que se prueba debe salir a la red, y un timbrado de prueba contra
+        // el PAC real consume folios.
+        $this->app->bind(PacClient::class, FacturacionModernaClient::class);
     }
 
     /**

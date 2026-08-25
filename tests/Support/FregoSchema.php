@@ -37,6 +37,12 @@ class FregoSchema
             $table->integer('company_id')->primary();
             $table->string('name');
             $table->string('rfc')->nullable();
+            // Datos fiscales del emisor: los usa el layout CFDI.
+            $table->string('business_name')->nullable();
+            $table->string('regimen_fiscal')->nullable();
+            $table->string('postal_code')->nullable();
+            $table->string('address')->nullable();
+            $table->boolean('active')->default(true);
         });
 
         Schema::create('booking', function ($table) {
@@ -56,6 +62,13 @@ class FregoSchema
             $table->string('email_notification')->nullable();
             $table->dateTime('created_at')->nullable();
             $table->dateTime('modified_at')->nullable();
+            // Datos fiscales del receptor: los usa el layout CFDI.
+            $table->string('rfc')->nullable();
+            $table->string('pay_form')->nullable();
+            $table->string('pay_method')->nullable();
+            $table->string('invoice_use')->nullable();
+            $table->string('regimen_fiscal_id')->nullable();
+            $table->string('postal_code')->nullable();
         });
 
         Schema::create('provider', function ($table) {

@@ -2,12 +2,15 @@
 
 namespace App\Livewire\Transactions;
 
+use App\Actions\Transactions\CancelStamp;
+use App\Actions\Transactions\StampTransaction;
 use App\Models\Frego\Charge;
 use App\Models\Frego\ChargeType;
 use App\Models\Frego\Service;
 use App\Models\Frego\Transaction;
 use App\Queries\TransactionFilters;
 use App\Queries\TransactionQuery;
+use App\Support\Cfdi\CfdiException;
 use App\Support\TransactionLock;
 use Illuminate\Support\Collection;
 use Livewire\Component;
@@ -40,6 +43,13 @@ class TransactionDetail extends Component
     public string $quantity = '1';
 
     public string $price = '';
+
+    /** Formulario de cancelación de CFDI. */
+    public bool $cancelling = false;
+
+    public string $cancelReason = '02';
+
+    public string $replacementUuid = '';
 
     private ?object $headerCache = null;
 
@@ -264,6 +274,79 @@ class TransactionDetail extends Component
         $this->headerCache = null;
     }
 
+    // ------------------------------------------------------------- CFDI
+
+    /** ¿Esta factura se puede timbrar? Sin entrar al PAC: solo lo que se ve aquí. */
+    public function canStamp(): bool
+    {
+        $transaccion = $this->transaction();
+
+        return (auth()->user()?->isAdmin() ?? false)
+            && (int) $transaccion->tran_type === Transaction::TYPE_INVOICE
+            && (int) $transaccion->invoice_type !== Transaction::INVOICE_TYPE_HISTORY
+            && blank($transaccion->seal)
+            && ! $transaccion->cancelled
+            && $this->charges()->isNotEmpty();
+    }
+
+    public function canCancel(): bool
+    {
+        $transaccion = $this->transaction();
+
+        return (auth()->user()?->isAdmin() ?? false)
+            && filled($transaccion->seal)
+            && ! $transaccion->cancelled;
+    }
+
+    public function stamp(StampTransaction $timbrar): void
+    {
+        abort_unless($this->canStamp(), 403);
+
+        try {
+            $uuid = $timbrar->handle($this->transaction());
+        } catch (CfdiException $e) {
+            $this->addError('cfdi', $e->getMessage());
+
+            return;
+        }
+
+        // Los cachés son propiedades privadas de esta petición, no estado de
+        // Livewire: se limpian a mano.
+        $this->transactionCache = null;
+        $this->headerCache = null;
+
+        session()->flash('status', 'Factura timbrada. Folio fiscal: '.$uuid);
+        $this->redirectRoute('transactions.show', $this->transactionId, navigate: true);
+    }
+
+    public function startCancel(): void
+    {
+        abort_unless($this->canCancel(), 403);
+
+        $this->cancelling = true;
+        $this->resetErrorBag();
+    }
+
+    public function cancelStamp(CancelStamp $cancelar): void
+    {
+        abort_unless($this->canCancel(), 403);
+
+        try {
+            $cancelar->handle(
+                $this->transaction(),
+                $this->cancelReason,
+                $this->replacementUuid ?: null,
+            );
+        } catch (CfdiException $e) {
+            $this->addError('cfdi', $e->getMessage());
+
+            return;
+        }
+
+        session()->flash('status', 'Factura cancelada ante el SAT.');
+        $this->redirectRoute('transactions.show', $this->transactionId, navigate: true);
+    }
+
     // --------------------------------------------------------- Pintado
 
     public function render()
@@ -282,6 +365,7 @@ class TransactionDetail extends Component
                 (bool) ($transaccion->bookingModel?->locked ?? false),
                 auth()->user(),
             ),
+            'motivosCancelacion' => CancelStamp::MOTIVOS,
             'tiposDeCargo' => ChargeType::optionsFor($contraparte, $tipoServicio),
             'servicios' => $this->chargeType === ''
                 ? collect()

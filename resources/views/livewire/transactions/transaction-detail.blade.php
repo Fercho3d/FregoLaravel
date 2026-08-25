@@ -45,6 +45,19 @@
                         Editar
                     </a>
                 @endif
+                @if ($this->canStamp())
+                    <button type="button" wire:click="stamp" wire:loading.attr="disabled" wire:target="stamp"
+                            wire:confirm="Se timbrará esta factura ante el SAT. Esta operación no se puede deshacer sin cancelarla. ¿Continuar?"
+                            class="btn-accent px-3 py-1.5 text-xs">
+                        <x-spinner wire:loading wire:target="stamp" class="h-3.5 w-3.5" />
+                        Timbrar
+                    </button>
+                @endif
+                @if ($this->canCancel())
+                    <button type="button" wire:click="startCancel" class="btn-ghost px-3 py-1.5 text-xs text-brand">
+                        Cancelar CFDI
+                    </button>
+                @endif
                 @if ($sePuedeBorrar)
                     <button type="button" wire:click="deleteTransaction"
                             wire:confirm="Se borrará la transacción y todos sus conceptos. ¿Continuar?"
@@ -59,6 +72,49 @@
                 @endif
             </div>
         </div>
+
+        @error('cfdi')
+            <p class="alert-danger mt-4">{{ $message }}</p>
+        @enderror
+
+        @if ($cancelling)
+            <form wire:submit="cancelStamp" class="mt-4 space-y-3 rounded-xl border border-line bg-raised/60 p-4">
+                <p class="text-sm font-medium text-ink">Cancelar el CFDI ante el SAT</p>
+
+                <div class="grid gap-3 sm:grid-cols-2">
+                    <label class="block">
+                        <span class="field-label text-xs">Motivo</span>
+                        <select wire:model.live="cancelReason" class="field-input mt-1 py-1.5 text-sm">
+                            @foreach ($motivosCancelacion as $clave => $etiqueta)
+                                <option value="{{ $clave }}" @selected($clave === $cancelReason)>{{ $etiqueta }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+
+                    @if ($cancelReason === '01')
+                        <label class="block">
+                            <span class="field-label text-xs">Folio fiscal que la sustituye</span>
+                            <input type="text" wire:model="replacementUuid" value="{{ $replacementUuid }}"
+                                   class="field-input mt-1 py-1.5 text-sm font-mono" placeholder="UUID">
+                        </label>
+                    @endif
+                </div>
+
+                <p class="text-xs text-ink-faint">
+                    El motivo 01 exige el folio del comprobante que sustituye a este.
+                    La cancelación se solicita al mismo PAC que lo timbró.
+                </p>
+
+                <div class="flex flex-wrap justify-end gap-3">
+                    <button type="button" wire:click="$set('cancelling', false)" class="btn-ghost !px-3 !py-1.5 text-xs">Cerrar</button>
+                    <button type="submit" wire:loading.attr="disabled" wire:target="cancelStamp"
+                            class="btn-accent !px-3 !py-1.5 text-xs">
+                        <x-spinner wire:loading wire:target="cancelStamp" class="h-3.5 w-3.5" />
+                        Cancelar ante el SAT
+                    </button>
+                </div>
+            </form>
+        @endif
 
         @if ($candado->locked)
             <p class="mt-4 flex items-start gap-2 rounded-lg border border-line bg-raised px-3 py-2 text-xs text-ink-muted">
