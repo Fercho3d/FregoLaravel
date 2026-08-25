@@ -30,6 +30,11 @@
                 @if ($booking->locked)
                     <span class="badge badge-neutral">Cerrado</span>
                 @endif
+                @if (auth()->user()?->isAdmin() && ! $booking->locked)
+                    <a href="{{ route('operations.bookings.edit', $booking->booking_id) }}" wire:navigate class="btn-ghost px-3 py-1.5 text-xs">
+                        Editar
+                    </a>
+                @endif
                 <a href="{{ route('transactions.booking', $booking->booking_id) }}" wire:navigate class="btn-ghost px-3 py-1.5 text-xs">
                     Ver facturación
                 </a>

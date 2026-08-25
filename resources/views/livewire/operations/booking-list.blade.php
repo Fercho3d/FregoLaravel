@@ -18,9 +18,16 @@
                 Embarques y el avance de su lista de verificación.
             </p>
         </div>
-        <span class="text-xs text-ink-faint">
-            {{ number_format($filas->total()) }} {{ $mode === '9' ? 'cotizaciones' : 'bookings' }} · consulta en {{ $queryMs }} ms
-        </span>
+        <div class="flex items-center gap-3">
+            <span class="text-xs text-ink-faint">
+                {{ number_format($filas->total()) }} {{ $mode === '9' ? 'cotizaciones' : 'bookings' }} · consulta en {{ $queryMs }} ms
+            </span>
+            @if (auth()->user()?->isAdmin())
+                <a href="{{ route('operations.bookings.create') }}" wire:navigate class="btn-accent !px-3 !py-1.5 text-xs">
+                    Nuevo booking
+                </a>
+            @endif
+        </div>
     </header>
 
     {{-- Filtros --}}

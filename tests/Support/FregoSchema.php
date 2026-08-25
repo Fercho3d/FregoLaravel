@@ -90,6 +90,14 @@ class FregoSchema
             $table->integer('dicharge_port_id')->nullable();
             $table->integer('pick_up_place_id')->nullable();
             $table->integer('created_by')->nullable();
+            $table->integer('modified_by')->nullable();
+            $table->string('HB')->nullable();
+            $table->integer('carrier_id')->nullable();
+            $table->integer('transport_id')->nullable();
+            $table->integer('custom_brocker_id')->nullable();
+            $table->integer('final_destination_id')->nullable();
+            $table->integer('container_type')->nullable();
+            $table->text('remarks')->nullable();
             $table->dateTime('created_at')->nullable();
             $table->dateTime('modified_at')->nullable();
         });
@@ -122,6 +130,12 @@ class FregoSchema
         Schema::create('pickup_place', function ($table) {
             $table->integer('pick_id')->primary();
             $table->string('name')->nullable();
+        });
+
+        Schema::create('final_destination', function ($table) {
+            $table->integer('final_destination_id')->primary();
+            $table->string('name')->nullable();
+            $table->integer('deleted')->default(0);
         });
 
         Schema::create('check_list', function ($table) {
@@ -177,6 +191,8 @@ class FregoSchema
             $table->string('email')->nullable();
             $table->dateTime('created_at')->nullable();
             $table->dateTime('modified_at')->nullable();
+            // 1 naviera, 2 transportista, 3 agente aduanal.
+            $table->integer('type_id')->nullable();
         });
 
         Schema::create('charge_type', function ($table) {
