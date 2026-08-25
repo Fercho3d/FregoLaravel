@@ -184,6 +184,12 @@
         color: var(--ok-ink);
     }
 
+    .alert-warn {
+        @apply rounded-lg px-4 py-3 text-sm;
+        background-color: var(--warn-bg);
+        color: var(--warn-ink);
+    }
+
     .alert-danger {
         @apply rounded-lg px-4 py-3 text-sm;
         background-color: var(--danger-bg);

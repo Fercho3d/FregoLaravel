@@ -225,6 +225,7 @@ class FregoSchema
             $table->string('city')->nullable();
             $table->string('state')->nullable();
             $table->integer('account_id')->nullable();
+            $table->integer('match_pickup_place')->default(0);
             $table->integer('created_by')->nullable();
             $table->integer('modified_by')->nullable();
         });
@@ -272,6 +273,20 @@ class FregoSchema
             $table->integer('modified_by')->nullable();
             $table->dateTime('created_at')->nullable();
             $table->dateTime('modified_at')->nullable();
+            // Columnas con las que el booking genera solo su factura y sus costos:
+            // la ruta que tiene que empatar, cómo se cobra el precio y su vigencia.
+            $table->integer('account_id')->nullable();
+            $table->integer('auto_include')->nullable();
+            $table->integer('price_type')->nullable();
+            $table->integer('loading_port_id')->nullable();
+            $table->integer('dicharge_port_id')->nullable();
+            $table->integer('pickup_place_id')->nullable();
+            $table->integer('final_destination_id')->nullable();
+            $table->integer('container_type_id')->nullable();
+            $table->date('start_date')->nullable();
+            $table->date('end_date')->nullable();
+            $table->decimal('min', 16, 4)->nullable();
+            $table->decimal('max', 16, 4)->nullable();
         });
 
         Schema::create('exchange', function ($table) {

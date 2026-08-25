@@ -19,6 +19,27 @@ class Service extends FregoModel
     /** Servicio que compra la empresa a un proveedor. */
     public const TYPE_PROVIDER = 2;
 
+    /*
+     * Cómo se pactó el precio (`price_type`). Decide la cantidad del concepto
+     * cuando el booking genera su factura y sus costos: los «por contenedor» se
+     * multiplican por la carga y los «por BL» se cobran una sola vez.
+     *
+     * Los dos últimos solo existen en los servicios de venta y son los que se le
+     * cobran al cliente por el despacho aduanal.
+     */
+
+    /** Por contenedor. */
+    public const PRICE_BY_CONTAINER = 1;
+
+    /** Por BL: uno por embarque. */
+    public const PRICE_BY_BL = 2;
+
+    /** Despacho aduanal, por contenedor. */
+    public const PRICE_BY_BROKER_CONTAINER = 3;
+
+    /** Despacho aduanal, por BL. */
+    public const PRICE_BY_BROKER_BL = 4;
+
     protected $table = 'service';
 
     protected $primaryKey = 'service_id';

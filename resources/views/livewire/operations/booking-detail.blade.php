@@ -34,6 +34,11 @@
                     <a href="{{ route('operations.bookings.edit', $booking->booking_id) }}" wire:navigate class="btn-ghost px-3 py-1.5 text-xs">
                         Editar
                     </a>
+                    <a href="{{ route('operations.bookings.generate', $booking->booking_id) }}" wire:navigate
+                       title="Propone la factura y los costos a partir de los servicios contratados para esta ruta"
+                       class="btn-ghost px-3 py-1.5 text-xs">
+                        Generar facturación
+                    </a>
                     <button type="button" wire:click="lock"
                             wire:confirm="Al cerrarlo ya no se podrán tocar sus contenedores ni sus documentos. ¿Continuar?"
                             class="btn-ghost px-3 py-1.5 text-xs">Cerrar booking</button>
