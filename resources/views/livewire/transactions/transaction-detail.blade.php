@@ -40,6 +40,11 @@
             </div>
 
             <div class="flex flex-wrap items-center gap-2">
+                @if (auth()->user()?->isAdmin())
+                    <a href="{{ route('transactions.edit', $fila->transc_id) }}" wire:navigate class="btn-ghost px-3 py-1.5 text-xs">
+                        Editar
+                    </a>
+                @endif
                 <span class="{{ $estado->classes() }}">{{ $estado->label() }}</span>
                 @if ($fila->cancelled)
                     <span class="badge badge-danger">Cancelada</span>

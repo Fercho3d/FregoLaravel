@@ -146,6 +146,9 @@
 
     .field-input {
         @apply block w-full rounded-lg border border-line bg-panel px-3.5 py-2.5 text-ink placeholder-ink-faint shadow-sm transition focus:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-500/40;
+        /* Un campo bloqueado tiene que notarse: el formulario de una transacción
+           timbrada se ve casi igual al de una editable si no se distinguen. */
+        @apply disabled:cursor-not-allowed disabled:border-line-soft disabled:bg-raised disabled:text-ink-muted disabled:shadow-none;
     }
 
     .card {

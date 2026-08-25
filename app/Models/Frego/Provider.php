@@ -17,4 +17,15 @@ class Provider extends FregoModel
     {
         return $this->hasMany(Transaction::class, 'vendor', 'provider_id');
     }
+
+    /**
+     * Proveedores para los selectores: `[provider_id => fullName]`.
+     * Réplica de `Provider::getList()` en Yii2.
+     *
+     * @return array<int, string>
+     */
+    public static function options(): array
+    {
+        return static::orderBy('fullName')->pluck('fullName', 'provider_id')->all();
+    }
 }

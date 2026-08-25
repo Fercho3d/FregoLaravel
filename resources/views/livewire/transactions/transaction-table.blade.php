@@ -47,6 +47,13 @@
             <span class="rounded-lg bg-raised px-4 py-2 font-medium text-ink">
                 Booking {{ trim($booking->booking_number) }}
             </span>
+
+            {{-- El alta necesita saber a qué booking pertenece; por eso solo se
+                 ofrece desde esta pantalla. --}}
+            @foreach ([['factura', 'Nueva factura'], ['costo', 'Nuevo costo']] as [$tipo, $etiqueta])
+                <a href="{{ route('transactions.create', ['booking' => $booking->booking_id, 'tipo' => $tipo]) }}"
+                   wire:navigate class="btn-ghost px-3 py-1.5 text-xs">{{ $etiqueta }}</a>
+            @endforeach
         @endif
 
         <span class="ml-auto px-3 text-xs text-ink-faint" title="Tiempo de la consulta que alimenta esta tabla">

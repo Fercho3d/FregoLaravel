@@ -83,7 +83,10 @@ class FregoSchema
             $table->integer('vendor')->nullable();
             $table->integer('customer')->nullable();
             $table->integer('tran_type')->nullable();
-            $table->integer('invoice_type')->default(1);
+            // Nullable como en la base real: los costos se guardan sin tipo de
+            // factura, y el motor cuenta con que la comparación contra NULL caiga
+            // al ELSE del CASE.
+            $table->integer('invoice_type')->nullable()->default(1);
             $table->integer('invoice')->nullable();
             $table->string('seal')->nullable();
             $table->string('new_seal')->nullable();

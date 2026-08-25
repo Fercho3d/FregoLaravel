@@ -3,6 +3,7 @@
 use App\Http\Controllers\ThemeController;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Livewire\Transactions\TransactionDetail;
+use App\Livewire\Transactions\TransactionForm;
 use App\Livewire\Transactions\TransactionTable;
 use Illuminate\Support\Facades\Route;
 
@@ -34,6 +35,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/costos', TransactionTable::class)->defaults('screen', 'bill')->name('bill');
         Route::get('/todas', TransactionTable::class)->defaults('screen', 'all')->name('all');
         Route::get('/booking/{booking}', TransactionTable::class)->defaults('screen', 'booking')->name('booking');
+        Route::get('/nueva', TransactionForm::class)->name('create');
         Route::get('/{transaction}', TransactionDetail::class)->whereNumber('transaction')->name('show');
+        Route::get('/{transaction}/editar', TransactionForm::class)->whereNumber('transaction')->name('edit');
     });
 });

@@ -23,6 +23,17 @@ class Client extends FregoModel
      * Correos a los que se envía la factura timbrada.
      * `email_notification` guarda una lista separada por comas o punto y coma.
      */
+    /**
+     * Clientes para los selectores: `[client_id => fullName]`.
+     * Igual que `Client::getList()` en Yii2: sin filtro, ordenado por nombre.
+     *
+     * @return array<int, string>
+     */
+    public static function options(): array
+    {
+        return static::orderBy('fullName')->pluck('fullName', 'client_id')->all();
+    }
+
     public function notificationEmails(): array
     {
         $raw = trim((string) ($this->email_notification ?: $this->email));
