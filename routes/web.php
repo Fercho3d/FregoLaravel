@@ -1,14 +1,18 @@
 <?php
 
+use App\Http\Controllers\PortalFileController;
 use App\Http\Controllers\ThemeController;
 use App\Http\Controllers\TransactionFileController;
 use App\Http\Middleware\EnsureUserIsAdmin;
+use App\Http\Middleware\EnsureUserIsInternal;
+use App\Http\Middleware\EnsureUserIsPortal;
 use App\Livewire\Catalogs\CatalogManager;
 use App\Livewire\Operations\BookingDetail;
 use App\Livewire\Operations\BookingList;
 use App\Livewire\Payments\PaymentRequestForm;
 use App\Livewire\Payments\PaymentRequestList;
 use App\Livewire\Payments\PaymentsReport;
+use App\Livewire\Portal\PortalHome;
 use App\Livewire\Transactions\BookingReport;
 use App\Livewire\Transactions\TransactionDetail;
 use App\Livewire\Transactions\TransactionForm;
@@ -17,19 +21,40 @@ use App\Livewire\Users\UserManager;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return redirect()->route(auth()->check() ? 'dashboard' : 'login');
+    if (! auth()->check()) {
+        return redirect()->route('login');
+    }
+
+    // Cada cuenta a su sitio: el personal al sistema, el cliente y el proveedor
+    // a su portal.
+    return redirect()->route(auth()->user()->isPortal() ? 'portal' : 'dashboard');
 });
 
 // Tema claro/oscuro. Sin `auth` a propósito: la pantalla de acceso también
 // deja elegirlo (se recuerda por cookie hasta que haya sesión).
 Route::put('/preferencias/tema', ThemeController::class)->name('preferences.theme');
 
-Route::middleware(['auth'])->group(function () {
-    Route::view('/dashboard', 'dashboard')->name('dashboard');
+// Seguridad de la cuenta (contraseña + 2FA). Va fuera de los dos bloques porque
+// es de cualquiera con sesión, incluidas las cuentas de portal. Las acciones las
+// expone Laravel Fortify.
+Route::view('/seguridad', 'security.show')->middleware('auth')->name('security.show');
 
-    // Seguridad de la cuenta (contraseña + 2FA). Las acciones (activar/confirmar/
-    // desactivar 2FA, cambiar contraseña) las expone Laravel Fortify.
-    Route::view('/seguridad', 'security.show')->name('security.show');
+/*
+ * Portal de clientes y proveedores. Cada cuenta ve únicamente sus documentos y,
+ * si es cliente, sus embarques.
+ */
+Route::middleware(['auth', EnsureUserIsPortal::class])->prefix('portal')->group(function () {
+    Route::get('/', PortalHome::class)->name('portal');
+    Route::get('/documento/{transaction}/{kind}', PortalFileController::class)
+        ->whereNumber('transaction')->name('portal.file');
+});
+
+/*
+ * Sistema interno. `EnsureUserIsInternal` deja fuera a las cuentas de portal:
+ * sin esa puerta verían la operación completa de la empresa.
+ */
+Route::middleware(['auth', EnsureUserIsInternal::class])->group(function () {
+    Route::view('/dashboard', 'dashboard')->name('dashboard');
 
     /*
      * Operación: los embarques y lo que cuelga de ellos.

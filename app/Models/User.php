@@ -65,6 +65,21 @@ class User extends Authenticatable
         ];
     }
 
+    /*
+     * `access` dice DESDE DÓNDE entra la cuenta, y es distinto del rol, que dice
+     * qué puede hacer. Las cuentas de portal pertenecen a un cliente o a un
+     * proveedor y solo ven lo suyo.
+     */
+
+    /** Personal de Frego. */
+    public const ACCESS_INTERNAL = 9;
+
+    /** Portal del cliente. */
+    public const ACCESS_CLIENT = 10;
+
+    /** Portal del proveedor. */
+    public const ACCESS_PROVIDER = 11;
+
     /** Roles heredados de Yii2 (`User::ROLE_*`). */
     public const ROLE_USER = 9;
 
@@ -93,6 +108,39 @@ class User extends Authenticatable
     public function isSuperAdmin(): bool
     {
         return (int) $this->role === self::ROLE_SUPER_ADMIN;
+    }
+
+    /**
+     * ¿Es una cuenta de portal (cliente o proveedor)?
+     *
+     * Importa mucho: estas cuentas NO deben ver la operación ni los catálogos de
+     * la empresa, solo lo suyo. En la base hay decenas de ellas.
+     */
+    public function isPortal(): bool
+    {
+        return in_array((int) $this->access, [self::ACCESS_CLIENT, self::ACCESS_PROVIDER], true);
+    }
+
+    /** Personal de Frego. Las cuentas sin `access` se tratan como internas. */
+    public function isInternal(): bool
+    {
+        return ! $this->isPortal();
+    }
+
+    /** Cliente al que pertenece la cuenta de portal, si aplica. */
+    public function portalClientId(): ?int
+    {
+        return (int) $this->access === self::ACCESS_CLIENT && $this->client_id
+            ? (int) $this->client_id
+            : null;
+    }
+
+    /** Proveedor al que pertenece la cuenta de portal, si aplica. */
+    public function portalProviderId(): ?int
+    {
+        return (int) $this->access === self::ACCESS_PROVIDER && $this->provider_id
+            ? (int) $this->provider_id
+            : null;
     }
 
     /**

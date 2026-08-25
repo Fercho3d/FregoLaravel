@@ -26,14 +26,15 @@ class UserManager extends Component
 {
     use WithPagination;
 
-    /** Acceso interno: personal de Frego. */
-    public const ACCESS_INTERNAL = 9;
+    /*
+     * Los valores de `access` viven en el modelo; aquí solo se reexportan para
+     * que la vista no tenga que conocer dos clases.
+     */
+    public const ACCESS_INTERNAL = User::ACCESS_INTERNAL;
 
-    /** Acceso desde el portal del cliente. */
-    public const ACCESS_CLIENT = 10;
+    public const ACCESS_CLIENT = User::ACCESS_CLIENT;
 
-    /** Acceso desde el portal del proveedor. */
-    public const ACCESS_PROVIDER = 11;
+    public const ACCESS_PROVIDER = User::ACCESS_PROVIDER;
 
     #[Url(as: 'q', except: '')]
     public string $search = '';

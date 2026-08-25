@@ -76,8 +76,83 @@ class FregoSchema
             $table->integer('client')->nullable();
             $table->date('loading_EDT')->nullable();
             $table->integer('mode')->default(10);
+            // Columnas que usa el listado de operación y el portal.
+            $table->integer('is_draft')->default(0);
+            $table->boolean('locked')->default(false);
+            $table->string('customer_reference')->nullable();
+            $table->string('commodity')->nullable();
+            $table->string('set_point')->nullable();
+            $table->string('booking_type')->nullable();
+            $table->date('dicharge_ETA')->nullable();
+            $table->date('arrival')->nullable();
+            $table->integer('vessel')->nullable();
+            $table->integer('loading_port')->nullable();
+            $table->integer('dicharge_port_id')->nullable();
+            $table->integer('pick_up_place_id')->nullable();
+            $table->integer('created_by')->nullable();
             $table->dateTime('created_at')->nullable();
             $table->dateTime('modified_at')->nullable();
+        });
+
+        // Tablas que acompañan al booking en el listado de operación.
+        Schema::create('booking_continuity', function ($table) {
+            $table->increments('cont_id');
+            $table->integer('booking')->nullable();
+            $table->dateTime('pickup_date')->nullable();
+            $table->dateTime('SI_date')->nullable();
+        });
+
+        Schema::create('vessel', function ($table) {
+            $table->integer('vessel_id')->primary();
+            $table->string('vessel_name')->nullable();
+        });
+
+        Schema::create('loading_ports', function ($table) {
+            $table->integer('port_id')->primary();
+            $table->string('port_name')->nullable();
+            $table->integer('deleted')->default(0);
+        });
+
+        Schema::create('dicharge_port', function ($table) {
+            $table->integer('dicharge_port_id')->primary();
+            $table->string('name')->nullable();
+            $table->integer('deleted')->default(0);
+        });
+
+        Schema::create('pickup_place', function ($table) {
+            $table->integer('pick_id')->primary();
+            $table->string('name')->nullable();
+        });
+
+        Schema::create('check_list', function ($table) {
+            $table->increments('check_id');
+            $table->integer('booking')->nullable();
+
+            foreach ([
+                'booking_number', 'pickup_date', 'modality', 'doc_cut_of', 'SI_date', 'cleared',
+                'departure', 'bl_payment', 'swb', 'vessel', 'number', 'client', 'loading_port',
+                'loading_EDT', 'dicharge_port', 'container_type', 'commodity', 'set_point',
+                'dicharge_ETA', 'vacuum_maneuver', 'draf_client', 'gated_IN', 'gated_out',
+                'delivered', 'pick_up_place', 'insurance', 'corrected_draft', 'vgm',
+            ] as $casilla) {
+                $table->dateTime($casilla.'_chk_date')->nullable();
+            }
+        });
+
+        Schema::create('containers', function ($table) {
+            $table->increments('container_ID');
+            $table->integer('booking')->nullable();
+            $table->integer('container_type')->nullable();
+            $table->integer('quantity')->nullable();
+            $table->string('comodity')->nullable();
+            $table->string('number')->nullable();
+            $table->string('seal')->nullable();
+            $table->dateTime('pick_up_date')->nullable();
+        });
+
+        Schema::create('container_types', function ($table) {
+            $table->integer('contType_id')->primary();
+            $table->string('container_name')->nullable();
         });
 
         Schema::create('client', function ($table) {
