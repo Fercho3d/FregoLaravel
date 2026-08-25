@@ -12,12 +12,26 @@
             <directory>tests/Feature</directory>
         </testsuite>
     </testsuites>
+    <!--
+        Las pruebas de paridad y de rendimiento corren contra la base real `frego`
+        con datos de producción: tardan minutos. Quedan fuera de la corrida normal
+        y se lanzan a propósito con la opción de grupo de PHPUnit:
+            vendor/bin/phpunit (guion guion)group parity
+            vendor/bin/phpunit (guion guion)group performance
+    -->
+    <groups>
+        <exclude>
+            <group>parity</group>
+            <group>performance</group>
+        </exclude>
+    </groups>
     <source>
         <include>
             <directory>app</directory>
         </include>
     </source>
     <php>
+        <ini name="memory_limit" value="2G"/>
         <env name="APP_ENV" value="testing"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>

@@ -2,18 +2,16 @@
 
 namespace Tests\Feature;
 
-// use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class ExampleTest extends TestCase
 {
     /**
-     * A basic test example.
+     * La raíz no es una página: manda al login o al tablero según la sesión.
+     * (La prueba que traía Laravel esperaba un 200 y fallaba desde el andamiaje.)
      */
-    public function test_the_application_returns_a_successful_response(): void
+    public function test_la_raiz_manda_al_login_cuando_no_hay_sesion(): void
     {
-        $response = $this->get('/');
-
-        $response->assertStatus(200);
+        $this->get('/')->assertRedirect(route('login'));
     }
 }

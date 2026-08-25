@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Middleware\EnsureUserIsAdmin;
+use App\Livewire\Transactions\TransactionTable;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -12,4 +14,19 @@ Route::middleware(['auth'])->group(function () {
     // Seguridad de la cuenta (contraseña + 2FA). Las acciones (activar/confirmar/
     // desactivar 2FA, cambiar contraseña) las expone Laravel Fortify.
     Route::view('/seguridad', 'security.show')->name('security.show');
+
+    /*
+     * Módulo Transactions. Los cuatro listados son el mismo componente Livewire
+     * con distinto filtro base, igual que las acciones invoice / bill / all /
+     * index del TransactionController de Yii2.
+     *
+     * Solo administradores, igual que el AccessControl del controlador original:
+     * la facturación no la ven clientes, proveedores ni operación.
+     */
+    Route::middleware(EnsureUserIsAdmin::class)->prefix('transacciones')->name('transactions.')->group(function () {
+        Route::get('/', TransactionTable::class)->name('invoice');
+        Route::get('/costos', TransactionTable::class)->defaults('screen', 'bill')->name('bill');
+        Route::get('/todas', TransactionTable::class)->defaults('screen', 'all')->name('all');
+        Route::get('/booking/{booking}', TransactionTable::class)->defaults('screen', 'booking')->name('booking');
+    });
 });

@@ -57,11 +57,47 @@ return [
             'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci'),
             'prefix' => '',
             'prefix_indexes' => true,
-            'strict' => true,
+            // El esquema es el mismo que usa Yii2, y sus consultas seleccionan
+            // columnas fuera del GROUP BY (comportamiento histórico intencional).
+            // Se replica el sql_mode del servidor: se conserva la severidad en
+            // escrituras, pero sin ONLY_FULL_GROUP_BY, que Laravel activa de más.
+            'strict' => false,
+            'modes' => [
+                'STRICT_TRANS_TABLES',
+                'ERROR_FOR_DIVISION_BY_ZERO',
+                'NO_ENGINE_SUBSTITUTION',
+            ],
             'engine' => null,
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 Mysql::ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
+        ],
+
+        /*
+         * Base real de Frego para las pruebas de paridad y de rendimiento.
+         *
+         * La suite normal corre en SQLite en memoria; estas dos pruebas necesitan
+         * los datos y el motor de verdad, porque justamente comparan contra el SQL
+         * que genera Yii2. Es de SOLO LECTURA: ninguna prueba migra ni trunca aquí.
+         */
+        'frego_legacy' => [
+            'driver' => 'mysql',
+            'host' => env('FREGO_DB_HOST', env('DB_HOST', '127.0.0.1')),
+            'port' => env('FREGO_DB_PORT', env('DB_PORT', '3306')),
+            'database' => env('FREGO_DB_DATABASE', 'frego'),
+            'username' => env('FREGO_DB_USERNAME', env('DB_USERNAME', 'root')),
+            'password' => env('FREGO_DB_PASSWORD', env('DB_PASSWORD', '')),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'strict' => false,
+            'modes' => [
+                'STRICT_TRANS_TABLES',
+                'ERROR_FOR_DIVISION_BY_ZERO',
+                'NO_ENGINE_SUBSTITUTION',
+            ],
+            'engine' => null,
         ],
 
         'mariadb' => [
