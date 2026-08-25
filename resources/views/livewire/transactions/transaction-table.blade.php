@@ -79,25 +79,28 @@
             <span class="ml-auto text-xs font-normal text-ink-faint" x-text="abierto ? 'Ocultar' : 'Mostrar'"></span>
         </button>
 
+        {{-- Los filtros llevan `value` y `@selected` además de `wire:model`: viven
+             en la dirección, así que al abrir un enlace compartido la tabla ya
+             viene filtrada y los campos tienen que enseñar por qué. --}}
         <div x-show="abierto" x-cloak class="grid gap-3 border-t border-line p-4 sm:grid-cols-2 lg:grid-cols-4">
             <label class="block">
                 <span class="field-label text-xs">Número</span>
-                <input type="text" wire:model.live.debounce.400ms="tranNumber" class="field-input mt-1 py-1.5 text-sm" placeholder="F-1234">
+                <input type="text" wire:model.live.debounce.400ms="tranNumber" value="{{ $tranNumber }}" class="field-input mt-1 py-1.5 text-sm" placeholder="F-1234">
             </label>
 
             <label class="block">
                 <span class="field-label text-xs">Booking</span>
-                <input type="text" wire:model.live.debounce.400ms="bookingNumber" class="field-input mt-1 py-1.5 text-sm" placeholder="MEX…">
+                <input type="text" wire:model.live.debounce.400ms="bookingNumber" value="{{ $bookingNumber }}" class="field-input mt-1 py-1.5 text-sm" placeholder="MEX…">
             </label>
 
             <label class="block">
                 <span class="field-label text-xs">Cliente o proveedor</span>
-                <input type="text" wire:model.live.debounce.400ms="appliedTo" class="field-input mt-1 py-1.5 text-sm" placeholder="Nombre">
+                <input type="text" wire:model.live.debounce.400ms="appliedTo" value="{{ $appliedTo }}" class="field-input mt-1 py-1.5 text-sm" placeholder="Nombre">
             </label>
 
             <label class="block">
                 <span class="field-label text-xs">Fechas <span class="text-ink-faint">(dd/mm/aaaa - dd/mm/aaaa)</span></span>
-                <input type="text" wire:model.live.debounce.600ms="dates" class="field-input mt-1 py-1.5 text-sm" placeholder="01/01/2025 - 31/12/2025">
+                <input type="text" wire:model.live.debounce.600ms="dates" value="{{ $dates }}" class="field-input mt-1 py-1.5 text-sm" placeholder="01/01/2025 - 31/12/2025">
             </label>
 
             <label class="block">
@@ -105,7 +108,7 @@
                 <select wire:model.live="companyId" class="field-input mt-1 py-1.5 text-sm">
                     <option value="">Todas</option>
                     @foreach ($companies as $id => $name)
-                        <option value="{{ $id }}">{{ $name }}</option>
+                        <option value="{{ $id }}" @selected((string) $id === $companyId)>{{ $name }}</option>
                     @endforeach
                 </select>
             </label>
@@ -115,7 +118,7 @@
                 <select wire:model.live="accountId" class="field-input mt-1 py-1.5 text-sm">
                     <option value="">Todas</option>
                     @foreach ($currencies as $id => $prefix)
-                        <option value="{{ $id }}">{{ $prefix }}</option>
+                        <option value="{{ $id }}" @selected((string) $id === $accountId)>{{ $prefix }}</option>
                     @endforeach
                 </select>
             </label>
@@ -123,19 +126,20 @@
             <label class="block">
                 <span class="field-label text-xs">Estado de pago</span>
                 <select wire:model.live="paid" class="field-input mt-1 py-1.5 text-sm">
-                    <option value="">Todas</option>
-                    <option value="0">Sin pagar</option>
-                    <option value="2">Parciales</option>
-                    <option value="1">Pagadas</option>
+                    {{-- Ojo con el `(string)`: PHP convierte en enteros las claves
+                         numéricas del arreglo, y la comparación estricta fallaría. --}}
+                    @foreach (['' => 'Todas', '0' => 'Sin pagar', '2' => 'Parciales', '1' => 'Pagadas'] as $valor => $etiqueta)
+                        <option value="{{ $valor }}" @selected((string) $valor === $paid)>{{ $etiqueta }}</option>
+                    @endforeach
                 </select>
             </label>
 
             <label class="block">
                 <span class="field-label text-xs">Canceladas</span>
                 <select wire:model.live="showCancelled" class="field-input mt-1 py-1.5 text-sm">
-                    <option value="0">Solo vigentes</option>
-                    <option value="1">Vigentes y canceladas</option>
-                    <option value="2">Solo canceladas</option>
+                    @foreach (['0' => 'Solo vigentes', '1' => 'Vigentes y canceladas', '2' => 'Solo canceladas'] as $valor => $etiqueta)
+                        <option value="{{ $valor }}" @selected((string) $valor === $showCancelled)>{{ $etiqueta }}</option>
+                    @endforeach
                 </select>
             </label>
 
@@ -148,13 +152,104 @@
                     Por página
                     <select wire:model.live="perPage" class="field-input !w-auto py-1 text-xs">
                         @foreach ([25, 50, 100, 200] as $n)
-                            <option value="{{ $n }}">{{ $n }}</option>
+                            <option value="{{ $n }}" @selected($n === $perPage)>{{ $n }}</option>
                         @endforeach
                     </select>
                 </label>
             </div>
         </div>
     </div>
+
+    {{-- Utilidad por booking. Solo en Facturas y bajo demanda: es la consulta
+         más cara de la pantalla y no siempre se ocupa. --}}
+    @if ($screen === 'invoice')
+        <section class="card overflow-hidden">
+            <header class="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
+                <div>
+                    <h3 class="text-sm font-semibold text-ink">Utilidad por booking</h3>
+                    <p class="text-xs text-ink-faint">
+                        Facturas menos costos, sin IVA. Los importes son del booking completo,
+                        no solo de lo que cae en el filtro.
+                    </p>
+                </div>
+
+                <button type="button" wire:click="calculateProfit" wire:loading.attr="disabled" wire:target="calculateProfit"
+                        class="btn-ghost px-3 py-1.5 text-xs">
+                    <x-spinner wire:loading wire:target="calculateProfit" class="h-3.5 w-3.5" />
+                    {{ $profit === null ? 'Calcular' : 'Recalcular' }}
+                </button>
+            </header>
+
+            @if ($profit !== null)
+                @if ($profit['rows'] === [])
+                    <p class="border-t border-line px-5 py-8 text-center text-sm text-ink-faint">
+                        No hay bookings facturados con estos filtros.
+                    </p>
+                @else
+                    {{-- Tarjetas en móvil --}}
+                    <ul class="divide-y divide-line border-t border-line md:hidden">
+                        @foreach ($profit['rows'] as $fila)
+                            <li class="space-y-1.5 p-4 text-sm">
+                                <p class="font-medium text-ink">{{ $fila['booking'] ?: '—' }}</p>
+                                @foreach ([['TC documento', 'inv_doc', 'cost_doc', 'profit_doc'], ['TC pago', 'inv_pago', 'cost_pago', 'profit_pago']] as [$titulo, $inv, $cos, $pro])
+                                    <div class="flex justify-between gap-2 text-xs">
+                                        <span class="text-ink-faint">{{ $titulo }}</span>
+                                        <span class="tabular-nums text-ink-muted">
+                                            {{ $money($fila[$inv]) }} − {{ $money($fila[$cos]) }} =
+                                            <span class="font-semibold {{ $fila[$pro] < 0 ? 'text-brand' : 'text-ink' }}">{{ $money($fila[$pro]) }}</span>
+                                        </span>
+                                    </div>
+                                @endforeach
+                            </li>
+                        @endforeach
+                    </ul>
+
+                    {{-- Tabla desde md --}}
+                    <div class="hidden overflow-x-auto border-t border-line md:block">
+                        <table class="min-w-full text-sm">
+                            <thead class="border-b border-line text-xs uppercase tracking-wide text-ink-muted">
+                                <tr>
+                                    <th class="px-4 py-2.5 text-left font-semibold">Booking</th>
+                                    <th class="px-4 py-2.5 text-right font-semibold">Facturado (TC doc.)</th>
+                                    <th class="px-4 py-2.5 text-right font-semibold">Costo (TC doc.)</th>
+                                    <th class="px-4 py-2.5 text-right font-semibold">Utilidad (TC doc.)</th>
+                                    <th class="px-4 py-2.5 text-right font-semibold">Facturado (TC pago)</th>
+                                    <th class="px-4 py-2.5 text-right font-semibold">Costo (TC pago)</th>
+                                    <th class="px-4 py-2.5 text-right font-semibold">Utilidad (TC pago)</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-line">
+                                @foreach ($profit['rows'] as $fila)
+                                    <tr class="transition hover:bg-raised">
+                                        <td class="whitespace-nowrap px-4 py-2">
+                                            <a href="{{ route('transactions.booking', $fila['booking_id']) }}" wire:navigate
+                                               class="text-brand hover:underline">{{ $fila['booking'] ?: '—' }}</a>
+                                        </td>
+                                        <td class="whitespace-nowrap px-4 py-2 text-right tabular-nums text-ink-muted">{{ $money($fila['inv_doc']) }}</td>
+                                        <td class="whitespace-nowrap px-4 py-2 text-right tabular-nums text-ink-muted">{{ $money($fila['cost_doc']) }}</td>
+                                        <td class="whitespace-nowrap px-4 py-2 text-right font-semibold tabular-nums {{ $fila['profit_doc'] < 0 ? 'text-brand' : 'text-ink' }}">{{ $money($fila['profit_doc']) }}</td>
+                                        <td class="whitespace-nowrap px-4 py-2 text-right tabular-nums text-ink-muted">{{ $money($fila['inv_pago']) }}</td>
+                                        <td class="whitespace-nowrap px-4 py-2 text-right tabular-nums text-ink-muted">{{ $money($fila['cost_pago']) }}</td>
+                                        <td class="whitespace-nowrap px-4 py-2 text-right font-semibold tabular-nums {{ $fila['profit_pago'] < 0 ? 'text-brand' : 'text-ink' }}">{{ $money($fila['profit_pago']) }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                            <tfoot class="border-t border-line bg-panel text-sm font-semibold">
+                                <tr>
+                                    <td class="px-4 py-2.5 text-ink-muted">Total</td>
+                                    @foreach (['inv_doc', 'cost_doc', 'profit_doc', 'inv_pago', 'cost_pago', 'profit_pago'] as $clave)
+                                        <td class="whitespace-nowrap px-4 py-2.5 text-right tabular-nums {{ str_starts_with($clave, 'profit') && $profit['totals'][$clave] < 0 ? 'text-brand' : 'text-ink' }}">
+                                            {{ $money($profit['totals'][$clave]) }}
+                                        </td>
+                                    @endforeach
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                @endif
+            @endif
+        </section>
+    @endif
 
     {{-- Resultados. Tabla completa desde `md`; en móvil, tarjetas con los
          campos que de verdad se consultan de pie frente a un contenedor. --}}

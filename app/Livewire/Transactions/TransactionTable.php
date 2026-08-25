@@ -5,6 +5,7 @@ namespace App\Livewire\Transactions;
 use App\Models\Frego\Account;
 use App\Models\Frego\Booking;
 use App\Models\Frego\Company;
+use App\Queries\ProfitByBooking;
 use App\Queries\TransactionFilters;
 use App\Queries\TransactionQuery;
 use Livewire\Attributes\Url;
@@ -67,6 +68,12 @@ class TransactionTable extends Component
     /** Totales de TODO el filtro: se calculan solo si el usuario los pide. */
     public ?array $totals = null;
 
+    /**
+     * Utilidad por booking de la pantalla de Facturas. También bajo demanda: el
+     * original la calculaba en cada carga y era la parte más cara de la pantalla.
+     */
+    public ?array $profit = null;
+
     /** Milisegundos que tardó la consulta de la última pintada. */
     public float $queryMs = 0;
 
@@ -100,6 +107,7 @@ class TransactionTable extends Component
 
         $this->resetPage();
         $this->totals = null;
+        $this->profit = null;
     }
 
     public function sortBy(string $column): void
@@ -119,7 +127,14 @@ class TransactionTable extends Component
         $this->reset(['tranNumber', 'bookingNumber', 'appliedTo', 'dates', 'companyId', 'accountId', 'paid']);
         $this->showCancelled = '0';
         $this->totals = null;
+        $this->profit = null;
         $this->resetPage();
+    }
+
+    /** Utilidad por booking: facturas menos costos, a TC del documento y del pago. */
+    public function calculateProfit(): void
+    {
+        $this->profit = (new ProfitByBooking($this->filters()))->summary();
     }
 
     /** Suma las columnas de dinero sobre el conjunto filtrado completo. */

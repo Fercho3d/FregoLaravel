@@ -235,4 +235,31 @@ class TransactionTableTest extends FregoDatabaseTestCase
             ->assertSee('Página 1 de')
             ->assertDontSee('dusk="nextPage.before"', false);
     }
+
+    /**
+     * Los filtros viven en la dirección, así que un enlace compartido abre la
+     * tabla ya filtrada. Si la vista no pintara los valores desde el servidor,
+     * los campos se verían vacíos hasta que arrancara el JavaScript y no habría
+     * forma de saber por qué la lista viene acotada.
+     */
+    public function test_los_filtros_de_la_direccion_se_pintan_desde_el_servidor(): void
+    {
+        $this->actAsUser();
+
+        $compania = DB::table('company')->orderBy('company_id')->value('company_id');
+
+        $this->get(route('transactions.invoice', [
+            'num' => 'F-14793',
+            'f' => '01/12/2022 - 31/12/2022',
+            'co' => $compania,
+            'pago' => '1',
+            'n' => 100,
+        ]))
+            ->assertOk()
+            ->assertSee('value="F-14793"', false)
+            ->assertSee('value="01/12/2022 - 31/12/2022"', false)
+            ->assertSee('<option value="'.$compania.'" selected>', false)
+            ->assertSee('<option value="1" selected>Pagadas</option>', false)
+            ->assertSee('<option value="100" selected>100</option>', false);
+    }
 }
