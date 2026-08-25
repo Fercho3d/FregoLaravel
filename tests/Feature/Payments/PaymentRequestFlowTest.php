@@ -152,6 +152,58 @@ class PaymentRequestFlowTest extends TestCase
         $this->assertSame(400.0, (float) PaymentByTransaction::where('transc_id', 1)->value('amount'));
     }
 
+    /**
+     * Porta `Transaction::validateAmountToPay()`: en Yii2 se comprobaba por AJAX
+     * al teclear en la rejilla, sobre un campo virtual del modelo.
+     */
+    public function test_no_se_puede_aplicar_mas_de_lo_que_se_debe(): void
+    {
+        $this->formulario([1])
+            ->set('number', 'CHQ-100')->set('date', '2026-01-20')->set('bankId', '1')
+            ->set('amounts.1', '1160.01')
+            ->call('save')
+            ->assertHasErrors('amounts.1');
+
+        $this->assertSame(0, PaymentRequest::count());
+    }
+
+    public function test_un_importe_en_cero_no_arma_solicitud(): void
+    {
+        $this->formulario([1])
+            ->set('number', 'CHQ-100')->set('date', '2026-01-20')->set('bankId', '1')
+            ->set('amounts.1', '0')
+            ->call('save')
+            ->assertHasErrors('amounts.1');
+
+        $this->assertSame(0, PaymentRequest::count());
+    }
+
+    /** Una nota de crédito resta: su importe va en negativo y no pasa del saldo. */
+    public function test_una_nota_de_credito_exige_importe_negativo(): void
+    {
+        DB::table('transaction')->insert([
+            'transc_id' => 9, 'booking' => 1, 'tran_type' => 2, 'vendor' => 1,
+            'account' => 1, 'tran_number' => 'NC-9', 'tran_date' => '2026-01-15',
+        ]);
+        DB::table('charge')->insert([
+            'charge_id' => 9, 'transaction' => 9, 'type' => 1, 'quantity' => 1, 'price' => -200,
+        ]);
+
+        $this->formulario([9])
+            ->set('number', 'CHQ-100')->set('date', '2026-01-20')->set('bankId', '1')
+            ->set('amounts.9', '200')
+            ->call('save')
+            ->assertHasErrors('amounts.9');
+
+        $this->formulario([9])
+            ->set('number', 'CHQ-100')->set('date', '2026-01-20')->set('bankId', '1')
+            ->set('amounts.9', '-1000')
+            ->call('save')
+            ->assertHasErrors('amounts.9');
+
+        $this->assertSame(0, PaymentRequest::count());
+    }
+
     public function test_sin_seleccion_la_pantalla_responde_404(): void
     {
         $this->actingAs($this->usuario());

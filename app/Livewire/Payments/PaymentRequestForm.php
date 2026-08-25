@@ -99,6 +99,12 @@ class PaymentRequestForm extends Component
 
         $transacciones = $this->transactions();
 
+        $this->assertAmountsFit($transacciones);
+
+        if ($this->getErrorBag()->isNotEmpty()) {
+            return;
+        }
+
         $importes = collect($this->amounts)
             ->mapWithKeys(fn ($valor, $id) => [(int) $id => round((float) $valor, 2)])
             ->all();
@@ -112,6 +118,44 @@ class PaymentRequestForm extends Component
 
         session()->flash('status', 'Solicitud '.str_pad((string) $solicitud->request_id, 4, '0', STR_PAD_LEFT).' creada.');
         $this->redirectRoute('payments.requests', navigate: true);
+    }
+
+    /**
+     * Ningún renglón puede aplicar más de lo que la transacción debe.
+     *
+     * Porta `Transaction::validateAmountToPay()` de Yii2, que allá vivía en un
+     * campo virtual del modelo (`public $amount_to_pay`, que no es columna de la
+     * tabla) y se validaba por AJAX al teclear en la rejilla. Aquí se comprueba
+     * al guardar, que es cuando se escribe.
+     *
+     * Las notas de crédito van al revés porque restan: su saldo es negativo y el
+     * importe tiene que serlo también, sin pasarse por debajo.
+     *
+     * @param  Collection<int, object>  $transacciones
+     */
+    private function assertAmountsFit(Collection $transacciones): void
+    {
+        foreach ($transacciones as $transaccion) {
+            $importe = round((float) ($this->amounts[$transaccion->transc_id] ?? 0), 2);
+            $saldo = round((float) $transaccion->left_to_pay, 2);
+            $campo = 'amounts.'.$transaccion->transc_id;
+
+            if ((int) $transaccion->tran_type === Transaction::TYPE_CREDIT_BILL) {
+                if ($importe > 0) {
+                    $this->addError($campo, 'Una nota de crédito resta: el importe tiene que ser negativo.');
+                } elseif ($importe < $saldo) {
+                    $this->addError($campo, 'No puede ser menor que el saldo de '.number_format($saldo, 2).'.');
+                }
+
+                continue;
+            }
+
+            if ($importe === 0.0) {
+                $this->addError($campo, 'El importe tiene que ser mayor que $0.00.');
+            } elseif ($importe > $saldo) {
+                $this->addError($campo, 'No puede ser mayor que el saldo de '.number_format($saldo, 2).'.');
+            }
+        }
     }
 
     public function render()

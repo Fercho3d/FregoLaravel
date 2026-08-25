@@ -78,6 +78,9 @@
                                 <input type="number" step="0.01" wire:model.live="amounts.{{ $t->transc_id }}"
                                        value="{{ $amounts[$t->transc_id] ?? '' }}"
                                        class="field-input !w-32 py-1 text-right text-sm tabular-nums">
+                                @error('amounts.'.$t->transc_id)
+                                    <span class="mt-1 block text-xs text-brand">{{ $message }}</span>
+                                @enderror
                             </td>
                         </tr>
                     @endforeach
