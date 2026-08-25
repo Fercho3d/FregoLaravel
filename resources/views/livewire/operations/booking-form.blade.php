@@ -51,7 +51,7 @@
                 <svg class="mt-0.5 h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                     <rect x="5" y="11" width="14" height="9" rx="2"/><path stroke-linecap="round" d="M8 11V8a4 4 0 0 1 8 0v3"/>
                 </svg>
-                <span>Este booking está cerrado: operación lo dio por terminado y su facturación quedó fija.</span>
+                <span>{{ __('Este booking está cerrado: operación lo dio por terminado y su facturación quedó fija.') }}</span>
             </p>
         @endif
 
@@ -90,11 +90,11 @@
                         @if ($propiedad === 'vesselId')
                             <label class="block">
                                 <span class="field-label">
-                                    …o un buque nuevo
-                                    <span class="font-normal text-ink-faint">(se da de alta al guardar)</span>
+                                    {{ __('…o un buque nuevo') }}
+                                    <span class="font-normal text-ink-faint">{{ __('(se da de alta al guardar)') }}</span>
                                 </span>
                                 <input type="text" wire:model.live="newVessel" value="{{ $newVessel }}"
-                                       @disabled($locked) class="field-input mt-1.5" placeholder="Nombre del buque">
+                                       @disabled($locked) class="field-input mt-1.5" placeholder="{{ __('Nombre del buque') }}">
                                 @error('newVessel') <span class="mt-1 block text-xs text-brand">{{ $message }}</span> @enderror
                             </label>
                         @endif
@@ -104,13 +104,13 @@
         @endforeach
 
         <fieldset class="space-y-2" @disabled($locked)>
-            <legend class="text-xs font-semibold uppercase tracking-wide text-ink-faint">Notas</legend>
+            <legend class="text-xs font-semibold uppercase tracking-wide text-ink-faint">{{ __('Notas') }}</legend>
             <textarea wire:model="remarks" rows="3" @disabled($locked) class="field-input">{{ $remarks }}</textarea>
         </fieldset>
 
         <footer class="flex flex-wrap items-center justify-end gap-3 border-t border-line pt-4">
             <a href="{{ $bookingId ? route('operations.bookings.show', $bookingId) : route('operations.bookings') }}"
-               wire:navigate class="btn-ghost">Cancelar</a>
+               wire:navigate class="btn-ghost">{{ __('Cancelar') }}</a>
             <button type="submit" wire:loading.attr="disabled" wire:target="save" @disabled($locked) class="btn-accent">
                 <x-spinner wire:loading wire:target="save" class="h-4 w-4" />
                 {{ $bookingId ? 'Guardar cambios' : 'Crear booking' }}

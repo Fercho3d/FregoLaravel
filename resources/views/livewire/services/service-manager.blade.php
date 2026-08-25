@@ -8,15 +8,14 @@
 
     <header class="flex flex-wrap items-end justify-between gap-3">
         <div>
-            <h2 class="text-lg font-semibold text-ink">Servicios y precios</h2>
+            <h2 class="text-lg font-semibold text-ink">{{ __('Servicios y precios') }}</h2>
             <p class="text-sm text-ink-muted">
-                El precio pactado con cada tercero. Un servicio en <strong>0</strong> es precio abierto:
-                se captura a mano al agregar el concepto.
+                {!! __('El precio pactado con cada tercero. Un servicio en <strong>0</strong> es precio abierto: se captura a mano al agregar el concepto.') !!}
             </p>
         </div>
 
         @if ($esAdmin)
-            <button type="button" wire:click="create" class="btn-accent !px-3 !py-1.5 text-xs">Agregar</button>
+            <button type="button" wire:click="create" class="btn-accent !px-3 !py-1.5 text-xs">{{ __('Agregar') }}</button>
         @endif
     </header>
 
@@ -24,7 +23,7 @@
     <div class="card p-4">
         <div class="grid gap-3 sm:grid-cols-3">
             <label class="block">
-                <span class="field-label text-xs">Tipo</span>
+                <span class="field-label text-xs">{{ __('Tipo') }}</span>
                 <select wire:model.live="type" class="field-input mt-1 py-1.5 text-sm">
                     @foreach (['1' => 'De venta (cliente)', '2' => 'De compra (proveedor)'] as $valor => $etiqueta)
                         <option value="{{ $valor }}" @selected((string) $valor === $type)>{{ $etiqueta }}</option>
@@ -35,7 +34,7 @@
             <label class="block">
                 <span class="field-label text-xs">{{ $esVenta ? 'Cliente' : 'Proveedor' }}</span>
                 <select wire:model.live="partyId" class="field-input mt-1 py-1.5 text-sm">
-                    <option value="">Todos</option>
+                    <option value="">{{ __('Todos') }}</option>
                     @foreach ($terceros as $id => $nombre)
                         <option value="{{ $id }}" @selected((string) $id === $partyId)>{{ $nombre }}</option>
                     @endforeach
@@ -43,9 +42,9 @@
             </label>
 
             <label class="block">
-                <span class="field-label text-xs">Descripción</span>
+                <span class="field-label text-xs">{{ __('Descripción') }}</span>
                 <input type="search" wire:model.live.debounce.300ms="search" value="{{ $search }}"
-                       class="field-input mt-1 py-1.5 text-sm" placeholder="Buscar…">
+                       class="field-input mt-1 py-1.5 text-sm" placeholder="{{ __('Buscar…') }}">
             </label>
         </div>
     </div>
@@ -59,7 +58,7 @@
 
             <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <label class="block lg:col-span-2">
-                    <span class="field-label">Descripción</span>
+                    <span class="field-label">{{ __('Descripción') }}</span>
                     <input type="text" wire:model="form.description" value="{{ $form['description'] ?? '' }}" class="field-input mt-1.5" required>
                     @error('form.description') <span class="mt-1 block text-xs text-brand">{{ $message }}</span> @enderror
                 </label>
@@ -67,7 +66,7 @@
                 <label class="block">
                     <span class="field-label">{{ $esVenta ? 'Cliente' : 'Proveedor' }}</span>
                     <select wire:model="form.party_id" class="field-input mt-1.5" required>
-                        <option value="">Selecciona</option>
+                        <option value="">{{ __('Selecciona') }}</option>
                         @foreach ($terceros as $id => $nombre)
                             <option value="{{ $id }}" @selected((string) $id === (string) ($form['party_id'] ?? ''))>{{ $nombre }}</option>
                         @endforeach
@@ -76,9 +75,9 @@
                 </label>
 
                 <label class="block">
-                    <span class="field-label">Tipo de cargo</span>
+                    <span class="field-label">{{ __('Tipo de cargo') }}</span>
                     <select wire:model="form.charge_type_id" class="field-input mt-1.5" required>
-                        <option value="">Selecciona</option>
+                        <option value="">{{ __('Selecciona') }}</option>
                         @foreach ($tiposDeCargo as $id => $nombre)
                             <option value="{{ $id }}" @selected((string) $id === (string) ($form['charge_type_id'] ?? ''))>{{ $nombre }}</option>
                         @endforeach
@@ -88,7 +87,7 @@
 
                 <label class="block">
                     <span class="field-label">
-                        Precio <span class="font-normal text-ink-faint">(0 = abierto)</span>
+                        Precio <span class="font-normal text-ink-faint">{{ __('(0 = abierto)') }}</span>
                     </span>
                     <input type="number" step="0.0001" min="0" wire:model="form.price" value="{{ $form['price'] ?? '' }}"
                            class="field-input mt-1.5 text-right tabular-nums" required>
@@ -96,9 +95,9 @@
                 </label>
 
                 <label class="block">
-                    <span class="field-label">Divisa</span>
+                    <span class="field-label">{{ __('Divisa') }}</span>
                     <select wire:model="form.account_id" class="field-input mt-1.5" required>
-                        <option value="">Selecciona</option>
+                        <option value="">{{ __('Selecciona') }}</option>
                         @foreach ($divisas as $id => $prefijo)
                             <option value="{{ $id }}" @selected((string) $id === (string) ($form['account_id'] ?? ''))>{{ $prefijo }}</option>
                         @endforeach
@@ -120,7 +119,7 @@
                 <label class="flex items-end gap-2 pb-2.5 text-sm text-ink-soft">
                     <input type="checkbox" wire:model="form.active" @checked($form['active'] ?? false)
                            class="h-4 w-4 rounded border-line bg-panel text-accent-500 focus:ring-accent-500">
-                    Activo
+                    {{ __('Activo') }}
                 </label>
             </div>
 
@@ -130,19 +129,18 @@
                     <input type="checkbox" wire:model.live="form.auto_include" @checked($form['auto_include'] ?? false)
                            class="mt-0.5 h-4 w-4 rounded border-line bg-panel text-accent-500 focus:ring-accent-500">
                     <span>
-                        Incluirlo solo en la factura y los costos del booking
+                        {{ __('Incluirlo solo en la factura y los costos del booking') }}
                         <span class="mt-0.5 block text-xs text-ink-faint">
-                            El booking lo propondrá cuando su ruta coincida con la de aquí abajo. Los campos
-                            que dejes vacíos solo empatan con bookings que tampoco los tengan.
+                            {{ __('El booking lo propondrá cuando su ruta coincida con la de aquí abajo. Los campos que dejes vacíos solo empatan con bookings que tampoco los tengan.') }}
                         </span>
                     </span>
                 </label>
 
                 <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     <label class="block">
-                        <span class="field-label">Tipo de precio</span>
+                        <span class="field-label">{{ __('Tipo de precio') }}</span>
                         <select wire:model="form.price_type" class="field-input mt-1.5">
-                            <option value="">Sin definir</option>
+                            <option value="">{{ __('Sin definir') }}</option>
                             @foreach ($this->priceTypes() as $id => $etiqueta)
                                 <option value="{{ $id }}" @selected((string) $id === (string) ($form['price_type'] ?? ''))>{{ $etiqueta }}</option>
                             @endforeach
@@ -160,7 +158,7 @@
                         <label class="block">
                             <span class="field-label">{{ $etiqueta }}</span>
                             <select wire:model="form.{{ $campo }}" class="field-input mt-1.5">
-                                <option value="">Cualquiera</option>
+                                <option value="">{{ __('Cualquiera') }}</option>
                                 @foreach ($opciones as $id => $nombre)
                                     <option value="{{ $id }}" @selected((string) $id === (string) ($form[$campo] ?? ''))>{{ $nombre }}</option>
                                 @endforeach
@@ -180,10 +178,10 @@
             </div>
 
             <div class="flex flex-wrap justify-end gap-3 border-t border-line pt-4">
-                <button type="button" wire:click="cancel" class="btn-ghost !px-3 !py-1.5 text-xs">Cancelar</button>
+                <button type="button" wire:click="cancel" class="btn-ghost !px-3 !py-1.5 text-xs">{{ __('Cancelar') }}</button>
                 <button type="submit" wire:loading.attr="disabled" wire:target="save" class="btn-accent !px-3 !py-1.5 text-xs">
                     <x-spinner wire:loading wire:target="save" class="h-3.5 w-3.5" />
-                    Guardar
+                    {{ __('Guardar') }}
                 </button>
             </div>
         </form>
@@ -201,13 +199,13 @@
             <table class="min-w-full text-sm">
                 <thead class="border-b border-line text-xs uppercase tracking-wide text-ink-muted">
                     <tr>
-                        <th class="px-4 py-2.5 text-left font-semibold">Descripción</th>
+                        <th class="px-4 py-2.5 text-left font-semibold">{{ __('Descripción') }}</th>
                         <th class="px-4 py-2.5 text-left font-semibold">{{ $esVenta ? 'Cliente' : 'Proveedor' }}</th>
-                        <th class="px-4 py-2.5 text-left font-semibold">Tipo de cargo</th>
-                        <th class="px-4 py-2.5 text-right font-semibold">Precio</th>
-                        <th class="px-4 py-2.5 text-left font-semibold">Estado</th>
+                        <th class="px-4 py-2.5 text-left font-semibold">{{ __('Tipo de cargo') }}</th>
+                        <th class="px-4 py-2.5 text-right font-semibold">{{ __('Precio') }}</th>
+                        <th class="px-4 py-2.5 text-left font-semibold">{{ __('Estado') }}</th>
                         @if ($esAdmin)
-                            <th class="px-4 py-2.5 text-right font-semibold"><span class="sr-only">Acciones</span></th>
+                            <th class="px-4 py-2.5 text-right font-semibold"><span class="sr-only">{{ __('Acciones') }}</span></th>
                         @endif
                     </tr>
                 </thead>
@@ -220,7 +218,7 @@
                                 <p class="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-ink-faint">
                                     <span>{{ $servicio->currency ?: '—' }}</span>
                                     @if ($servicio->auto_include)
-                                        <span class="badge badge-neutral">Auto-incluible</span>
+                                        <span class="badge badge-neutral">{{ __('Auto-incluible') }}</span>
                                         @if ($servicio->end_date)
                                             <span>vigente hasta {{ $servicio->end_date }}</span>
                                         @endif
@@ -233,7 +231,7 @@
                             <td class="whitespace-nowrap px-4 py-2 text-ink-muted">{{ $servicio->charge_type_name ?: '—' }}</td>
                             <td class="whitespace-nowrap px-4 py-2 text-right tabular-nums text-ink-soft">
                                 @if ((float) $servicio->price === 0.0)
-                                    <span class="badge badge-warn">Abierto</span>
+                                    <span class="badge badge-warn">{{ __('Abierto') }}</span>
                                 @else
                                     {{ $money($servicio->price) }}
                                 @endif
@@ -258,7 +256,7 @@
                     @empty
                         <tr>
                             <td colspan="{{ $esAdmin ? 6 : 5 }}" class="px-4 py-12 text-center text-ink-faint">
-                                No hay servicios con estos filtros.
+                                {{ __('No hay servicios con estos filtros.') }}
                             </td>
                         </tr>
                     @endforelse

@@ -29,7 +29,7 @@
     @endif
 
     <label class="block">
-        <span class="sr-only">Buscar</span>
+        <span class="sr-only">{{ __('Buscar') }}</span>
         <input type="search" wire:model.live.debounce.400ms="search" value="{{ $search }}"
                class="field-input py-2 text-sm"
                placeholder="{{ $tab === 'embarques' ? 'Buscar por número de booking…' : 'Buscar por número de documento…' }}">
@@ -47,7 +47,7 @@
                 @forelse ($embarques as $embarque)
                     <li class="space-y-1.5 p-4">
                         <div class="flex flex-wrap items-center justify-between gap-2">
-                            <p class="font-semibold text-ink">{{ trim((string) $embarque->booking_number) ?: 'Sin número' }}</p>
+                            <p class="font-semibold text-ink">{{ trim((string) $embarque->booking_number) ?: __('Sin número') }}</p>
                             <span class="text-xs tabular-nums text-ink-muted">
                                 {{ number_format((float) $embarque->total_completed, 0) }}% completado
                             </span>
@@ -70,7 +70,7 @@
                         </dl>
                     </li>
                 @empty
-                    <li class="px-4 py-12 text-center text-sm text-ink-faint">No hay embarques que mostrar.</li>
+                    <li class="px-4 py-12 text-center text-sm text-ink-faint">{{ __('No hay embarques que mostrar.') }}</li>
                 @endforelse
             </ul>
         @else
@@ -80,14 +80,14 @@
                     <li class="space-y-2 p-4 {{ $documento->cancelled ? 'opacity-60' : '' }}">
                         <div class="flex flex-wrap items-start justify-between gap-2">
                             <div class="min-w-0">
-                                <p class="font-semibold text-ink">{{ $documento->tran_number ?: 'Sin número' }}</p>
+                                <p class="font-semibold text-ink">{{ $documento->tran_number ?: __('Sin número') }}</p>
                                 <p class="text-xs text-ink-muted">
                                     Booking {{ trim((string) $documento->booking_number) ?: '—' }} · {{ $fecha($documento->tran_date) }}
                                 </p>
                             </div>
                             <div class="flex items-center gap-2">
                                 @if ($documento->cancelled)
-                                    <span class="badge badge-danger">Cancelada</span>
+                                    <span class="badge badge-danger">{{ __('Cancelada') }}</span>
                                 @endif
                                 <span class="{{ $estado->classes() }}">{{ $estado->label() }}</span>
                             </div>
@@ -109,7 +109,7 @@
                         </div>
                     </li>
                 @empty
-                    <li class="px-4 py-12 text-center text-sm text-ink-faint">No hay documentos que mostrar.</li>
+                    <li class="px-4 py-12 text-center text-sm text-ink-faint">{{ __('No hay documentos que mostrar.') }}</li>
                 @endforelse
             </ul>
         @endif

@@ -6,15 +6,15 @@
 
     <header class="flex flex-wrap items-end justify-between gap-3">
         <div>
-            <h2 class="text-lg font-semibold text-ink">Tipos de cambio</h2>
+            <h2 class="text-lg font-semibold text-ink">{{ __('Tipos de cambio') }}</h2>
             <p class="text-sm text-ink-muted">
-                Con esto se valúa cada documento. Un cambio aquí mueve cifras ya emitidas.
+                {{ __('Con esto se valúa cada documento. Un cambio aquí mueve cifras ya emitidas.') }}
             </p>
         </div>
 
         <div class="flex flex-wrap items-center gap-2">
             <select wire:model.live="accountId" class="field-input !w-auto py-1.5 text-sm">
-                <option value="">Todas las monedas</option>
+                <option value="">{{ __('Todas las monedas') }}</option>
                 @foreach ($monedas as $id => $prefijo)
                     <option value="{{ $id }}" @selected((string) $id === $accountId)>{{ $prefijo }}</option>
                 @endforeach
@@ -23,21 +23,18 @@
             <button type="button" wire:click="fetchToday" wire:loading.attr="disabled" wire:target="fetchToday"
                     class="btn-ghost !px-3 !py-1.5 text-xs">
                 <x-spinner wire:loading wire:target="fetchToday" class="h-3.5 w-3.5" />
-                Traer el del día (DOF)
+                {{ __('Traer el del día (DOF)') }}
             </button>
 
-            <button type="button" wire:click="create" class="btn-accent !px-3 !py-1.5 text-xs">Capturar</button>
+            <button type="button" wire:click="create" class="btn-accent !px-3 !py-1.5 text-xs">{{ __('Capturar') }}</button>
         </div>
     </header>
 
     @error('fetch') <p class="alert-danger">{{ $message }}</p> @enderror
 
     <p class="rounded-lg border border-line bg-raised px-4 py-3 text-xs text-ink-muted">
-        <strong class="text-ink-soft">Cómo se lee esta tabla.</strong>
-        La fila que «aplica el día X» contiene el tipo de cambio publicado el día hábil
-        <em>anterior</em>: es la convención del sistema desde siempre y no se cambió.
-        El alta automática trae solo el <strong>dólar</strong> (indicador 158 del DOF);
-        el euro se captura a mano.
+        <strong class="text-ink-soft">{{ __('Cómo se lee esta tabla.') }}</strong>
+        {!! __('La fila que «aplica el día X» contiene el tipo de cambio publicado el día hábil <em>anterior</em>: es la convención del sistema desde siempre y no se cambió. El alta automática trae solo el <strong>dólar</strong> (indicador 158 del DOF); el euro se captura a mano.') !!}
     </p>
 
     {{-- Formulario --}}
@@ -47,15 +44,15 @@
 
             <div class="grid gap-4 sm:grid-cols-3">
                 <label class="block">
-                    <span class="field-label">Aplica el día</span>
+                    <span class="field-label">{{ __('Aplica el día') }}</span>
                     <input type="date" wire:model="date" value="{{ $date }}" class="field-input mt-1.5" required>
                     @error('date') <span class="mt-1 block text-xs text-brand">{{ $message }}</span> @enderror
                 </label>
 
                 <label class="block">
-                    <span class="field-label">Moneda</span>
+                    <span class="field-label">{{ __('Moneda') }}</span>
                     <select wire:model="account" class="field-input mt-1.5" required>
-                        <option value="">Selecciona</option>
+                        <option value="">{{ __('Selecciona') }}</option>
                         @foreach ($monedas as $id => $prefijo)
                             <option value="{{ $id }}" @selected((string) $id === $account)>{{ $prefijo }}</option>
                         @endforeach
@@ -64,7 +61,7 @@
                 </label>
 
                 <label class="block">
-                    <span class="field-label">Tipo de cambio</span>
+                    <span class="field-label">{{ __('Tipo de cambio') }}</span>
                     <input type="number" step="0.0001" min="0" wire:model="value" value="{{ $value }}"
                            class="field-input mt-1.5 text-right tabular-nums" required>
                     @error('value') <span class="mt-1 block text-xs text-brand">{{ $message }}</span> @enderror
@@ -72,8 +69,8 @@
             </div>
 
             <div class="flex flex-wrap justify-end gap-3 border-t border-line pt-4">
-                <button type="button" wire:click="cancel" class="btn-ghost !px-3 !py-1.5 text-xs">Cancelar</button>
-                <button type="submit" class="btn-accent !px-3 !py-1.5 text-xs">Guardar</button>
+                <button type="button" wire:click="cancel" class="btn-ghost !px-3 !py-1.5 text-xs">{{ __('Cancelar') }}</button>
+                <button type="submit" class="btn-accent !px-3 !py-1.5 text-xs">{{ __('Guardar') }}</button>
             </div>
         </form>
     @endif
@@ -90,11 +87,11 @@
             <table class="min-w-full text-sm">
                 <thead class="border-b border-line text-xs uppercase tracking-wide text-ink-muted">
                     <tr>
-                        <th class="px-4 py-2.5 text-left font-semibold">Aplica el día</th>
-                        <th class="px-4 py-2.5 text-left font-semibold">Moneda</th>
-                        <th class="px-4 py-2.5 text-right font-semibold">Tipo de cambio</th>
-                        <th class="px-4 py-2.5 text-left font-semibold">Publicado el</th>
-                        <th class="px-4 py-2.5 text-right font-semibold"><span class="sr-only">Acciones</span></th>
+                        <th class="px-4 py-2.5 text-left font-semibold">{{ __('Aplica el día') }}</th>
+                        <th class="px-4 py-2.5 text-left font-semibold">{{ __('Moneda') }}</th>
+                        <th class="px-4 py-2.5 text-right font-semibold">{{ __('Tipo de cambio') }}</th>
+                        <th class="px-4 py-2.5 text-left font-semibold">{{ __('Publicado el') }}</th>
+                        <th class="px-4 py-2.5 text-right font-semibold"><span class="sr-only">{{ __('Acciones') }}</span></th>
                     </tr>
                 </thead>
 
@@ -109,11 +106,11 @@
                             <td class="whitespace-nowrap px-4 py-2 text-ink-faint">{{ $fecha($tipo->taken_date) }}</td>
                             <td class="whitespace-nowrap px-4 py-2 text-right">
                                 <button type="button" wire:click="edit({{ $tipo->exchange_id }})"
-                                        class="text-xs text-brand hover:underline">Editar</button>
+                                        class="text-xs text-brand hover:underline">{{ __('Editar') }}</button>
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="5" class="px-4 py-12 text-center text-ink-faint">No hay tipos de cambio registrados.</td></tr>
+                        <tr><td colspan="5" class="px-4 py-12 text-center text-ink-faint">{{ __('No hay tipos de cambio registrados.') }}</td></tr>
                     @endforelse
                 </tbody>
             </table>

@@ -30,9 +30,9 @@
 
         <div class="flex items-center gap-2">
             <input type="search" wire:model.live.debounce.300ms="search" value="{{ $search }}"
-                   class="field-input py-1.5 text-sm" placeholder="Buscar por nombre, RFC o ciudad…">
+                   class="field-input py-1.5 text-sm" placeholder="{{ __('Buscar por nombre, RFC o ciudad…') }}">
             @if ($esAdmin)
-                <button type="button" wire:click="create" class="btn-accent !px-3 !py-1.5 text-xs">Agregar</button>
+                <button type="button" wire:click="create" class="btn-accent !px-3 !py-1.5 text-xs">{{ __('Agregar') }}</button>
             @endif
         </div>
     </header>
@@ -53,7 +53,7 @@
 
                         @if ($tipo === 'select')
                             <select wire:model="form.{{ $campo }}" class="field-input mt-1.5">
-                                <option value="">Sin especificar</option>
+                                <option value="">{{ __('Sin especificar') }}</option>
                                 @foreach ($this->optionsFor($campo) as $id => $nombre)
                                     <option value="{{ $id }}" @selected((string) $id === (string) ($form[$campo] ?? ''))>{{ $nombre }}</option>
                                 @endforeach
@@ -70,10 +70,9 @@
             @if ($this->isClient())
                 {{-- Qué papeles se le piden a este cliente en cada booking --}}
                 <div class="rounded-xl border border-line bg-raised/40 p-4">
-                    <p class="text-sm font-medium text-ink">Documentos que se le piden</p>
+                    <p class="text-sm font-medium text-ink">{{ __('Documentos que se le piden') }}</p>
                     <p class="mt-0.5 text-xs text-ink-faint">
-                        Son los campos donde operación sube papeles en cada booking de este cliente.
-                        Si no marcas ninguno, su booking no ofrecerá dónde subirlos.
+                        {{ __('Son los campos donde operación sube papeles en cada booking de este cliente. Si no marcas ninguno, su booking no ofrecerá dónde subirlos.') }}
                     </p>
 
                     <div class="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -89,15 +88,14 @@
             @endif
 
             <p class="text-xs text-ink-faint">
-                Los accesos al portal se administran en la pantalla de usuarios, no aquí:
-                así las contraseñas se cambian en un solo lugar.
+                {{ __('Los accesos al portal se administran en la pantalla de usuarios, no aquí: así las contraseñas se cambian en un solo lugar.') }}
             </p>
 
             <div class="flex flex-wrap justify-end gap-3 border-t border-line pt-4">
-                <button type="button" wire:click="cancel" class="btn-ghost !px-3 !py-1.5 text-xs">Cancelar</button>
+                <button type="button" wire:click="cancel" class="btn-ghost !px-3 !py-1.5 text-xs">{{ __('Cancelar') }}</button>
                 <button type="submit" wire:loading.attr="disabled" wire:target="save" class="btn-accent !px-3 !py-1.5 text-xs">
                     <x-spinner wire:loading wire:target="save" class="h-3.5 w-3.5" />
-                    Guardar
+                    {{ __('Guardar') }}
                 </button>
             </div>
         </form>
@@ -119,7 +117,7 @@
                             <th class="px-4 py-2.5 text-left font-semibold">{{ $etiqueta }}</th>
                         @endforeach
                         @if ($esAdmin)
-                            <th class="px-4 py-2.5 text-right font-semibold"><span class="sr-only">Acciones</span></th>
+                            <th class="px-4 py-2.5 text-right font-semibold"><span class="sr-only">{{ __('Acciones') }}</span></th>
                         @endif
                     </tr>
                 </thead>
@@ -136,7 +134,7 @@
                             @if ($esAdmin)
                                 <td class="whitespace-nowrap px-4 py-2 text-right">
                                     <button type="button" wire:click="edit({{ $fila->{$this->key()} }})"
-                                            class="text-xs text-brand hover:underline">Editar</button>
+                                            class="text-xs text-brand hover:underline">{{ __('Editar') }}</button>
                                 </td>
                             @endif
                         </tr>

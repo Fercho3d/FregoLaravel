@@ -9,7 +9,7 @@
     <a href="{{ route($esCobro ? 'transactions.invoice' : 'transactions.bill') }}" wire:navigate
        class="inline-flex items-center gap-1.5 text-sm text-ink-muted transition hover:text-ink">
         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
-        Volver al listado
+        {{ __('Volver al listado') }}
     </a>
 
     <form wire:submit="save" class="card space-y-5 p-5 sm:p-6">
@@ -30,21 +30,21 @@
 
         <div class="grid gap-4 sm:grid-cols-3">
             <label class="block">
-                <span class="field-label">Número</span>
+                <span class="field-label">{{ __('Número') }}</span>
                 <input type="text" wire:model="number" value="{{ $number }}" maxlength="64" class="field-input mt-1.5" required>
                 @error('number') <span class="mt-1 block text-xs text-brand">{{ $message }}</span> @enderror
             </label>
 
             <label class="block">
-                <span class="field-label">Fecha</span>
+                <span class="field-label">{{ __('Fecha') }}</span>
                 <input type="date" wire:model="date" value="{{ $date }}" class="field-input mt-1.5" required>
                 @error('date') <span class="mt-1 block text-xs text-brand">{{ $message }}</span> @enderror
             </label>
 
             <label class="block">
-                <span class="field-label">Banco</span>
+                <span class="field-label">{{ __('Banco') }}</span>
                 <select wire:model="bankId" class="field-input mt-1.5" required>
-                    <option value="">Selecciona el banco</option>
+                    <option value="">{{ __('Selecciona el banco') }}</option>
                     @foreach ($banks as $id => $etiqueta)
                         <option value="{{ $id }}" @selected((string) $id === $bankId)>{{ $etiqueta }}</option>
                     @endforeach
@@ -58,12 +58,12 @@
             <table class="min-w-full text-sm">
                 <thead class="border-b border-line text-xs uppercase tracking-wide text-ink-muted">
                     <tr>
-                        <th class="px-3 py-2 text-left font-semibold">Transacción</th>
-                        <th class="px-3 py-2 text-left font-semibold">Booking</th>
-                        <th class="px-3 py-2 text-right font-semibold">Total</th>
-                        <th class="px-3 py-2 text-right font-semibold">Pagado</th>
-                        <th class="px-3 py-2 text-right font-semibold">Por pagar</th>
-                        <th class="px-3 py-2 text-right font-semibold">Se aplica</th>
+                        <th class="px-3 py-2 text-left font-semibold">{{ __('Transacción') }}</th>
+                        <th class="px-3 py-2 text-left font-semibold">{{ __('Booking') }}</th>
+                        <th class="px-3 py-2 text-right font-semibold">{{ __('Total') }}</th>
+                        <th class="px-3 py-2 text-right font-semibold">{{ __('Pagado') }}</th>
+                        <th class="px-3 py-2 text-right font-semibold">{{ __('Por pagar') }}</th>
+                        <th class="px-3 py-2 text-right font-semibold">{{ __('Se aplica') }}</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-line">
@@ -87,7 +87,7 @@
                 </tbody>
                 <tfoot class="border-t border-line bg-panel text-sm font-semibold">
                     <tr>
-                        <td colspan="5" class="px-3 py-2.5 text-right text-ink-muted">Importe de la solicitud</td>
+                        <td colspan="5" class="px-3 py-2.5 text-right text-ink-muted">{{ __('Importe de la solicitud') }}</td>
                         <td class="whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-ink">{{ $money($this->total()) }}</td>
                     </tr>
                 </tfoot>
@@ -95,10 +95,10 @@
         </div>
 
         <footer class="flex flex-wrap items-center justify-end gap-3 border-t border-line pt-4">
-            <a href="{{ route('payments.requests') }}" wire:navigate class="btn-ghost">Cancelar</a>
+            <a href="{{ route('payments.requests') }}" wire:navigate class="btn-ghost">{{ __('Cancelar') }}</a>
             <button type="submit" wire:loading.attr="disabled" wire:target="save" class="btn-accent">
                 <x-spinner wire:loading wire:target="save" class="h-4 w-4" />
-                Crear solicitud
+                {{ __('Crear solicitud') }}
             </button>
         </footer>
     </form>

@@ -113,7 +113,7 @@ class ExchangeManager extends Component
             ? Exchange::create($valores + ['created_by' => auth()->id(), 'taken_date' => $this->date])
             : Exchange::findOrFail($this->editing)->forceFill($valores)->save();
 
-        session()->flash('status', 'Tipo de cambio guardado.');
+        session()->flash('status', __('Tipo de cambio guardado.'));
         $this->cancel();
     }
 
@@ -123,7 +123,7 @@ class ExchangeManager extends Component
         abort_unless(auth()->user()?->isAdmin() ?? false, 403);
 
         $tipos->ensureFor(Carbon::today())
-            ? session()->flash('status', 'Tipo de cambio del día registrado.')
+            ? session()->flash('status', __('Tipo de cambio del día registrado.'))
             : $this->addError('fetch', 'El DOF no devolvió un tipo de cambio para hoy. Captúralo a mano si ya lo publicaron.');
     }
 

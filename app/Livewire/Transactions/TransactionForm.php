@@ -265,7 +265,7 @@ class TransactionForm extends Component
 
             $modelo->save();
 
-            session()->flash('status', 'Se actualizó la transacción.');
+            session()->flash('status', __('Se actualizó la transacción.'));
             $this->redirectRoute('transactions.show', $modelo->transc_id, navigate: true);
 
             return;

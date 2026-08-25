@@ -42,41 +42,41 @@
             <div class="flex flex-wrap items-center gap-2">
                 @if (auth()->user()?->isAdmin())
                     <a href="{{ route('transactions.edit', $fila->transc_id) }}" wire:navigate class="btn-ghost px-3 py-1.5 text-xs">
-                        Editar
+                        {{ __('Editar') }}
                     </a>
                 @endif
                 @if ($this->canStamp())
                     <button type="button" wire:click="stamp" wire:loading.attr="disabled" wire:target="stamp"
-                            wire:confirm="Se timbrará esta factura ante el SAT. Esta operación no se puede deshacer sin cancelarla. ¿Continuar?"
+                            wire:confirm="{{ __('Se timbrará esta factura ante el SAT. Esta operación no se puede deshacer sin cancelarla. ¿Continuar?') }}"
                             class="btn-accent px-3 py-1.5 text-xs">
                         <x-spinner wire:loading wire:target="stamp" class="h-3.5 w-3.5" />
-                        Timbrar
+                        {{ __('Timbrar') }}
                     </button>
                 @endif
                 @if ($transaccion->seal && auth()->user()?->isAdmin())
                     <button type="button" wire:click="resend" wire:loading.attr="disabled" wire:target="resend"
-                            wire:confirm="Se le volverá a mandar al cliente la factura con su PDF y su XML. ¿Continuar?"
+                            wire:confirm="{{ __('Se le volverá a mandar al cliente la factura con su PDF y su XML. ¿Continuar?') }}"
                             class="btn-ghost px-3 py-1.5 text-xs">
                         <x-spinner wire:loading wire:target="resend" class="h-3.5 w-3.5" />
-                        Reenviar al cliente
+                        {{ __('Reenviar al cliente') }}
                     </button>
                 @endif
                 @if ($this->canCancel())
                     <button type="button" wire:click="startCancel" class="btn-ghost px-3 py-1.5 text-xs text-brand">
-                        Cancelar CFDI
+                        {{ __('Cancelar CFDI') }}
                     </button>
                 @endif
                 @if ($sePuedeBorrar)
                     <button type="button" wire:click="deleteTransaction"
-                            wire:confirm="Se borrará la transacción y todos sus conceptos. ¿Continuar?"
-                            class="btn-ghost px-3 py-1.5 text-xs text-brand">Borrar</button>
+                            wire:confirm="{{ __('Se borrará la transacción y todos sus conceptos. ¿Continuar?') }}"
+                            class="btn-ghost px-3 py-1.5 text-xs text-brand">{{ __('Borrar') }}</button>
                 @endif
                 <span class="{{ $estado->classes() }}">{{ $estado->label() }}</span>
                 @if ($fila->cancelled)
-                    <span class="badge badge-danger">Cancelada</span>
+                    <span class="badge badge-danger">{{ __('Cancelada') }}</span>
                 @endif
                 @if (filled($fila->seal))
-                    <span class="badge badge-ok">Timbrada</span>
+                    <span class="badge badge-ok">{{ __('Timbrada') }}</span>
                 @endif
             </div>
         </div>
@@ -87,11 +87,11 @@
 
         @if ($cancelling)
             <form wire:submit="cancelStamp" class="mt-4 space-y-3 rounded-xl border border-line bg-raised/60 p-4">
-                <p class="text-sm font-medium text-ink">Cancelar el CFDI ante el SAT</p>
+                <p class="text-sm font-medium text-ink">{{ __('Cancelar el CFDI ante el SAT') }}</p>
 
                 <div class="grid gap-3 sm:grid-cols-2">
                     <label class="block">
-                        <span class="field-label text-xs">Motivo</span>
+                        <span class="field-label text-xs">{{ __('Motivo') }}</span>
                         <select wire:model.live="cancelReason" class="field-input mt-1 py-1.5 text-sm">
                             @foreach ($motivosCancelacion as $clave => $etiqueta)
                                 <option value="{{ $clave }}" @selected($clave === $cancelReason)>{{ $etiqueta }}</option>
@@ -101,16 +101,15 @@
 
                     @if ($cancelReason === '01')
                         <label class="block">
-                            <span class="field-label text-xs">Folio fiscal que la sustituye</span>
+                            <span class="field-label text-xs">{{ __('Folio fiscal que la sustituye') }}</span>
                             <input type="text" wire:model="replacementUuid" value="{{ $replacementUuid }}"
-                                   class="field-input mt-1 py-1.5 text-sm font-mono" placeholder="UUID">
+                                   class="field-input mt-1 py-1.5 text-sm font-mono" placeholder="{{ __('UUID') }}">
                         </label>
                     @endif
                 </div>
 
                 <p class="text-xs text-ink-faint">
-                    El motivo 01 exige el folio del comprobante que sustituye a este.
-                    La cancelación se solicita al mismo PAC que lo timbró.
+                    {{ __('El motivo 01 exige el folio del comprobante que sustituye a este. La cancelación se solicita al mismo PAC que lo timbró.') }}
                 </p>
 
                 <div class="flex flex-wrap justify-end gap-3">
@@ -118,7 +117,7 @@
                     <button type="submit" wire:loading.attr="disabled" wire:target="cancelStamp"
                             class="btn-accent !px-3 !py-1.5 text-xs">
                         <x-spinner wire:loading wire:target="cancelStamp" class="h-3.5 w-3.5" />
-                        Cancelar ante el SAT
+                        {{ __('Cancelar ante el SAT') }}
                     </button>
                 </div>
             </form>
@@ -129,13 +128,13 @@
                 <svg class="mt-0.5 h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                     <rect x="5" y="11" width="14" height="9" rx="2"/><path stroke-linecap="round" d="M8 11V8a4 4 0 0 1 8 0v3"/>
                 </svg>
-                <span>{{ $candado->reason }} Solo la compañía emisora puede modificarse.</span>
+                <span>{{ $candado->reason }} {{ __('Solo la compañía emisora puede modificarse.') }}</span>
             </p>
         @endif
 
         <dl class="mt-5 grid grid-cols-2 gap-x-6 gap-y-4 border-t border-line pt-5 text-sm sm:grid-cols-3 lg:grid-cols-4">
             <div>
-                <dt class="text-xs uppercase tracking-wide text-ink-faint">Booking</dt>
+                <dt class="text-xs uppercase tracking-wide text-ink-faint">{{ __('Booking') }}</dt>
                 <dd class="mt-0.5">
                     <a href="{{ route('transactions.booking', $fila->booking) }}" wire:navigate
                        class="font-medium text-brand hover:underline">
@@ -144,17 +143,17 @@
                 </dd>
             </div>
             <div>
-                <dt class="text-xs uppercase tracking-wide text-ink-faint">Fecha</dt>
+                <dt class="text-xs uppercase tracking-wide text-ink-faint">{{ __('Fecha') }}</dt>
                 <dd class="mt-0.5 text-ink">
                     {{ $fila->tran_date ? \Illuminate\Support\Carbon::parse($fila->tran_date)->format('d/m/Y') : '—' }}
                 </dd>
             </div>
             <div>
-                <dt class="text-xs uppercase tracking-wide text-ink-faint">Compañía</dt>
+                <dt class="text-xs uppercase tracking-wide text-ink-faint">{{ __('Compañía') }}</dt>
                 <dd class="mt-0.5 truncate text-ink" title="{{ $fila->companyName }}">{{ $fila->companyName ?: '—' }}</dd>
             </div>
             <div>
-                <dt class="text-xs uppercase tracking-wide text-ink-faint">Moneda</dt>
+                <dt class="text-xs uppercase tracking-wide text-ink-faint">{{ __('Moneda') }}</dt>
                 <dd class="mt-0.5 text-ink">
                     {{ $fila->currency ?: '—' }}
                     <span class="text-ink-faint">
@@ -164,7 +163,7 @@
             </div>
             @if (filled($fila->seal))
                 <div class="col-span-2 min-w-0 sm:col-span-3 lg:col-span-4">
-                    <dt class="text-xs uppercase tracking-wide text-ink-faint">Sello CFDI</dt>
+                    <dt class="text-xs uppercase tracking-wide text-ink-faint">{{ __('Sello CFDI') }}</dt>
                     <dd class="mt-0.5 break-all font-mono text-xs text-ink-soft">{{ $fila->seal }}</dd>
                 </div>
             @endif
@@ -188,7 +187,7 @@
     {{-- Conceptos --}}
     <section class="card overflow-hidden">
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-3">
-            <h3 class="text-sm font-semibold text-ink">Conceptos</h3>
+            <h3 class="text-sm font-semibold text-ink">{{ __('Conceptos') }}</h3>
 
             <div class="flex items-center gap-3">
                 <span class="text-xs text-ink-faint">
@@ -196,7 +195,7 @@
                 </span>
                 @unless ($candado->locked)
                     <button type="button" wire:click="addCharge" class="btn-ghost px-3 py-1.5 text-xs">
-                        Agregar concepto
+                        {{ __('Agregar concepto') }}
                     </button>
                 @endunless
             </div>
@@ -211,17 +210,17 @@
 
                 @if ($tiposDeCargo === [])
                     <p class="alert-danger">
-                        No hay servicios contratados con
-                        {{ $esFactura ? 'este cliente' : 'este proveedor' }}, así que no hay tipos de cargo
-                        que ofrecer. Da de alta el servicio en el catálogo primero.
+                        {{ __('No hay servicios contratados con :tercero, así que no hay tipos de cargo que ofrecer. Da de alta el servicio en el catálogo primero.', [
+                            'tercero' => $esFactura ? __('este cliente') : __('este proveedor'),
+                        ]) }}
                     </p>
                 @endif
 
                 <div class="grid gap-4 sm:grid-cols-2">
                     <label class="block">
-                        <span class="field-label">Tipo de cargo</span>
+                        <span class="field-label">{{ __('Tipo de cargo') }}</span>
                         <select wire:model.live="chargeType" class="field-input mt-1.5" required>
-                            <option value="">Selecciona el tipo</option>
+                            <option value="">{{ __('Selecciona el tipo') }}</option>
                             @foreach ($tiposDeCargo as $id => $etiqueta)
                                 <option value="{{ $id }}" @selected((string) $id === $chargeType)>{{ $etiqueta }}</option>
                             @endforeach
@@ -230,7 +229,7 @@
                     </label>
 
                     <label class="block">
-                        <span class="field-label">Servicio</span>
+                        <span class="field-label">{{ __('Servicio') }}</span>
                         <select wire:model.live="serviceId" class="field-input mt-1.5"
                                 @disabled($chargeType === '') required>
                             <option value="">
@@ -246,7 +245,7 @@
                     </label>
 
                     <label class="block">
-                        <span class="field-label">Cantidad</span>
+                        <span class="field-label">{{ __('Cantidad') }}</span>
                         <input type="number" step="0.0001" min="0" wire:model="quantity" value="{{ $quantity }}"
                                class="field-input mt-1.5" required>
                         @error('quantity') <span class="mt-1 block text-xs text-brand">{{ $message }}</span> @enderror
@@ -254,9 +253,9 @@
 
                     <label class="block">
                         <span class="field-label">
-                            Precio
+                            {{ __('Precio') }}
                             @if ($this->priceIsFixed())
-                                <span class="font-normal text-ink-faint">(lo fija el servicio)</span>
+                                <span class="font-normal text-ink-faint">{{ __('(lo fija el servicio)') }}</span>
                             @endif
                         </span>
                         <input type="number" step="0.0001" min="0" wire:model="price" value="{{ $price }}"
@@ -266,10 +265,10 @@
                 </div>
 
                 <div class="flex flex-wrap justify-end gap-3">
-                    <button type="button" wire:click="cancelChargeEdit" class="btn-ghost px-3 py-1.5 text-xs">Cancelar</button>
+                    <button type="button" wire:click="cancelChargeEdit" class="btn-ghost px-3 py-1.5 text-xs">{{ __('Cancelar') }}</button>
                     <button type="submit" wire:loading.attr="disabled" wire:target="saveCharge" class="btn-accent px-3 py-1.5 text-xs">
                         <x-spinner wire:loading wire:target="saveCharge" class="h-3.5 w-3.5" />
-                        Guardar concepto
+                        {{ __('Guardar concepto') }}
                     </button>
                 </div>
             </form>
@@ -282,7 +281,7 @@
                     <div class="flex items-start justify-between gap-3">
                         <div class="min-w-0">
                             <p class="truncate text-sm font-medium text-ink">{{ $cargo->description ?: '—' }}</p>
-                            <p class="text-xs text-ink-faint">{{ $cargo->chargeType?->charge_type_name ?: 'Sin tipo' }}</p>
+                            <p class="text-xs text-ink-faint">{{ $cargo->chargeType?->charge_type_name ?: __('Sin tipo') }}</p>
                         </div>
                         <span class="shrink-0 font-semibold tabular-nums text-ink">{{ $money($cargo->total) }}</span>
                     </div>
@@ -295,12 +294,12 @@
                         <div class="flex gap-3 text-xs">
                             <button type="button" wire:click="editCharge({{ $cargo->charge_id }})" class="text-brand hover:underline">Editar</button>
                             <button type="button" wire:click="deleteCharge({{ $cargo->charge_id }})"
-                                    wire:confirm="¿Quitar este concepto de la transacción?" class="text-ink-muted hover:text-brand">Quitar</button>
+                                    wire:confirm="¿Quitar este concepto de la transacción?" class="text-ink-muted hover:text-brand">{{ __('Quitar') }}</button>
                         </div>
                     @endunless
                 </li>
             @empty
-                <li class="px-4 py-10 text-center text-sm text-ink-faint">Esta transacción no tiene conceptos.</li>
+                <li class="px-4 py-10 text-center text-sm text-ink-faint">{{ __('Esta transacción no tiene conceptos.') }}</li>
             @endforelse
         </ul>
 
@@ -309,16 +308,16 @@
             <table class="min-w-full text-sm">
                 <thead class="border-b border-line text-xs uppercase tracking-wide text-ink-muted">
                     <tr>
-                        <th class="px-4 py-2.5 text-left font-semibold">Tipo</th>
-                        <th class="px-4 py-2.5 text-left font-semibold">Descripción</th>
-                        <th class="px-4 py-2.5 text-right font-semibold">Cantidad</th>
-                        <th class="px-4 py-2.5 text-right font-semibold">Precio</th>
-                        <th class="px-4 py-2.5 text-right font-semibold">Subtotal</th>
-                        <th class="px-4 py-2.5 text-right font-semibold">IVA</th>
-                        <th class="px-4 py-2.5 text-right font-semibold">Retención</th>
-                        <th class="px-4 py-2.5 text-right font-semibold">Total</th>
+                        <th class="px-4 py-2.5 text-left font-semibold">{{ __('Tipo') }}</th>
+                        <th class="px-4 py-2.5 text-left font-semibold">{{ __('Descripción') }}</th>
+                        <th class="px-4 py-2.5 text-right font-semibold">{{ __('Cantidad') }}</th>
+                        <th class="px-4 py-2.5 text-right font-semibold">{{ __('Precio') }}</th>
+                        <th class="px-4 py-2.5 text-right font-semibold">{{ __('Subtotal') }}</th>
+                        <th class="px-4 py-2.5 text-right font-semibold">{{ __('IVA') }}</th>
+                        <th class="px-4 py-2.5 text-right font-semibold">{{ __('Retención') }}</th>
+                        <th class="px-4 py-2.5 text-right font-semibold">{{ __('Total') }}</th>
                         @unless ($candado->locked)
-                            <th class="px-4 py-2.5 text-right font-semibold"><span class="sr-only">Acciones</span></th>
+                            <th class="px-4 py-2.5 text-right font-semibold"><span class="sr-only">{{ __('Acciones') }}</span></th>
                         @endunless
                     </tr>
                 </thead>
@@ -338,7 +337,7 @@
                                     <div class="flex justify-end gap-3 text-xs">
                                         <button type="button" wire:click="editCharge({{ $cargo->charge_id }})" class="text-brand hover:underline">Editar</button>
                                         <button type="button" wire:click="deleteCharge({{ $cargo->charge_id }})"
-                                                wire:confirm="¿Quitar este concepto de la transacción?" class="text-ink-muted transition hover:text-brand">Quitar</button>
+                                                wire:confirm="¿Quitar este concepto de la transacción?" class="text-ink-muted transition hover:text-brand">{{ __('Quitar') }}</button>
                                     </div>
                                 </td>
                             @endunless
@@ -346,7 +345,7 @@
                     @empty
                         <tr>
                             <td colspan="{{ $candado->locked ? 8 : 9 }}" class="px-4 py-10 text-center text-ink-faint">
-                                Esta transacción no tiene conceptos.
+                                {{ __('Esta transacción no tiene conceptos.') }}
                             </td>
                         </tr>
                     @endforelse
@@ -357,7 +356,7 @@
 
     {{-- Totales --}}
     <section class="card p-5 sm:p-6">
-        <h3 class="text-sm font-semibold text-ink">Totales</h3>
+        <h3 class="text-sm font-semibold text-ink">{{ __('Totales') }}</h3>
 
         <dl class="mt-4 space-y-2 text-sm">
             @foreach ($desglose as [$etiqueta, $valor])
@@ -368,17 +367,17 @@
             @endforeach
 
             <div class="flex justify-between gap-4 border-t border-line pt-2 text-base font-semibold">
-                <dt class="text-ink">Total</dt>
+                <dt class="text-ink">{{ __('Total') }}</dt>
                 <dd class="tabular-nums {{ (float) $fila->total_amount < 0 ? 'text-brand' : 'text-ink' }}">{{ $money($fila->total_amount) }}</dd>
             </div>
 
             <div class="flex justify-between gap-4">
-                <dt class="text-ink-muted">Cobrado / pagado</dt>
+                <dt class="text-ink-muted">{{ __('Cobrado / pagado') }}</dt>
                 <dd class="tabular-nums text-ink-soft">{{ $money($fila->tran_paid_amount) }}</dd>
             </div>
 
             <div class="flex justify-between gap-4">
-                <dt class="text-ink-muted">Por cobrar / pagar</dt>
+                <dt class="text-ink-muted">{{ __('Por cobrar / pagar') }}</dt>
                 <dd class="tabular-nums {{ abs((float) $fila->left_to_pay) > 0.005 ? 'text-brand' : 'text-ink-soft' }}">
                     {{ $money($fila->left_to_pay) }}
                 </dd>

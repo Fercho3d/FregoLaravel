@@ -200,7 +200,7 @@ class UserManager extends Component
             ->forceFill(['password' => $this->password])
             ->save();
 
-        session()->flash('status', 'Contraseña actualizada.');
+        session()->flash('status', __('Contraseña actualizada.'));
         $this->cancel();
     }
 

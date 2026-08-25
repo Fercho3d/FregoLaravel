@@ -21,9 +21,9 @@
 
         <div class="flex items-center gap-2">
             <label class="relative">
-                <span class="sr-only">Buscar</span>
+                <span class="sr-only">{{ __('Buscar') }}</span>
                 <input type="search" wire:model.live.debounce.300ms="search" value="{{ $search }}"
-                       class="field-input py-1.5 pl-8 text-sm" placeholder="Buscar…">
+                       class="field-input py-1.5 pl-8 text-sm" placeholder="{{ __('Buscar…') }}">
                 <svg class="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-faint"
                      fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                     <circle cx="11" cy="11" r="7"/><path stroke-linecap="round" d="M20 20l-3.5-3.5"/>
@@ -32,7 +32,7 @@
 
             @if (auth()->user()?->isAdmin())
                 <button type="button" wire:click="create" class="btn-accent !px-3 !py-1.5 text-xs">
-                    Agregar
+                    {{ __('Agregar') }}
                 </button>
             @endif
         </div>
@@ -75,10 +75,10 @@
             </div>
 
             <div class="flex flex-wrap justify-end gap-3 border-t border-line pt-4">
-                <button type="button" wire:click="cancel" class="btn-ghost !px-3 !py-1.5 text-xs">Cancelar</button>
+                <button type="button" wire:click="cancel" class="btn-ghost !px-3 !py-1.5 text-xs">{{ __('Cancelar') }}</button>
                 <button type="submit" wire:loading.attr="disabled" wire:target="save" class="btn-accent !px-3 !py-1.5 text-xs">
                     <x-spinner wire:loading wire:target="save" class="h-3.5 w-3.5" />
-                    Guardar
+                    {{ __('Guardar') }}
                 </button>
             </div>
         </form>
@@ -89,7 +89,7 @@
         <div wire:loading.delay class="absolute inset-0 z-20 rounded-xl bg-panel/75 text-center backdrop-blur-[1px]">
             <span class="mt-14 inline-flex items-center gap-2 rounded-full border border-line bg-panel px-4 py-2 text-sm text-ink-muted shadow-lg">
                 <x-spinner class="h-4 w-4 text-brand" />
-                Actualizando…
+                {{ __('Actualizando…') }}
             </span>
         </div>
 
@@ -116,7 +116,7 @@
                         <div class="flex gap-3 pt-1 text-xs">
                             <button type="button" wire:click="edit({{ $fila->{$definicion->key} }})" class="text-brand hover:underline">Editar</button>
                             <button type="button" wire:click="delete({{ $fila->{$definicion->key} }})"
-                                    wire:confirm="¿Dar de baja este registro?" class="text-ink-muted hover:text-brand">Baja</button>
+                                    wire:confirm="¿Dar de baja este registro?" class="text-ink-muted hover:text-brand">{{ __('Baja') }}</button>
                         </div>
                     @endif
                 </li>
@@ -136,7 +136,7 @@
                             <th class="px-4 py-2.5 text-left font-semibold">{{ $campo->label }}</th>
                         @endforeach
                         @if (auth()->user()?->isAdmin())
-                            <th class="px-4 py-2.5 text-right font-semibold"><span class="sr-only">Acciones</span></th>
+                            <th class="px-4 py-2.5 text-right font-semibold"><span class="sr-only">{{ __('Acciones') }}</span></th>
                         @endif
                     </tr>
                 </thead>
@@ -161,7 +161,7 @@
                                     <div class="flex justify-end gap-3 text-xs">
                                         <button type="button" wire:click="edit({{ $fila->{$definicion->key} }})" class="text-brand hover:underline">Editar</button>
                                         <button type="button" wire:click="delete({{ $fila->{$definicion->key} }})"
-                                                wire:confirm="¿Dar de baja este registro?" class="text-ink-muted transition hover:text-brand">Baja</button>
+                                                wire:confirm="¿Dar de baja este registro?" class="text-ink-muted transition hover:text-brand">{{ __('Baja') }}</button>
                                     </div>
                                 </td>
                             @endif

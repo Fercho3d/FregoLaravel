@@ -28,7 +28,7 @@
         <div>
             <h2 class="text-lg font-semibold text-ink">{{ $this->title() }}</h2>
             <p class="text-sm text-ink-muted">
-                Lo efectivamente cobrado o pagado, repartido entre los conceptos de cada documento.
+                {{ __('Lo efectivamente cobrado o pagado, repartido entre los conceptos de cada documento.') }}
             </p>
         </div>
         <span class="text-xs text-ink-faint">
@@ -40,21 +40,21 @@
     <div class="card p-4">
         <div class="grid gap-3 sm:grid-cols-3">
             <label class="block">
-                <span class="field-label text-xs">Fecha de la solicitud <span class="text-ink-faint">(rango)</span></span>
+                <span class="field-label text-xs">{{ __('Fecha de la solicitud') }} <span class="text-ink-faint">{{ __('(rango)') }}</span></span>
                 <input type="text" wire:model.live.debounce.600ms="dates" value="{{ $dates }}"
                        class="field-input mt-1 py-1.5 text-sm" placeholder="01/01/2025 - 31/12/2025">
             </label>
 
             <label class="block">
-                <span class="field-label text-xs">Revaluar al tipo de cambio del <span class="text-ink-faint">(dd/mm/aaaa)</span></span>
+                <span class="field-label text-xs">{{ __('Revaluar al tipo de cambio del') }} <span class="text-ink-faint">{{ __('(dd/mm/aaaa)') }}</span></span>
                 <input type="text" wire:model.live.debounce.600ms="datePay" value="{{ $datePay }}"
                        class="field-input mt-1 py-1.5 text-sm" placeholder="31/12/2025">
             </label>
 
             <label class="block">
-                <span class="field-label text-xs">Banco</span>
+                <span class="field-label text-xs">{{ __('Banco') }}</span>
                 <select wire:model.live="bankId" class="field-input mt-1 py-1.5 text-sm">
-                    <option value="">Todos</option>
+                    <option value="">{{ __('Todos') }}</option>
                     @foreach ($banks as $id => $etiqueta)
                         <option value="{{ $id }}" @selected((string) $id === $bankId)>{{ $etiqueta }}</option>
                     @endforeach
@@ -63,7 +63,7 @@
         </div>
 
         <div class="mt-3">
-            <button type="button" wire:click="clearFilters" class="btn-ghost !px-3 !py-1.5 text-xs">Limpiar filtros</button>
+            <button type="button" wire:click="clearFilters" class="btn-ghost !px-3 !py-1.5 text-xs">{{ __('Limpiar filtros') }}</button>
         </div>
     </div>
 
@@ -72,7 +72,7 @@
         <div wire:loading.delay class="absolute inset-0 z-20 rounded-xl bg-panel/75 text-center backdrop-blur-[1px]">
             <span class="mt-14 inline-flex items-center gap-2 rounded-full border border-line bg-panel px-4 py-2 text-sm text-ink-muted shadow-lg">
                 <x-spinner class="h-4 w-4 text-brand" />
-                Actualizando…
+                {{ __('Actualizando…') }}
             </span>
         </div>
 
@@ -86,7 +86,7 @@
                         @foreach ($columnas as [$etiqueta, $columna])
                             <th class="px-4 py-2.5 text-right font-semibold">{{ $etiqueta }}</th>
                         @endforeach
-                        <th class="px-4 py-2.5 text-right font-semibold">Total</th>
+                        <th class="px-4 py-2.5 text-right font-semibold">{{ __('Total') }}</th>
                     </tr>
                 </thead>
 
@@ -119,14 +119,14 @@
                                         <table class="min-w-full text-xs">
                                             <thead class="text-[11px] uppercase tracking-wide text-ink-faint">
                                                 <tr>
-                                                    <th class="px-3 py-1.5 text-left font-semibold">Solicitud</th>
-                                                    <th class="px-3 py-1.5 text-left font-semibold">Fecha</th>
-                                                    <th class="px-3 py-1.5 text-left font-semibold">Banco</th>
-                                                    <th class="px-3 py-1.5 text-left font-semibold">Divisa</th>
-                                                    <th class="px-3 py-1.5 text-right font-semibold">TC</th>
-                                                    <th class="px-3 py-1.5 text-right font-semibold">Importe</th>
-                                                    <th class="px-3 py-1.5 text-right font-semibold">Total</th>
-                                                    <th class="px-3 py-1.5 text-right font-semibold">Dif. cambiaria</th>
+                                                    <th class="px-3 py-1.5 text-left font-semibold">{{ __('Solicitud') }}</th>
+                                                    <th class="px-3 py-1.5 text-left font-semibold">{{ __('Fecha') }}</th>
+                                                    <th class="px-3 py-1.5 text-left font-semibold">{{ __('Banco') }}</th>
+                                                    <th class="px-3 py-1.5 text-left font-semibold">{{ __('Divisa') }}</th>
+                                                    <th class="px-3 py-1.5 text-right font-semibold">{{ __('TC') }}</th>
+                                                    <th class="px-3 py-1.5 text-right font-semibold">{{ __('Importe') }}</th>
+                                                    <th class="px-3 py-1.5 text-right font-semibold">{{ __('Total') }}</th>
+                                                    <th class="px-3 py-1.5 text-right font-semibold">{{ __('Dif. cambiaria') }}</th>
                                                 </tr>
                                             </thead>
                                             <tbody class="divide-y divide-line">
@@ -150,7 +150,7 @@
                                                 @empty
                                                     <tr>
                                                         <td colspan="8" class="px-3 py-6 text-center text-ink-faint">
-                                                            Sin solicitudes de pago en este renglón.
+                                                            {{ __('Sin solicitudes de pago en este renglón.') }}
                                                         </td>
                                                     </tr>
                                                 @endforelse
@@ -159,8 +159,7 @@
 
                                         @if (blank($datePay))
                                             <p class="mt-2 text-[11px] text-ink-faint">
-                                                La diferencia cambiaria necesita una fecha de revaluación: ponla arriba
-                                                para compararla contra el tipo de cambio de ese día.
+                                                {{ __('La diferencia cambiaria necesita una fecha de revaluación: ponla arriba para compararla contra el tipo de cambio de ese día.') }}
                                             </p>
                                         @endif
                                     </div>
@@ -170,7 +169,7 @@
                     @empty
                         <tr>
                             <td colspan="{{ count($columnas) + 2 }}" class="px-4 py-12 text-center text-ink-faint">
-                                No hay movimientos con estos filtros.
+                                {{ __('No hay movimientos con estos filtros.') }}
                             </td>
                         </tr>
                     @endforelse
@@ -179,7 +178,7 @@
                 @if ($filas->isNotEmpty())
                     <tfoot class="border-t border-line bg-panel text-sm font-semibold">
                         <tr>
-                            <td class="px-4 py-2.5 text-ink-muted">Total</td>
+                            <td class="px-4 py-2.5 text-ink-muted">{{ __('Total') }}</td>
                             @foreach ($columnas as [$etiqueta, $columna])
                                 <td class="whitespace-nowrap px-4 py-2.5 text-right tabular-nums text-ink-soft">{{ $money($totales[$columna]) }}</td>
                             @endforeach

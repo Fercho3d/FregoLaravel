@@ -253,7 +253,7 @@ class TransactionDetail extends Component
 
         $transaccion->delete();
 
-        session()->flash('status', 'Transacción borrada.');
+        session()->flash('status', __('Transacción borrada.'));
         $this->redirectRoute('transactions.booking', $booking, navigate: true);
     }
 
@@ -316,7 +316,7 @@ class TransactionDetail extends Component
         $this->transactionCache = null;
         $this->headerCache = null;
 
-        session()->flash('status', 'Factura timbrada. Folio fiscal: '.$uuid.' '.$this->mailNote($timbrar->mailStatus));
+        session()->flash('status', __('Factura timbrada. Folio fiscal: ').$uuid.' '.$this->mailNote($timbrar->mailStatus));
         $this->redirectRoute('transactions.show', $this->transactionId, navigate: true);
     }
 
@@ -371,7 +371,7 @@ class TransactionDetail extends Component
             return;
         }
 
-        session()->flash('status', 'Factura cancelada ante el SAT.');
+        session()->flash('status', __('Factura cancelada ante el SAT.'));
         $this->redirectRoute('transactions.show', $this->transactionId, navigate: true);
     }
 

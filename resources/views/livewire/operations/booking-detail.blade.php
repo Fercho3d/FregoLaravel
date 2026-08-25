@@ -12,7 +12,7 @@
     <a href="{{ route('operations.bookings') }}" wire:navigate
        class="inline-flex items-center gap-1.5 text-sm text-ink-muted transition hover:text-ink">
         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
-        Volver a bookings
+        {{ __('Volver a bookings') }}
     </a>
 
     @if (session('error'))
@@ -23,7 +23,7 @@
     <section class="card p-5 sm:p-6">
         <div class="flex flex-wrap items-start justify-between gap-3">
             <div class="min-w-0">
-                <p class="text-xs font-semibold uppercase tracking-wide text-ink-faint">Booking</p>
+                <p class="text-xs font-semibold uppercase tracking-wide text-ink-faint">{{ __('Booking') }}</p>
                 <h2 class="mt-0.5 truncate text-2xl font-semibold text-ink">
                     {{ trim((string) $booking->booking_number) ?: 'Sin número' }}
                 </h2>
@@ -32,48 +32,48 @@
 
             <div class="flex flex-wrap items-center gap-2">
                 @if ($booking->locked)
-                    <span class="badge badge-neutral">Cerrado</span>
+                    <span class="badge badge-neutral">{{ __('Cerrado') }}</span>
                 @endif
                 @if (auth()->user()?->isAdmin() && ! $booking->locked)
                     <a href="{{ route('operations.bookings.edit', $booking->booking_id) }}" wire:navigate class="btn-ghost px-3 py-1.5 text-xs">
-                        Editar
+                        {{ __('Editar') }}
                     </a>
                     <a href="{{ route('operations.bookings.generate', $booking->booking_id) }}" wire:navigate
-                       title="Propone la factura y los costos a partir de los servicios contratados para esta ruta"
+                       title="{{ __('Propone la factura y los costos a partir de los servicios contratados para esta ruta') }}"
                        class="btn-ghost px-3 py-1.5 text-xs">
-                        Generar facturación
+                        {{ __('Generar facturación') }}
                     </a>
                     <button type="button" wire:click="lock"
-                            wire:confirm="Al cerrarlo ya no se podrán tocar sus contenedores ni sus documentos. ¿Continuar?"
-                            class="btn-ghost px-3 py-1.5 text-xs">Cerrar booking</button>
+                            wire:confirm="{{ __('Al cerrarlo ya no se podrán tocar sus contenedores ni sus documentos. ¿Continuar?') }}"
+                            class="btn-ghost px-3 py-1.5 text-xs">{{ __('Cerrar booking') }}</button>
                 @endif
                 @if (auth()->user()?->isAdmin() && ! $booking->locked)
                     <button type="button" wire:click="delete"
-                            wire:confirm="Se borrará el booking y no se puede deshacer. ¿Continuar?"
-                            class="btn-ghost px-3 py-1.5 text-xs text-brand">Borrar</button>
+                            wire:confirm="{{ __('Se borrará el booking y no se puede deshacer. ¿Continuar?') }}"
+                            class="btn-ghost px-3 py-1.5 text-xs text-brand">{{ __('Borrar') }}</button>
                 @endif
                 @if ($booking->locked && auth()->user()?->isSuperAdmin())
                     <button type="button" wire:click="unlock"
-                            wire:confirm="Reabrir permite volver a tocar importes ya conciliados. ¿Continuar?"
-                            class="btn-ghost px-3 py-1.5 text-xs text-brand">Reabrir</button>
+                            wire:confirm="{{ __('Reabrir permite volver a tocar importes ya conciliados. ¿Continuar?') }}"
+                            class="btn-ghost px-3 py-1.5 text-xs text-brand">{{ __('Reabrir') }}</button>
                 @endif
                 @if (auth()->user()?->isAdmin())
                     <a href="{{ route('operations.bookings.history', $booking->booking_id) }}" wire:navigate
-                       class="btn-ghost px-3 py-1.5 text-xs">Historial</a>
+                       class="btn-ghost px-3 py-1.5 text-xs">{{ __('Historial') }}</a>
                 @endif
                 <a href="{{ route('operations.bookings.pdf', $booking->booking_id) }}" target="_blank"
-                   class="btn-ghost px-3 py-1.5 text-xs">Confirmación PDF</a>
+                   class="btn-ghost px-3 py-1.5 text-xs">{{ __('Confirmación PDF') }}</a>
                 @if (auth()->user()?->isAdmin())
                     <button type="button" wire:click="sendConfirmation"
-                            wire:confirm="Se le mandará al cliente la confirmación en PDF. ¿Continuar?"
+                            wire:confirm="{{ __('Se le mandará al cliente la confirmación en PDF. ¿Continuar?') }}"
                             wire:loading.attr="disabled" wire:target="sendConfirmation"
                             class="btn-ghost px-3 py-1.5 text-xs">
                         <x-spinner wire:loading wire:target="sendConfirmation" class="h-3.5 w-3.5" />
-                        Enviar al cliente
+                        {{ __('Enviar al cliente') }}
                     </button>
                 @endif
                 <a href="{{ route('transactions.booking', $booking->booking_id) }}" wire:navigate class="btn-ghost px-3 py-1.5 text-xs">
-                    Ver facturación
+                    {{ __('Ver facturación') }}
                 </a>
             </div>
         </div>
@@ -81,10 +81,10 @@
         {{-- Avance --}}
         <div class="mt-5 border-t border-line pt-4">
             <div class="flex items-center justify-between gap-3 text-sm">
-                <span class="text-ink-muted">Avance de la lista de verificación</span>
+                <span class="text-ink-muted">{{ __('Avance de la lista de verificación') }}</span>
                 <span class="font-semibold tabular-nums text-ink">
                     {{ number_format($avance, 0) }}%
-                    <span class="font-normal text-ink-faint">({{ $marcadas }} de {{ count($checklist) }})</span>
+                    <span class="font-normal text-ink-faint">({{ __(':marcadas de :total', ['marcadas' => $marcadas, 'total' => count($checklist)]) }})</span>
                 </span>
             </div>
             <div class="mt-2 h-2 overflow-hidden rounded-full bg-raised">
@@ -95,18 +95,18 @@
 
         <dl class="mt-5 grid grid-cols-2 gap-x-6 gap-y-4 border-t border-line pt-5 text-sm sm:grid-cols-3 lg:grid-cols-4">
             @foreach ([
-                ['Buque', $booking->vessel_name],
-                ['Puerto de carga', trim((string) $booking->port_name)],
-                ['Puerto de descarga', $booking->discharge_name],
-                ['Lugar de recolección', $booking->pickup_name],
-                ['Recolección', $fecha($booking->pickup_date)],
-                ['Instrucciones (SI)', $fecha($booking->SI_date)],
-                ['Carga estimada', $fecha($booking->loading_EDT)],
-                ['Arribo estimado', $fecha($booking->dicharge_ETA)],
-                ['Mercancía', $booking->commodity],
-                ['Temperatura', $booking->set_point],
-                ['Referencia del cliente', $booking->customer_reference],
-                ['Creado por', $booking->creator],
+                [__('Buque'), $booking->vessel_name],
+                [__('Puerto de carga'), trim((string) $booking->port_name)],
+                [__('Puerto de descarga'), $booking->discharge_name],
+                [__('Lugar de recolección'), $booking->pickup_name],
+                [__('Recolección'), $fecha($booking->pickup_date)],
+                [__('Instrucciones (SI)'), $fecha($booking->SI_date)],
+                [__('Carga estimada'), $fecha($booking->loading_EDT)],
+                [__('Arribo estimado'), $fecha($booking->dicharge_ETA)],
+                [__('Mercancía'), $booking->commodity],
+                [__('Temperatura'), $booking->set_point],
+                [__('Referencia del cliente'), $booking->customer_reference],
+                [__('Creado por'), $booking->creator],
             ] as [$etiqueta, $valor])
                 <div class="min-w-0">
                     <dt class="text-xs uppercase tracking-wide text-ink-faint">{{ $etiqueta }}</dt>
@@ -119,11 +119,11 @@
     {{-- Contenedores --}}
     <section class="card overflow-hidden">
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-3">
-            <h3 class="text-sm font-semibold text-ink">Contenedores</h3>
+            <h3 class="text-sm font-semibold text-ink">{{ __('Contenedores') }}</h3>
             <div class="flex items-center gap-3">
                 <span class="text-xs text-ink-faint">{{ $contenedores->count() }}</span>
                 @if (auth()->user()?->isAdmin() && ! $booking->locked)
-                    <button type="button" wire:click="addContainer" class="btn-ghost px-3 py-1.5 text-xs">Agregar</button>
+                    <button type="button" wire:click="addContainer" class="btn-ghost px-3 py-1.5 text-xs">{{ __('Agregar') }}</button>
                 @endif
             </div>
         </header>
@@ -134,11 +134,11 @@
 
                 <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     @foreach ([
-                        ['Número', 'containerNumber', 'text'],
-                        ['Sello', 'containerSeal', 'text'],
-                        ['Cantidad', 'containerQuantity', 'number'],
-                        ['Mercancía', 'containerCommodity', 'text'],
-                        ['Recolección', 'containerPickup', 'date'],
+                        [__('Número'), 'containerNumber', 'text'],
+                        [__('Sello'), 'containerSeal', 'text'],
+                        [__('Cantidad'), 'containerQuantity', 'number'],
+                        [__('Mercancía'), 'containerCommodity', 'text'],
+                        [__('Recolección'), 'containerPickup', 'date'],
                     ] as [$etiqueta, $propiedad, $tipo])
                         <label class="block">
                             <span class="field-label">{{ $etiqueta }}</span>
@@ -149,9 +149,9 @@
                     @endforeach
 
                     <label class="block">
-                        <span class="field-label">Tipo</span>
+                        <span class="field-label">{{ __('Tipo') }}</span>
                         <select wire:model="containerType" class="field-input mt-1.5">
-                            <option value="">Sin especificar</option>
+                            <option value="">{{ __('Sin especificar') }}</option>
                             @foreach ($tiposContenedor as $id => $nombre)
                                 <option value="{{ $id }}" @selected((string) $id === $containerType)>{{ $nombre }}</option>
                             @endforeach
@@ -161,10 +161,10 @@
                 </div>
 
                 <div class="flex flex-wrap justify-end gap-3">
-                    <button type="button" wire:click="cancelContainerEdit" class="btn-ghost !px-3 !py-1.5 text-xs">Cancelar</button>
+                    <button type="button" wire:click="cancelContainerEdit" class="btn-ghost !px-3 !py-1.5 text-xs">{{ __('Cancelar') }}</button>
                     <button type="submit" wire:loading.attr="disabled" wire:target="saveContainer" class="btn-accent !px-3 !py-1.5 text-xs">
                         <x-spinner wire:loading wire:target="saveContainer" class="h-3.5 w-3.5" />
-                        Guardar
+                        {{ __('Guardar') }}
                     </button>
                 </div>
             </form>
@@ -174,14 +174,14 @@
             <table class="min-w-full text-sm">
                 <thead class="border-b border-line text-xs uppercase tracking-wide text-ink-muted">
                     <tr>
-                        <th class="px-4 py-2.5 text-left font-semibold">Número</th>
-                        <th class="px-4 py-2.5 text-left font-semibold">Sello</th>
-                        <th class="px-4 py-2.5 text-left font-semibold">Tipo</th>
-                        <th class="px-4 py-2.5 text-right font-semibold">Cantidad</th>
-                        <th class="px-4 py-2.5 text-left font-semibold">Mercancía</th>
-                        <th class="px-4 py-2.5 text-left font-semibold">Recolección</th>
+                        <th class="px-4 py-2.5 text-left font-semibold">{{ __('Número') }}</th>
+                        <th class="px-4 py-2.5 text-left font-semibold">{{ __('Sello') }}</th>
+                        <th class="px-4 py-2.5 text-left font-semibold">{{ __('Tipo') }}</th>
+                        <th class="px-4 py-2.5 text-right font-semibold">{{ __('Cantidad') }}</th>
+                        <th class="px-4 py-2.5 text-left font-semibold">{{ __('Mercancía') }}</th>
+                        <th class="px-4 py-2.5 text-left font-semibold">{{ __('Recolección') }}</th>
                         @if (auth()->user()?->isAdmin() && ! $booking->locked)
-                            <th class="px-4 py-2.5 text-right font-semibold"><span class="sr-only">Acciones</span></th>
+                            <th class="px-4 py-2.5 text-right font-semibold"><span class="sr-only">{{ __('Acciones') }}</span></th>
                         @endif
                     </tr>
                 </thead>
@@ -197,10 +197,10 @@
                             @if (auth()->user()?->isAdmin() && ! $booking->locked)
                                 <td class="whitespace-nowrap px-4 py-2 text-right">
                                     <div class="flex justify-end gap-3 text-xs">
-                                        <button type="button" wire:click="editContainer({{ $c->container_ID }})" class="text-brand hover:underline">Editar</button>
+                                        <button type="button" wire:click="editContainer({{ $c->container_ID }})" class="text-brand hover:underline">{{ __('Editar') }}</button>
                                         <button type="button" wire:click="deleteContainer({{ $c->container_ID }})"
-                                                wire:confirm="¿Quitar este contenedor del booking?"
-                                                class="text-ink-muted transition hover:text-brand">Quitar</button>
+                                                wire:confirm="{{ __('¿Quitar este contenedor del booking?') }}"
+                                                class="text-ink-muted transition hover:text-brand">{{ __('Quitar') }}</button>
                                     </div>
                                 </td>
                             @endif
@@ -208,7 +208,7 @@
                     @empty
                         <tr>
                             <td colspan="{{ auth()->user()?->isAdmin() && ! $booking->locked ? 7 : 6 }}" class="px-4 py-10 text-center text-ink-faint">
-                                Este booking no tiene contenedores.
+                                {{ __('Este booking no tiene contenedores.') }}
                             </td>
                         </tr>
                     @endforelse
@@ -221,12 +221,12 @@
     <section class="card overflow-hidden">
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-3">
             <div>
-                <h3 class="text-sm font-semibold text-ink">Instrucciones de embarque</h3>
-                <p class="text-xs text-ink-faint">Cómo viene cada parte en el documento y cómo debería decir.</p>
+                <h3 class="text-sm font-semibold text-ink">{{ __('Instrucciones de embarque') }}</h3>
+                <p class="text-xs text-ink-faint">{{ __('Cómo viene cada parte en el documento y cómo debería decir.') }}</p>
             </div>
 
             @if (auth()->user()?->isAdmin() && ! $booking->locked && ! $editingInstructions)
-                <button type="button" wire:click="editInstructions" class="btn-ghost !px-3 !py-1.5 text-xs">Editar</button>
+                <button type="button" wire:click="editInstructions" class="btn-ghost !px-3 !py-1.5 text-xs">{{ __('Editar') }}</button>
             @endif
         </header>
 
@@ -235,7 +235,7 @@
                 <form wire:submit="saveInstructions" class="space-y-4">
                     @foreach ($this->instructionParts() as $parte => $etiqueta)
                         <div class="grid gap-4 sm:grid-cols-2">
-                            @foreach ([['is', 'como viene'], ['should', 'como debe decir']] as [$lado, $pie])
+                            @foreach ([['is', __('como viene')], ['should', __('como debe decir')]] as [$lado, $pie])
                                 <label class="block">
                                     <span class="field-label">
                                         {{ $etiqueta }}
@@ -252,10 +252,10 @@
                     @endforeach
 
                     <div class="flex flex-wrap justify-end gap-3 border-t border-line pt-4">
-                        <button type="button" wire:click="cancelInstructions" class="btn-ghost !px-3 !py-1.5 text-xs">Cancelar</button>
+                        <button type="button" wire:click="cancelInstructions" class="btn-ghost !px-3 !py-1.5 text-xs">{{ __('Cancelar') }}</button>
                         <button type="submit" wire:loading.attr="disabled" wire:target="saveInstructions" class="btn-accent !px-3 !py-1.5 text-xs">
                             <x-spinner wire:loading wire:target="saveInstructions" class="h-3.5 w-3.5" />
-                            Guardar
+                            {{ __('Guardar') }}
                         </button>
                     </div>
                 </form>
@@ -263,7 +263,7 @@
                 @php $capturadas = collect($instructions)->filter()->isNotEmpty(); @endphp
 
                 @if (! $capturadas)
-                    <p class="py-6 text-center text-sm text-ink-faint">Este booking no tiene instrucciones capturadas.</p>
+                    <p class="py-6 text-center text-sm text-ink-faint">{{ __('Este booking no tiene instrucciones capturadas.') }}</p>
                 @else
                     <dl class="space-y-4 text-sm">
                         @foreach ($this->instructionParts() as $parte => $etiqueta)
@@ -271,7 +271,7 @@
                             <div>
                                 <dt class="text-xs font-semibold uppercase tracking-wide text-ink-faint">{{ $etiqueta }}</dt>
                                 <dd class="mt-1 grid gap-3 sm:grid-cols-2">
-                                    @foreach ([['is', 'Como viene'], ['should', 'Como debe decir']] as [$lado, $pie])
+                                    @foreach ([['is', __('Como viene')], ['should', __('Como debe decir')]] as [$lado, $pie])
                                         <div class="rounded-lg border border-line px-3 py-2">
                                             <p class="text-xs text-ink-faint">{{ $pie }}</p>
                                             <p class="mt-0.5 whitespace-pre-line text-ink">{{ $instructions[$parte.'_'.$lado] ?: '—' }}</p>
@@ -289,19 +289,19 @@
     {{-- Facturación --}}
     <section class="card overflow-hidden">
         <header class="flex items-center justify-between gap-3 border-b border-line px-5 py-3">
-            <h3 class="text-sm font-semibold text-ink">Facturación</h3>
-            <span class="text-xs text-ink-faint">{{ $transacciones->count() }} transacciones</span>
+            <h3 class="text-sm font-semibold text-ink">{{ __('Facturación') }}</h3>
+            <span class="text-xs text-ink-faint">{{ trans_choice('{1}:count transacción|[2,*]:count transacciones', $transacciones->count(), ['count' => $transacciones->count()]) }}</span>
         </header>
 
         <div class="overflow-x-auto">
             <table class="min-w-full text-sm">
                 <thead class="border-b border-line text-xs uppercase tracking-wide text-ink-muted">
                     <tr>
-                        <th class="px-4 py-2.5 text-left font-semibold">Documento</th>
-                        <th class="px-4 py-2.5 text-left font-semibold">Aplicado a</th>
-                        <th class="px-4 py-2.5 text-left font-semibold">Fecha</th>
-                        <th class="px-4 py-2.5 text-right font-semibold">Total</th>
-                        <th class="px-4 py-2.5 text-left font-semibold">Estado</th>
+                        <th class="px-4 py-2.5 text-left font-semibold">{{ __('Documento') }}</th>
+                        <th class="px-4 py-2.5 text-left font-semibold">{{ __('Aplicado a') }}</th>
+                        <th class="px-4 py-2.5 text-left font-semibold">{{ __('Fecha') }}</th>
+                        <th class="px-4 py-2.5 text-right font-semibold">{{ __('Total') }}</th>
+                        <th class="px-4 py-2.5 text-left font-semibold">{{ __('Estado') }}</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-line">
@@ -320,7 +320,7 @@
                             <td class="whitespace-nowrap px-4 py-2"><span class="{{ $estado->classes() }}">{{ $estado->label() }}</span></td>
                         </tr>
                     @empty
-                        <tr><td colspan="5" class="px-4 py-10 text-center text-ink-faint">Este booking no tiene facturación.</td></tr>
+                        <tr><td colspan="5" class="px-4 py-10 text-center text-ink-faint">{{ __('Este booking no tiene facturación.') }}</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -331,14 +331,14 @@
     @if ($documentos !== [])
         <section class="card overflow-hidden">
             <header class="flex items-center justify-between gap-3 border-b border-line px-5 py-3">
-                <h3 class="text-sm font-semibold text-ink">Documentos</h3>
+                <h3 class="text-sm font-semibold text-ink">{{ __('Documentos') }}</h3>
                 <span class="text-xs text-ink-faint">
                     {{ collect($documentos)->sum(fn ($d) => count($d->files)) }} archivos
                 </span>
             </header>
 
             <p class="border-b border-line px-5 py-2 text-xs text-ink-faint">
-                Cada cliente pide los suyos: esta lista sale de los campos configurados para
+                {{ __('Cada cliente pide los suyos: esta lista sale de los campos configurados para') }}
                 {{ $booking->client_name ?: 'este cliente' }}.
             </p>
 
@@ -361,13 +361,13 @@
                                     </span>
                                 @else
                                     <button type="button" wire:click="chooseField({{ $campo->field_id }})"
-                                            class="btn-ghost !px-3 !py-1 text-xs">Adjuntar</button>
+                                            class="btn-ghost !px-3 !py-1 text-xs">{{ __('Adjuntar') }}</button>
                                 @endif
                             @endif
                         </div>
 
                         @if ($campo->files === [])
-                            <p class="text-xs text-ink-faint">Sin documentos.</p>
+                            <p class="text-xs text-ink-faint">{{ __('Sin documentos.') }}</p>
                         @else
                             <ul class="flex flex-wrap gap-2">
                                 @foreach ($campo->files as $archivo)
@@ -378,8 +378,8 @@
                                         </a>
                                         @if (auth()->user()?->isAdmin() && ! $booking->locked)
                                             <button type="button" wire:click="removeFile({{ $campo->field_id }}, @js($archivo))"
-                                                    wire:confirm="¿Quitar este documento del booking?"
-                                                    class="text-ink-faint transition hover:text-brand" aria-label="Quitar">×</button>
+                                                    wire:confirm="{{ __('¿Quitar este documento del booking?') }}"
+                                                    class="text-ink-faint transition hover:text-brand" aria-label="{{ __('Quitar') }}">×</button>
                                         @endif
                                     </li>
                                 @endforeach
@@ -394,7 +394,7 @@
     {{-- Lista de verificación --}}
     @if ($checklist !== [])
         <section class="card p-5 sm:p-6">
-            <h3 class="text-sm font-semibold text-ink">Lista de verificación</h3>
+            <h3 class="text-sm font-semibold text-ink">{{ __('Lista de verificación') }}</h3>
 
             <ul class="mt-4 grid gap-x-6 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
                 @foreach ($checklist as $etiqueta => $marcada)

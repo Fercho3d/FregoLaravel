@@ -105,8 +105,8 @@ class LocaleTest extends TestCase
 
         $this->assertSame('Panel', __('Panel', [], 'es'));
         $this->assertSame('Dashboard', __('Panel'));
-        // Una frase que nadie ha traducido todavía.
-        $this->assertSame('Ningún servicio contratado empata con esta ruta.', __('Ningún servicio contratado empata con esta ruta.'));
+        // Una frase que no está en el diccionario: se ve tal cual, en español.
+        $this->assertSame('Una pantalla que todavía no se traduce.', __('Una pantalla que todavía no se traduce.'));
     }
 
     public function test_la_preferencia_del_usuario_gana_a_la_cookie(): void
@@ -118,6 +118,24 @@ class LocaleTest extends TestCase
             ->withUnencryptedCookie(Locale::COOKIE, 'es')
             ->get(route('dashboard'))
             ->assertSee('Dashboard');
+    }
+
+    /**
+     * El respaldo tiene que ser el español.
+     *
+     * Las llaves de traducción son el texto en español, así que con el respaldo
+     * en inglés —el valor que trae Laravel de fábrica— **todo lo traducido se
+     * vería en inglés aunque se pida en español**: al no encontrar la llave en
+     * `es` la busca en el idioma de respaldo y ahí sí está. Costó un rato
+     * entenderlo la primera vez.
+     */
+    public function test_el_idioma_de_respaldo_es_el_espanol(): void
+    {
+        $this->assertSame('es', config('app.fallback_locale'));
+
+        app()->setLocale('es');
+
+        $this->assertSame('Facturas', __('Facturas'));
     }
 
     public function test_la_tabla_de_preferencias_guarda_el_idioma(): void

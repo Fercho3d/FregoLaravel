@@ -96,7 +96,7 @@ class PaymentRequestList extends Component
 
         $solicitud->forceFill(['paid' => 1, 'opened' => 0])->save();
 
-        session()->flash('status', 'Solicitud '.$this->folio($solicitud->request_id).' marcada como pagada.');
+        session()->flash('status', __('Solicitud ').$this->folio($solicitud->request_id).' marcada como pagada.');
     }
 
     /** Vuelve a abrir una solicitud pagada, para corregirla. */
@@ -106,7 +106,7 @@ class PaymentRequestList extends Component
 
         PaymentRequest::findOrFail($requestId)->forceFill(['paid' => 0, 'opened' => 1])->save();
 
-        session()->flash('status', 'Solicitud '.$this->folio($requestId).' reabierta.');
+        session()->flash('status', __('Solicitud ').$this->folio($requestId).' reabierta.');
     }
 
     /**
@@ -129,7 +129,7 @@ class PaymentRequestList extends Component
         $solicitud->delete();
 
         $this->expanded = null;
-        session()->flash('status', 'Solicitud '.$this->folio($requestId).' borrada.');
+        session()->flash('status', __('Solicitud ').$this->folio($requestId).' borrada.');
     }
 
     public function folio(int|string|null $requestId): string

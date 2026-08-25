@@ -10,9 +10,9 @@
 
     <header class="flex flex-wrap items-end justify-between gap-3">
         <div>
-            <h2 class="text-lg font-semibold text-ink">Continuidad</h2>
+            <h2 class="text-lg font-semibold text-ink">{{ __('Continuidad') }}</h2>
             <p class="text-sm text-ink-muted">
-                En qué punto va cada embarque. Toca una celda para capturar la fecha del hito.
+                {{ __('En qué punto va cada embarque. Toca una celda para capturar la fecha del hito.') }}
             </p>
         </div>
         <span class="text-xs text-ink-faint">{{ number_format($filas->total()) }} embarques</span>
@@ -22,24 +22,24 @@
     <div class="card p-4">
         <div class="grid gap-3 sm:grid-cols-3">
             <label class="block">
-                <span class="field-label text-xs">Booking</span>
+                <span class="field-label text-xs">{{ __('Booking') }}</span>
                 <input type="text" wire:model.live.debounce.400ms="bookingNumber" value="{{ $bookingNumber }}"
-                       class="field-input mt-1 py-1.5 text-sm" placeholder="MEX…">
+                       class="field-input mt-1 py-1.5 text-sm" placeholder="{{ __('MEX…') }}">
             </label>
             <label class="block">
-                <span class="field-label text-xs">Cliente</span>
+                <span class="field-label text-xs">{{ __('Cliente') }}</span>
                 <input type="text" wire:model.live.debounce.400ms="clientName" value="{{ $clientName }}"
-                       class="field-input mt-1 py-1.5 text-sm" placeholder="Nombre">
+                       class="field-input mt-1 py-1.5 text-sm" placeholder="{{ __('Nombre') }}">
             </label>
             <label class="block">
-                <span class="field-label text-xs">Recolección <span class="text-ink-faint">(rango)</span></span>
+                <span class="field-label text-xs">{{ __('Recolección') }} <span class="text-ink-faint">{{ __('(rango)') }}</span></span>
                 <input type="text" wire:model.live.debounce.600ms="dates" value="{{ $dates }}"
                        class="field-input mt-1 py-1.5 text-sm" placeholder="01/01/2025 - 31/12/2025">
             </label>
         </div>
 
         <div class="mt-3">
-            <button type="button" wire:click="clearFilters" class="btn-ghost !px-3 !py-1.5 text-xs">Limpiar filtros</button>
+            <button type="button" wire:click="clearFilters" class="btn-ghost !px-3 !py-1.5 text-xs">{{ __('Limpiar filtros') }}</button>
         </div>
     </div>
 
@@ -55,8 +55,8 @@
             <table class="min-w-full text-xs">
                 <thead class="border-b border-line text-[11px] uppercase tracking-wide text-ink-muted">
                     <tr>
-                        <th class="sticky left-0 z-10 bg-panel px-3 py-2.5 text-left font-semibold">Booking</th>
-                        <th class="px-3 py-2.5 text-left font-semibold">Cliente</th>
+                        <th class="sticky left-0 z-10 bg-panel px-3 py-2.5 text-left font-semibold">{{ __('Booking') }}</th>
+                        <th class="px-3 py-2.5 text-left font-semibold">{{ __('Cliente') }}</th>
                         @foreach ($hitos as $etiqueta)
                             <th class="whitespace-nowrap px-2 py-2.5 text-center font-semibold">{{ $etiqueta }}</th>
                         @endforeach
@@ -80,8 +80,8 @@
                                             <input type="date" wire:model="value" value="{{ $value }}"
                                                    wire:keydown.enter="saveMilestone" wire:keydown.escape="cancel"
                                                    class="field-input !w-32 py-0.5 text-xs">
-                                            <button type="button" wire:click="saveMilestone" class="text-brand" aria-label="Guardar">✓</button>
-                                            <button type="button" wire:click="cancel" class="text-ink-faint" aria-label="Cancelar">×</button>
+                                            <button type="button" wire:click="saveMilestone" class="text-brand" aria-label="{{ __('Guardar') }}">✓</button>
+                                            <button type="button" wire:click="cancel" class="text-ink-faint" aria-label="{{ __('Cancelar') }}">×</button>
                                         </span>
                                     @elseif ($esAdmin)
                                         <button type="button"
@@ -101,7 +101,7 @@
                     @empty
                         <tr>
                             <td colspan="{{ count($hitos) + 2 }}" class="px-3 py-12 text-center text-ink-faint">
-                                No hay embarques con estos filtros.
+                                {{ __('No hay embarques con estos filtros.') }}
                             </td>
                         </tr>
                     @endforelse

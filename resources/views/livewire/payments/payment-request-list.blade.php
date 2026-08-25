@@ -7,9 +7,9 @@
 
     <header class="flex flex-wrap items-end justify-between gap-3">
         <div>
-            <h2 class="text-lg font-semibold text-ink">Solicitudes de pago</h2>
+            <h2 class="text-lg font-semibold text-ink">{{ __('Solicitudes de pago') }}</h2>
             <p class="text-sm text-ink-muted">
-                Cada solicitud agrupa las transacciones que se cobran o se pagan juntas.
+                {{ __('Cada solicitud agrupa las transacciones que se cobran o se pagan juntas.') }}
             </p>
         </div>
         <span class="text-xs text-ink-faint">
@@ -23,7 +23,7 @@
     <div class="card p-4">
         <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <label class="block">
-                <span class="field-label text-xs">Tipo</span>
+                <span class="field-label text-xs">{{ __('Tipo') }}</span>
                 <select wire:model.live="type" class="field-input mt-1 py-1.5 text-sm">
                     @foreach (['' => 'Todos', '1' => 'Cobros a clientes', '2' => 'Pagos a proveedores'] as $valor => $etiqueta)
                         <option value="{{ $valor }}" @selected((string) $valor === $type)>{{ $etiqueta }}</option>
@@ -32,7 +32,7 @@
             </label>
 
             <label class="block">
-                <span class="field-label text-xs">Estado</span>
+                <span class="field-label text-xs">{{ __('Estado') }}</span>
                 <select wire:model.live="paid" class="field-input mt-1 py-1.5 text-sm">
                     @foreach (['' => 'Todas', '0' => 'Pendientes', '1' => 'Pagadas'] as $valor => $etiqueta)
                         <option value="{{ $valor }}" @selected((string) $valor === $paid)>{{ $etiqueta }}</option>
@@ -41,9 +41,9 @@
             </label>
 
             <label class="block">
-                <span class="field-label text-xs">Banco</span>
+                <span class="field-label text-xs">{{ __('Banco') }}</span>
                 <select wire:model.live="bankId" class="field-input mt-1 py-1.5 text-sm">
-                    <option value="">Todos</option>
+                    <option value="">{{ __('Todos') }}</option>
                     @foreach ($banks as $id => $etiqueta)
                         <option value="{{ $id }}" @selected((string) $id === $bankId)>{{ $etiqueta }}</option>
                     @endforeach
@@ -51,16 +51,16 @@
             </label>
 
             <label class="block">
-                <span class="field-label text-xs">Fechas <span class="text-ink-faint">(rango)</span></span>
+                <span class="field-label text-xs">{{ __('Fechas') }} <span class="text-ink-faint">{{ __('(rango)') }}</span></span>
                 <input type="text" wire:model.live.debounce.600ms="dates" value="{{ $dates }}"
                        class="field-input mt-1 py-1.5 text-sm" placeholder="01/01/2025 - 31/12/2025">
             </label>
         </div>
 
         <div class="mt-3 flex flex-wrap items-end gap-2">
-            <button type="button" wire:click="clearFilters" class="btn-ghost !px-3 !py-1.5 text-xs">Limpiar filtros</button>
+            <button type="button" wire:click="clearFilters" class="btn-ghost !px-3 !py-1.5 text-xs">{{ __('Limpiar filtros') }}</button>
             <label class="ml-auto flex items-center gap-2 text-xs text-ink-muted">
-                Por página
+                {{ __('Por página') }}
                 <select wire:model.live="perPage" class="field-input !w-auto py-1 text-xs">
                     @foreach ([25, 50, 100] as $n)
                         <option value="{{ $n }}" @selected($n === $perPage)>{{ $n }}</option>
@@ -75,7 +75,7 @@
         <div wire:loading.delay class="absolute inset-0 z-20 rounded-xl bg-panel/75 text-center backdrop-blur-[1px]">
             <span class="mt-14 inline-flex items-center gap-2 rounded-full border border-line bg-panel px-4 py-2 text-sm text-ink-muted shadow-lg">
                 <x-spinner class="h-4 w-4 text-brand" />
-                Actualizando…
+                {{ __('Actualizando…') }}
             </span>
         </div>
 
@@ -96,17 +96,17 @@
                     </div>
                     <dl class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
                         <div class="flex justify-between gap-2">
-                            <dt class="text-ink-faint">Fecha</dt>
+                            <dt class="text-ink-faint">{{ __('Fecha') }}</dt>
                             <dd class="text-ink-soft">{{ $fila->date ? \Illuminate\Support\Carbon::parse($fila->date)->format('d/m/Y') : '—' }}</dd>
                         </div>
                         <div class="flex justify-between gap-2">
-                            <dt class="text-ink-faint">Importe</dt>
+                            <dt class="text-ink-faint">{{ __('Importe') }}</dt>
                             <dd class="font-semibold tabular-nums text-ink">{{ $money($fila->amount) }} {{ $fila->prefix }}</dd>
                         </div>
                     </dl>
                 </li>
             @empty
-                <li class="px-4 py-12 text-center text-sm text-ink-faint">No hay solicitudes con estos filtros.</li>
+                <li class="px-4 py-12 text-center text-sm text-ink-faint">{{ __('No hay solicitudes con estos filtros.') }}</li>
             @endforelse
         </ul>
 
@@ -115,19 +115,19 @@
             <table class="min-w-full text-sm">
                 <thead class="border-b border-line bg-panel text-xs uppercase tracking-wide text-ink-muted">
                     <tr>
-                        <th class="px-3 py-2.5 text-left font-semibold">Folio</th>
-                        <th class="px-3 py-2.5 text-left font-semibold">Tipo</th>
-                        <th class="px-3 py-2.5 text-left font-semibold">Asignada a</th>
-                        <th class="px-3 py-2.5 text-left font-semibold">Número</th>
-                        <th class="px-3 py-2.5 text-left font-semibold">Fecha</th>
-                        <th class="px-3 py-2.5 text-left font-semibold">Banco</th>
-                        <th class="px-3 py-2.5 text-left font-semibold">Divisa</th>
-                        <th class="px-3 py-2.5 text-right font-semibold">TC</th>
-                        <th class="px-3 py-2.5 text-right font-semibold">Importe</th>
-                        <th class="px-3 py-2.5 text-right font-semibold">Total pagado</th>
-                        <th class="px-3 py-2.5 text-left font-semibold">Estado</th>
+                        <th class="px-3 py-2.5 text-left font-semibold">{{ __('Folio') }}</th>
+                        <th class="px-3 py-2.5 text-left font-semibold">{{ __('Tipo') }}</th>
+                        <th class="px-3 py-2.5 text-left font-semibold">{{ __('Asignada a') }}</th>
+                        <th class="px-3 py-2.5 text-left font-semibold">{{ __('Número') }}</th>
+                        <th class="px-3 py-2.5 text-left font-semibold">{{ __('Fecha') }}</th>
+                        <th class="px-3 py-2.5 text-left font-semibold">{{ __('Banco') }}</th>
+                        <th class="px-3 py-2.5 text-left font-semibold">{{ __('Divisa') }}</th>
+                        <th class="px-3 py-2.5 text-right font-semibold">{{ __('TC') }}</th>
+                        <th class="px-3 py-2.5 text-right font-semibold">{{ __('Importe') }}</th>
+                        <th class="px-3 py-2.5 text-right font-semibold">{{ __('Total pagado') }}</th>
+                        <th class="px-3 py-2.5 text-left font-semibold">{{ __('Estado') }}</th>
                         @if ($esAdmin)
-                            <th class="px-3 py-2.5 text-right font-semibold"><span class="sr-only">Acciones</span></th>
+                            <th class="px-3 py-2.5 text-right font-semibold"><span class="sr-only">{{ __('Acciones') }}</span></th>
                         @endif
                     </tr>
                 </thead>
@@ -170,18 +170,18 @@
                                 <td class="whitespace-nowrap px-3 py-2 text-right" wire:click.stop>
                                     <div class="flex justify-end gap-3 text-xs">
                                         <a href="{{ route('payments.requests.document', $fila->request_id) }}" target="_blank"
-                                           class="text-ink-muted transition hover:text-brand">Imprimir</a>
+                                           class="text-ink-muted transition hover:text-brand">{{ __('Imprimir') }}</a>
                                         @if ($fila->paid)
                                             <button type="button" wire:click="reopen({{ $fila->request_id }})"
-                                                    wire:confirm="Reabrir la solicitud para poder corregirla. ¿Continuar?"
-                                                    class="text-brand hover:underline">Reabrir</button>
+                                                    wire:confirm="{{ __('Reabrir la solicitud para poder corregirla. ¿Continuar?') }}"
+                                                    class="text-brand hover:underline">{{ __('Reabrir') }}</button>
                                         @else
                                             <button type="button" wire:click="markPaid({{ $fila->request_id }})"
-                                                    wire:confirm="¿Marcar esta solicitud como pagada?"
-                                                    class="text-brand hover:underline">Pagar</button>
+                                                    wire:confirm="{{ __('¿Marcar esta solicitud como pagada?') }}"
+                                                    class="text-brand hover:underline">{{ __('Pagar') }}</button>
                                             <button type="button" wire:click="delete({{ $fila->request_id }})"
-                                                    wire:confirm="Se borrará la solicitud y se soltarán sus transacciones. ¿Continuar?"
-                                                    class="text-ink-muted transition hover:text-brand">Borrar</button>
+                                                    wire:confirm="{{ __('Se borrará la solicitud y se soltarán sus transacciones. ¿Continuar?') }}"
+                                                    class="text-ink-muted transition hover:text-brand">{{ __('Borrar') }}</button>
                                         @endif
                                     </div>
                                 </td>
@@ -196,12 +196,12 @@
                                         <table class="min-w-full text-xs">
                                             <thead class="text-[11px] uppercase tracking-wide text-ink-faint">
                                                 <tr>
-                                                    <th class="px-3 py-1.5 text-left font-semibold">Transacción</th>
-                                                    <th class="px-3 py-1.5 text-left font-semibold">Booking</th>
-                                                    <th class="px-3 py-1.5 text-left font-semibold">Fecha</th>
-                                                    <th class="px-3 py-1.5 text-right font-semibold">Total</th>
-                                                    <th class="px-3 py-1.5 text-right font-semibold">Pagado</th>
-                                                    <th class="px-3 py-1.5 text-right font-semibold">Por pagar</th>
+                                                    <th class="px-3 py-1.5 text-left font-semibold">{{ __('Transacción') }}</th>
+                                                    <th class="px-3 py-1.5 text-left font-semibold">{{ __('Booking') }}</th>
+                                                    <th class="px-3 py-1.5 text-left font-semibold">{{ __('Fecha') }}</th>
+                                                    <th class="px-3 py-1.5 text-right font-semibold">{{ __('Total') }}</th>
+                                                    <th class="px-3 py-1.5 text-right font-semibold">{{ __('Pagado') }}</th>
+                                                    <th class="px-3 py-1.5 text-right font-semibold">{{ __('Por pagar') }}</th>
                                                 </tr>
                                             </thead>
                                             <tbody class="divide-y divide-line">
@@ -222,7 +222,7 @@
                                                 @empty
                                                     <tr>
                                                         <td colspan="6" class="px-3 py-6 text-center text-ink-faint">
-                                                            Esta solicitud no tiene transacciones.
+                                                            {{ __('Esta solicitud no tiene transacciones.') }}
                                                         </td>
                                                     </tr>
                                                 @endforelse
@@ -235,7 +235,7 @@
                     @empty
                         <tr>
                             <td colspan="{{ $esAdmin ? 12 : 11 }}" class="px-3 py-12 text-center text-ink-faint">
-                                No hay solicitudes con estos filtros.
+                                {{ __('No hay solicitudes con estos filtros.') }}
                             </td>
                         </tr>
                     @endforelse

@@ -19,18 +19,18 @@
 
     <header class="flex flex-wrap items-end justify-between gap-3">
         <div>
-            <h2 class="text-lg font-semibold text-ink">Usuarios y accesos</h2>
+            <h2 class="text-lg font-semibold text-ink">{{ __('Usuarios y accesos') }}</h2>
             <p class="text-sm text-ink-muted">
-                El <strong>rol</strong> dice qué puede hacer; el <strong>acceso</strong>, desde dónde entra.
+                {!! __('El <strong>rol</strong> dice qué puede hacer; el <strong>acceso</strong>, desde dónde entra.') !!}
             </p>
         </div>
 
         <div class="flex flex-wrap items-center gap-2">
             <input type="search" wire:model.live.debounce.300ms="search" value="{{ $search }}"
-                   class="field-input py-1.5 text-sm" placeholder="Buscar…">
+                   class="field-input py-1.5 text-sm" placeholder="{{ __('Buscar…') }}">
 
             <select wire:model.live="role" class="field-input !w-auto py-1.5 text-sm">
-                <option value="">Todos los roles</option>
+                <option value="">{{ __('Todos los roles') }}</option>
                 @foreach ($roles as $valor => $etiqueta)
                     <option value="{{ $valor }}" @selected((string) $valor === $role)>{{ $etiqueta }}</option>
                 @endforeach
@@ -42,7 +42,7 @@
                 @endforeach
             </select>
 
-            <button type="button" wire:click="create" class="btn-accent !px-3 !py-1.5 text-xs">Agregar</button>
+            <button type="button" wire:click="create" class="btn-accent !px-3 !py-1.5 text-xs">{{ __('Agregar') }}</button>
         </div>
     </header>
 
@@ -55,24 +55,24 @@
 
             <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <label class="block">
-                    <span class="field-label">Nombre</span>
+                    <span class="field-label">{{ __('Nombre') }}</span>
                     <input type="text" wire:model="name" value="{{ $name }}" class="field-input mt-1.5">
                 </label>
 
                 <label class="block">
-                    <span class="field-label">Usuario</span>
+                    <span class="field-label">{{ __('Usuario') }}</span>
                     <input type="text" wire:model="username" value="{{ $username }}" class="field-input mt-1.5" required>
                     @error('username') <span class="mt-1 block text-xs text-brand">{{ $message }}</span> @enderror
                 </label>
 
                 <label class="block">
-                    <span class="field-label">Correo</span>
+                    <span class="field-label">{{ __('Correo') }}</span>
                     <input type="text" wire:model="email" value="{{ $email }}" class="field-input mt-1.5">
                     @error('email') <span class="mt-1 block text-xs text-brand">{{ $message }}</span> @enderror
                 </label>
 
                 <label class="block">
-                    <span class="field-label">Rol</span>
+                    <span class="field-label">{{ __('Rol') }}</span>
                     <select wire:model="userRole" class="field-input mt-1.5">
                         @foreach ($roles as $valor => $etiqueta)
                             <option value="{{ $valor }}" @selected((string) $valor === $userRole)>{{ $etiqueta }}</option>
@@ -81,7 +81,7 @@
                 </label>
 
                 <label class="block">
-                    <span class="field-label">Acceso</span>
+                    <span class="field-label">{{ __('Acceso') }}</span>
                     <select wire:model.live="access" class="field-input mt-1.5">
                         @foreach ($accesos as $valor => $etiqueta)
                             <option value="{{ $valor }}" @selected((string) $valor === $access)>{{ $etiqueta }}</option>
@@ -93,7 +93,7 @@
                     <label class="block">
                         <span class="field-label">{{ $access === (string) UserManager::ACCESS_CLIENT ? 'Cliente' : 'Proveedor' }}</span>
                         <select wire:model="partyId" class="field-input mt-1.5" required>
-                            <option value="">Selecciona</option>
+                            <option value="">{{ __('Selecciona') }}</option>
                             @foreach (($access === (string) UserManager::ACCESS_CLIENT ? $clientes : $proveedores) as $id => $nombre)
                                 <option value="{{ $id }}" @selected((string) $id === $partyId)>{{ $nombre }}</option>
                             @endforeach
@@ -109,22 +109,22 @@
                 </label>
 
                 <label class="block">
-                    <span class="field-label">Repetir contraseña</span>
+                    <span class="field-label">{{ __('Repetir contraseña') }}</span>
                     <input type="password" wire:model="passwordConfirmation" class="field-input mt-1.5" autocomplete="new-password">
                 </label>
 
                 <label class="flex items-end gap-2 pb-2.5 text-sm text-ink-soft">
                     <input type="checkbox" wire:model="active" @checked($active)
                            class="h-4 w-4 rounded border-line bg-panel text-accent-500 focus:ring-accent-500">
-                    Activo
+                    {{ __('Activo') }}
                 </label>
             </div>
 
             <div class="flex flex-wrap justify-end gap-3 border-t border-line pt-4">
-                <button type="button" wire:click="cancel" class="btn-ghost !px-3 !py-1.5 text-xs">Cancelar</button>
+                <button type="button" wire:click="cancel" class="btn-ghost !px-3 !py-1.5 text-xs">{{ __('Cancelar') }}</button>
                 <button type="submit" wire:loading.attr="disabled" wire:target="save" class="btn-accent !px-3 !py-1.5 text-xs">
                     <x-spinner wire:loading wire:target="save" class="h-3.5 w-3.5" />
-                    Guardar
+                    {{ __('Guardar') }}
                 </button>
             </div>
         </form>
@@ -133,23 +133,23 @@
     {{-- Cambio de contraseña --}}
     @if ($changingPassword !== null)
         <form wire:submit="changePassword" class="card space-y-4 p-5">
-            <p class="text-sm font-medium text-ink">Cambiar contraseña</p>
+            <p class="text-sm font-medium text-ink">{{ __('Cambiar contraseña') }}</p>
 
             <div class="grid gap-4 sm:grid-cols-2">
                 <label class="block">
-                    <span class="field-label">Contraseña nueva</span>
+                    <span class="field-label">{{ __('Contraseña nueva') }}</span>
                     <input type="password" wire:model="password" class="field-input mt-1.5" autocomplete="new-password" required>
                     @error('password') <span class="mt-1 block text-xs text-brand">{{ $message }}</span> @enderror
                 </label>
                 <label class="block">
-                    <span class="field-label">Repetir contraseña</span>
+                    <span class="field-label">{{ __('Repetir contraseña') }}</span>
                     <input type="password" wire:model="passwordConfirmation" class="field-input mt-1.5" autocomplete="new-password" required>
                 </label>
             </div>
 
             <div class="flex flex-wrap justify-end gap-3 border-t border-line pt-4">
-                <button type="button" wire:click="cancel" class="btn-ghost !px-3 !py-1.5 text-xs">Cancelar</button>
-                <button type="submit" class="btn-accent !px-3 !py-1.5 text-xs">Guardar contraseña</button>
+                <button type="button" wire:click="cancel" class="btn-ghost !px-3 !py-1.5 text-xs">{{ __('Cancelar') }}</button>
+                <button type="submit" class="btn-accent !px-3 !py-1.5 text-xs">{{ __('Guardar contraseña') }}</button>
             </div>
         </form>
     @endif
@@ -166,13 +166,13 @@
             <table class="min-w-full text-sm">
                 <thead class="border-b border-line text-xs uppercase tracking-wide text-ink-muted">
                     <tr>
-                        <th class="px-4 py-2.5 text-left font-semibold">Usuario</th>
-                        <th class="px-4 py-2.5 text-left font-semibold">Nombre</th>
-                        <th class="px-4 py-2.5 text-left font-semibold">Rol</th>
-                        <th class="px-4 py-2.5 text-left font-semibold">Acceso</th>
-                        <th class="px-4 py-2.5 text-left font-semibold">Estado</th>
-                        <th class="px-4 py-2.5 text-left font-semibold">Último ingreso</th>
-                        <th class="px-4 py-2.5 text-right font-semibold"><span class="sr-only">Acciones</span></th>
+                        <th class="px-4 py-2.5 text-left font-semibold">{{ __('Usuario') }}</th>
+                        <th class="px-4 py-2.5 text-left font-semibold">{{ __('Nombre') }}</th>
+                        <th class="px-4 py-2.5 text-left font-semibold">{{ __('Rol') }}</th>
+                        <th class="px-4 py-2.5 text-left font-semibold">{{ __('Acceso') }}</th>
+                        <th class="px-4 py-2.5 text-left font-semibold">{{ __('Estado') }}</th>
+                        <th class="px-4 py-2.5 text-left font-semibold">{{ __('Último ingreso') }}</th>
+                        <th class="px-4 py-2.5 text-right font-semibold"><span class="sr-only">{{ __('Acciones') }}</span></th>
                     </tr>
                 </thead>
 
@@ -193,8 +193,8 @@
                             </td>
                             <td class="whitespace-nowrap px-4 py-2 text-right">
                                 <div class="flex justify-end gap-3 text-xs">
-                                    <button type="button" wire:click="edit({{ $usuario->usr_id }})" class="text-brand hover:underline">Editar</button>
-                                    <button type="button" wire:click="startPasswordChange({{ $usuario->usr_id }})" class="text-ink-muted hover:text-ink">Contraseña</button>
+                                    <button type="button" wire:click="edit({{ $usuario->usr_id }})" class="text-brand hover:underline">{{ __('Editar') }}</button>
+                                    <button type="button" wire:click="startPasswordChange({{ $usuario->usr_id }})" class="text-ink-muted hover:text-ink">{{ __('Contraseña') }}</button>
                                     @if ($usuario->usr_id !== auth()->id())
                                         <button type="button" wire:click="toggleActive({{ $usuario->usr_id }})"
                                                 wire:confirm="{{ $usuario->status ? '¿Dar de baja a este usuario?' : '¿Reactivar a este usuario?' }}"
@@ -206,7 +206,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="7" class="px-4 py-12 text-center text-ink-faint">No hay usuarios con estos filtros.</td></tr>
+                        <tr><td colspan="7" class="px-4 py-12 text-center text-ink-faint">{{ __('No hay usuarios con estos filtros.') }}</td></tr>
                     @endforelse
                 </tbody>
             </table>

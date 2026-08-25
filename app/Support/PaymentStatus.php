@@ -40,9 +40,9 @@ enum PaymentStatus: string
     public function label(): string
     {
         return match ($this) {
-            self::Unpaid => 'Sin pagar',
-            self::Partial => 'Parcial',
-            self::Paid => 'Pagada',
+            self::Unpaid => __('Sin pagar'),
+            self::Partial => __('Parcial'),
+            self::Paid => __('Pagada'),
             self::None => '—',
         };
     }

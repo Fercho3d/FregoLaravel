@@ -116,7 +116,7 @@ class PaymentRequestForm extends Component
             auth()->user(),
         );
 
-        session()->flash('status', 'Solicitud '.str_pad((string) $solicitud->request_id, 4, '0', STR_PAD_LEFT).' creada.');
+        session()->flash('status', __('Solicitud ').str_pad((string) $solicitud->request_id, 4, '0', STR_PAD_LEFT).' creada.');
         $this->redirectRoute('payments.requests', navigate: true);
     }
 

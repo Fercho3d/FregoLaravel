@@ -133,7 +133,7 @@ class BookingDetail extends Component
             ->save();
 
         $this->editingInstructions = false;
-        session()->flash('status', 'Instrucciones de embarque guardadas.');
+        session()->flash('status', __('Instrucciones de embarque guardadas.'));
     }
 
     /** El encabezado sale del mismo motor que el listado, para que el avance cuadre. */
@@ -382,7 +382,7 @@ class BookingDetail extends Component
 
         Booking::findOrFail($this->bookingId)->delete();
 
-        session()->flash('status', 'Booking borrado.');
+        session()->flash('status', __('Booking borrado.'));
         $this->redirectRoute('operations.bookings', navigate: true);
     }
 
@@ -393,7 +393,7 @@ class BookingDetail extends Component
         Booking::whereKey($this->bookingId)->update(['locked' => 1, 'modified_by' => auth()->id()]);
 
         $this->headerCache = null;
-        session()->flash('status', 'Booking cerrado.');
+        session()->flash('status', __('Booking cerrado.'));
     }
 
     public function unlock(): void
@@ -405,7 +405,7 @@ class BookingDetail extends Component
         Booking::whereKey($this->bookingId)->update(['locked' => 0, 'modified_by' => auth()->id()]);
 
         $this->headerCache = null;
-        session()->flash('status', 'Booking reabierto.');
+        session()->flash('status', __('Booking reabierto.'));
     }
 
     // -------------------------------------------------------- Documentos
@@ -436,7 +436,7 @@ class BookingDetail extends Component
         app(BookingFiles::class)->store($this->bookingId, $this->uploadField, $this->upload);
 
         $this->reset(['upload', 'uploadField']);
-        session()->flash('status', 'Documento adjuntado.');
+        session()->flash('status', __('Documento adjuntado.'));
     }
 
     public function removeFile(int $fieldId, string $nombre): void

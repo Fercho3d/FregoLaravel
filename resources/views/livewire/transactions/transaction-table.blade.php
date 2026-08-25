@@ -9,9 +9,9 @@
         ->filter(fn ($v) => filled($v))
         ->count() + ($showCancelled !== '0' ? 1 : 0);
     $columns = [
-        ['booking', 'Booking', 'text-left'],
-        ['tran_date', 'Fecha', 'text-left'],
-        ['tran_number', 'Número', 'text-left'],
+        [__('booking'), 'Booking', 'text-left'],
+        [__('tran_date'), 'Fecha', 'text-left'],
+        [__('tran_number'), 'Número', 'text-left'],
         [null, 'Aplicado a', 'text-left'],
         [null, 'Compañía', 'text-left'],
         [null, 'Ccy', 'text-left'],
@@ -24,7 +24,7 @@
         [null, 'Total', 'text-right'],
         [null, 'Pagado', 'text-right'],
         [null, 'Estado', 'text-left'],
-        ['seal', 'CFDI', 'text-left'],
+        [__('seal'), 'CFDI', 'text-left'],
     ];
 @endphp
 
@@ -33,9 +33,9 @@
     {{-- Pestañas: navegación sin recarga completa --}}
     <nav class="flex flex-wrap items-center gap-1 rounded-xl border border-line bg-panel p-1 text-sm">
         @foreach ([
-            ['invoice', 'Facturas', route('transactions.invoice')],
-            ['bill', 'Costos', route('transactions.bill')],
-            ['all', 'Todas', route('transactions.all')],
+            [__('invoice'), 'Facturas', route('transactions.invoice')],
+            [__('bill'), 'Costos', route('transactions.bill')],
+            [__('all'), 'Todas', route('transactions.all')],
         ] as [$key, $label, $href])
             <a href="{{ $href }}" wire:navigate
                class="rounded-lg px-4 py-2 font-medium transition {{ $screen === $key ? 'bg-accent-500 text-white' : 'text-ink-muted hover:bg-raised hover:text-ink' }}">
@@ -56,7 +56,7 @@
             @endforeach
         @endif
 
-        <span class="ml-auto px-3 text-xs text-ink-faint" title="Tiempo de la consulta que alimenta esta tabla">
+        <span class="ml-auto px-3 text-xs text-ink-faint" title="{{ __('Tiempo de la consulta que alimenta esta tabla') }}">
             {{ number_format($rows->total()) }} registros · consulta en {{ $queryMs }} ms
         </span>
     </nav>
@@ -72,7 +72,7 @@
                  fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
             </svg>
-            <span>Filtros</span>
+            <span>{{ __('Filtros') }}</span>
             @if ($activos)
                 <span class="rounded-full bg-accent-500/20 px-2 py-0.5 text-[11px] font-semibold text-brand">{{ $activos }}</span>
             @endif
@@ -84,29 +84,29 @@
              viene filtrada y los campos tienen que enseñar por qué. --}}
         <div x-show="abierto" x-cloak class="grid gap-3 border-t border-line p-4 sm:grid-cols-2 lg:grid-cols-4">
             <label class="block">
-                <span class="field-label text-xs">Número</span>
-                <input type="text" wire:model.live.debounce.400ms="tranNumber" value="{{ $tranNumber }}" class="field-input mt-1 py-1.5 text-sm" placeholder="F-1234">
+                <span class="field-label text-xs">{{ __('Número') }}</span>
+                <input type="text" wire:model.live.debounce.400ms="tranNumber" value="{{ $tranNumber }}" class="field-input mt-1 py-1.5 text-sm" placeholder="{{ __('F-1234') }}">
             </label>
 
             <label class="block">
-                <span class="field-label text-xs">Booking</span>
-                <input type="text" wire:model.live.debounce.400ms="bookingNumber" value="{{ $bookingNumber }}" class="field-input mt-1 py-1.5 text-sm" placeholder="MEX…">
+                <span class="field-label text-xs">{{ __('Booking') }}</span>
+                <input type="text" wire:model.live.debounce.400ms="bookingNumber" value="{{ $bookingNumber }}" class="field-input mt-1 py-1.5 text-sm" placeholder="{{ __('MEX…') }}">
             </label>
 
             <label class="block">
-                <span class="field-label text-xs">Cliente o proveedor</span>
-                <input type="text" wire:model.live.debounce.400ms="appliedTo" value="{{ $appliedTo }}" class="field-input mt-1 py-1.5 text-sm" placeholder="Nombre">
+                <span class="field-label text-xs">{{ __('Cliente o proveedor') }}</span>
+                <input type="text" wire:model.live.debounce.400ms="appliedTo" value="{{ $appliedTo }}" class="field-input mt-1 py-1.5 text-sm" placeholder="{{ __('Nombre') }}">
             </label>
 
             <label class="block">
-                <span class="field-label text-xs">Fechas <span class="text-ink-faint">(dd/mm/aaaa - dd/mm/aaaa)</span></span>
+                <span class="field-label text-xs">{{ __('Fechas') }} <span class="text-ink-faint">{{ __('(dd/mm/aaaa - dd/mm/aaaa)') }}</span></span>
                 <input type="text" wire:model.live.debounce.600ms="dates" value="{{ $dates }}" class="field-input mt-1 py-1.5 text-sm" placeholder="01/01/2025 - 31/12/2025">
             </label>
 
             <label class="block">
-                <span class="field-label text-xs">Compañía</span>
+                <span class="field-label text-xs">{{ __('Compañía') }}</span>
                 <select wire:model.live="companyId" class="field-input mt-1 py-1.5 text-sm">
-                    <option value="">Todas</option>
+                    <option value="">{{ __('Todas') }}</option>
                     @foreach ($companies as $id => $name)
                         <option value="{{ $id }}" @selected((string) $id === $companyId)>{{ $name }}</option>
                     @endforeach
@@ -114,9 +114,9 @@
             </label>
 
             <label class="block">
-                <span class="field-label text-xs">Divisa</span>
+                <span class="field-label text-xs">{{ __('Divisa') }}</span>
                 <select wire:model.live="accountId" class="field-input mt-1 py-1.5 text-sm">
-                    <option value="">Todas</option>
+                    <option value="">{{ __('Todas') }}</option>
                     @foreach ($currencies as $id => $prefix)
                         <option value="{{ $id }}" @selected((string) $id === $accountId)>{{ $prefix }}</option>
                     @endforeach
@@ -124,7 +124,7 @@
             </label>
 
             <label class="block">
-                <span class="field-label text-xs">Estado de pago</span>
+                <span class="field-label text-xs">{{ __('Estado de pago') }}</span>
                 <select wire:model.live="paid" class="field-input mt-1 py-1.5 text-sm">
                     {{-- Ojo con el `(string)`: PHP convierte en enteros las claves
                          numéricas del arreglo, y la comparación estricta fallaría. --}}
@@ -135,7 +135,7 @@
             </label>
 
             <label class="block">
-                <span class="field-label text-xs">Canceladas</span>
+                <span class="field-label text-xs">{{ __('Canceladas') }}</span>
                 <select wire:model.live="showCancelled" class="field-input mt-1 py-1.5 text-sm">
                     @foreach (['0' => 'Solo vigentes', '1' => 'Vigentes y canceladas', '2' => 'Solo canceladas'] as $valor => $etiqueta)
                         <option value="{{ $valor }}" @selected((string) $valor === $showCancelled)>{{ $etiqueta }}</option>
@@ -144,19 +144,19 @@
             </label>
 
             <div class="flex items-end gap-2 sm:col-span-2 lg:col-span-4">
-                <button type="button" wire:click="clearFilters" class="btn-ghost !py-1.5 !px-3 text-xs">Limpiar filtros</button>
+                <button type="button" wire:click="clearFilters" class="btn-ghost !py-1.5 !px-3 text-xs">{{ __('Limpiar filtros') }}</button>
                 <button type="button" wire:click="calculateTotals" class="btn-ghost !py-1.5 !px-3 text-xs">
-                    Sumar todo el filtro
+                    {{ __('Sumar todo el filtro') }}
                 </button>
                 @if ($this->allowsSelection() && auth()->user()?->isAdmin())
                     <button type="button" wire:click="createPaymentRequest" class="btn-ghost !py-1.5 !px-3 text-xs"
                             @disabled($selected === [])>
-                        Agrupar en solicitud de pago
+                        {{ __('Agrupar en solicitud de pago') }}
                         @if ($selected !== []) <span class="text-brand">({{ count($selected) }})</span> @endif
                     </button>
                 @endif
                 <label class="ml-auto flex items-center gap-2 text-xs text-ink-muted">
-                    Por página
+                    {{ __('Por página') }}
                     <select wire:model.live="perPage" class="field-input !w-auto py-1 text-xs">
                         @foreach ([25, 50, 100, 200] as $n)
                             <option value="{{ $n }}" @selected($n === $perPage)>{{ $n }}</option>
@@ -175,10 +175,9 @@
         <section class="card overflow-hidden">
             <header class="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
                 <div>
-                    <h3 class="text-sm font-semibold text-ink">Utilidad por booking</h3>
+                    <h3 class="text-sm font-semibold text-ink">{{ __('Utilidad por booking') }}</h3>
                     <p class="text-xs text-ink-faint">
-                        Facturas menos costos, sin IVA. Los importes son del booking completo,
-                        no solo de lo que cae en el filtro.
+                        {{ __('Facturas menos costos, sin IVA. Los importes son del booking completo, no solo de lo que cae en el filtro.') }}
                     </p>
                 </div>
 
@@ -192,7 +191,7 @@
             @if ($profit !== null)
                 @if ($profit['rows'] === [])
                     <p class="border-t border-line px-5 py-8 text-center text-sm text-ink-faint">
-                        No hay bookings facturados con estos filtros.
+                        {{ __('No hay bookings facturados con estos filtros.') }}
                     </p>
                 @else
                     {{-- Tarjetas en móvil --}}
@@ -218,13 +217,13 @@
                         <table class="min-w-full text-sm">
                             <thead class="border-b border-line text-xs uppercase tracking-wide text-ink-muted">
                                 <tr>
-                                    <th class="px-4 py-2.5 text-left font-semibold">Booking</th>
-                                    <th class="px-4 py-2.5 text-right font-semibold">Facturado (TC doc.)</th>
-                                    <th class="px-4 py-2.5 text-right font-semibold">Costo (TC doc.)</th>
-                                    <th class="px-4 py-2.5 text-right font-semibold">Utilidad (TC doc.)</th>
-                                    <th class="px-4 py-2.5 text-right font-semibold">Facturado (TC pago)</th>
-                                    <th class="px-4 py-2.5 text-right font-semibold">Costo (TC pago)</th>
-                                    <th class="px-4 py-2.5 text-right font-semibold">Utilidad (TC pago)</th>
+                                    <th class="px-4 py-2.5 text-left font-semibold">{{ __('Booking') }}</th>
+                                    <th class="px-4 py-2.5 text-right font-semibold">{{ __('Facturado (TC doc.)') }}</th>
+                                    <th class="px-4 py-2.5 text-right font-semibold">{{ __('Costo (TC doc.)') }}</th>
+                                    <th class="px-4 py-2.5 text-right font-semibold">{{ __('Utilidad (TC doc.)') }}</th>
+                                    <th class="px-4 py-2.5 text-right font-semibold">{{ __('Facturado (TC pago)') }}</th>
+                                    <th class="px-4 py-2.5 text-right font-semibold">{{ __('Costo (TC pago)') }}</th>
+                                    <th class="px-4 py-2.5 text-right font-semibold">{{ __('Utilidad (TC pago)') }}</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-line">
@@ -245,7 +244,7 @@
                             </tbody>
                             <tfoot class="border-t border-line bg-panel text-sm font-semibold">
                                 <tr>
-                                    <td class="px-4 py-2.5 text-ink-muted">Total</td>
+                                    <td class="px-4 py-2.5 text-ink-muted">{{ __('Total') }}</td>
                                     @foreach (['inv_doc', 'cost_doc', 'profit_doc', 'inv_pago', 'cost_pago', 'profit_pago'] as $clave)
                                         <td class="whitespace-nowrap px-4 py-2.5 text-right tabular-nums {{ str_starts_with($clave, 'profit') && $profit['totals'][$clave] < 0 ? 'text-brand' : 'text-ink' }}">
                                             {{ $money($profit['totals'][$clave]) }}
@@ -275,7 +274,7 @@
              class="absolute inset-0 z-20 rounded-xl bg-panel/75 text-center backdrop-blur-[1px]">
             <span class="mt-14 inline-flex items-center gap-2 rounded-full border border-line bg-panel px-4 py-2 text-sm text-ink-muted shadow-lg">
                 <x-spinner class="h-4 w-4 text-brand" />
-                Actualizando…
+                {{ __('Actualizando…') }}
             </span>
         </div>
 
@@ -302,25 +301,25 @@
 
                     <dl class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
                         <div class="flex justify-between gap-2">
-                            <dt class="text-ink-faint">Fecha</dt>
+                            <dt class="text-ink-faint">{{ __('Fecha') }}</dt>
                             <dd class="text-ink-soft">{{ $row->tran_date ? \Illuminate\Support\Carbon::parse($row->tran_date)->format('d/m/Y') : '—' }}</dd>
                         </div>
                         <div class="flex justify-between gap-2">
-                            <dt class="text-ink-faint">Moneda</dt>
+                            <dt class="text-ink-faint">{{ __('Moneda') }}</dt>
                             <dd class="text-ink-soft">{{ $row->currency ?: '—' }}</dd>
                         </div>
                         <div class="flex justify-between gap-2">
-                            <dt class="text-ink-faint">Total</dt>
+                            <dt class="text-ink-faint">{{ __('Total') }}</dt>
                             <dd class="font-semibold tabular-nums {{ (float) $row->total_amount < 0 ? 'text-brand' : 'text-ink' }}">{{ $money($row->total_amount) }}</dd>
                         </div>
                         <div class="flex justify-between gap-2">
-                            <dt class="text-ink-faint">Pagado</dt>
+                            <dt class="text-ink-faint">{{ __('Pagado') }}</dt>
                             <dd class="tabular-nums text-ink-soft">{{ $money($row->tran_paid_amount) }}</dd>
                         </div>
                     </dl>
                 </li>
             @empty
-                <li class="px-4 py-12 text-center text-sm text-ink-faint">No hay transacciones con estos filtros.</li>
+                <li class="px-4 py-12 text-center text-sm text-ink-faint">{{ __('No hay transacciones con estos filtros.') }}</li>
             @endforelse
         </ul>
 
@@ -330,7 +329,7 @@
                 <thead class="border-b border-line bg-panel text-xs uppercase tracking-wide text-ink-muted">
                     <tr>
                         @if ($this->allowsSelection())
-                            <th class="w-8 px-3 py-2.5"><span class="sr-only">Selección</span></th>
+                            <th class="w-8 px-3 py-2.5"><span class="sr-only">{{ __('Selección') }}</span></th>
                         @endif
                         @foreach ($columns as [$sortKey, $label, $align])
                             <th class="whitespace-nowrap px-3 py-2.5 font-semibold {{ $align }}">
@@ -398,7 +397,7 @@
                     @empty
                         <tr>
                             <td colspan="{{ count($columns) + ($this->allowsSelection() ? 1 : 0) }}" class="px-3 py-12 text-center text-ink-faint">
-                                No hay transacciones con estos filtros.
+                                {{ __('No hay transacciones con estos filtros.') }}
                             </td>
                         </tr>
                     @endforelse
@@ -407,7 +406,7 @@
                 @if ($totals)
                     <tfoot class="border-t border-line bg-panel text-sm font-semibold">
                         <tr>
-                            <td colspan="{{ 6 + ($this->allowsSelection() ? 1 : 0) }}" class="px-3 py-2.5 text-ink-muted">Total del filtro completo</td>
+                            <td colspan="{{ 6 + ($this->allowsSelection() ? 1 : 0) }}" class="px-3 py-2.5 text-ink-muted">{{ __('Total del filtro completo') }}</td>
                             <td class="px-3 py-2.5 text-right tabular-nums text-ink">{{ $money($totals['amount_original']) }}</td>
                             <td></td>
                             <td class="px-3 py-2.5 text-right tabular-nums text-ink-soft">{{ $money($totals['sub_0_mxn']) }}</td>
@@ -428,13 +427,13 @@
     {{-- Totales del filtro, en móvil: el `tfoot` de la tabla no se ve ahí. --}}
     @if ($totals)
         <div class="card space-y-1.5 p-4 text-sm md:hidden">
-            <p class="text-xs font-semibold uppercase tracking-wide text-ink-faint">Total del filtro completo</p>
+            <p class="text-xs font-semibold uppercase tracking-wide text-ink-faint">{{ __('Total del filtro completo') }}</p>
             <div class="flex justify-between gap-2">
-                <span class="text-ink-muted">Total</span>
+                <span class="text-ink-muted">{{ __('Total') }}</span>
                 <span class="font-semibold tabular-nums text-ink">{{ $money($totals['total_amount']) }}</span>
             </div>
             <div class="flex justify-between gap-2">
-                <span class="text-ink-muted">Por cobrar/pagar</span>
+                <span class="text-ink-muted">{{ __('Por cobrar/pagar') }}</span>
                 <span class="tabular-nums text-ink-soft">{{ $money($totals['left_to_pay']) }}</span>
             </div>
         </div>
