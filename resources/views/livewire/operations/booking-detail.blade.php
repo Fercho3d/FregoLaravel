@@ -81,10 +81,57 @@
 
     {{-- Contenedores --}}
     <section class="card overflow-hidden">
-        <header class="flex items-center justify-between gap-3 border-b border-line px-5 py-3">
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-3">
             <h3 class="text-sm font-semibold text-ink">Contenedores</h3>
-            <span class="text-xs text-ink-faint">{{ $contenedores->count() }}</span>
+            <div class="flex items-center gap-3">
+                <span class="text-xs text-ink-faint">{{ $contenedores->count() }}</span>
+                @if (auth()->user()?->isAdmin() && ! $booking->locked)
+                    <button type="button" wire:click="addContainer" class="btn-ghost px-3 py-1.5 text-xs">Agregar</button>
+                @endif
+            </div>
         </header>
+
+        @if ($editingContainer)
+            <form wire:submit="saveContainer" class="space-y-4 border-b border-line bg-raised/60 p-5">
+                <p class="text-sm font-medium text-ink">{{ $containerId ? 'Editar contenedor' : 'Nuevo contenedor' }}</p>
+
+                <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    @foreach ([
+                        ['Número', 'containerNumber', 'text'],
+                        ['Sello', 'containerSeal', 'text'],
+                        ['Cantidad', 'containerQuantity', 'number'],
+                        ['Mercancía', 'containerCommodity', 'text'],
+                        ['Recolección', 'containerPickup', 'date'],
+                    ] as [$etiqueta, $propiedad, $tipo])
+                        <label class="block">
+                            <span class="field-label">{{ $etiqueta }}</span>
+                            <input type="{{ $tipo }}" @if ($tipo === 'number') min="1" @endif
+                                   wire:model="{{ $propiedad }}" value="{{ $$propiedad }}" class="field-input mt-1.5">
+                            @error($propiedad) <span class="mt-1 block text-xs text-brand">{{ $message }}</span> @enderror
+                        </label>
+                    @endforeach
+
+                    <label class="block">
+                        <span class="field-label">Tipo</span>
+                        <select wire:model="containerType" class="field-input mt-1.5">
+                            <option value="">Sin especificar</option>
+                            @foreach ($tiposContenedor as $id => $nombre)
+                                <option value="{{ $id }}" @selected((string) $id === $containerType)>{{ $nombre }}</option>
+                            @endforeach
+                        </select>
+                        @error('containerType') <span class="mt-1 block text-xs text-brand">{{ $message }}</span> @enderror
+                    </label>
+                </div>
+
+                <div class="flex flex-wrap justify-end gap-3">
+                    <button type="button" wire:click="cancelContainerEdit" class="btn-ghost !px-3 !py-1.5 text-xs">Cancelar</button>
+                    <button type="submit" wire:loading.attr="disabled" wire:target="saveContainer" class="btn-accent !px-3 !py-1.5 text-xs">
+                        <x-spinner wire:loading wire:target="saveContainer" class="h-3.5 w-3.5" />
+                        Guardar
+                    </button>
+                </div>
+            </form>
+        @endif
 
         <div class="overflow-x-auto">
             <table class="min-w-full text-sm">
@@ -96,6 +143,9 @@
                         <th class="px-4 py-2.5 text-right font-semibold">Cantidad</th>
                         <th class="px-4 py-2.5 text-left font-semibold">Mercancía</th>
                         <th class="px-4 py-2.5 text-left font-semibold">Recolección</th>
+                        @if (auth()->user()?->isAdmin() && ! $booking->locked)
+                            <th class="px-4 py-2.5 text-right font-semibold"><span class="sr-only">Acciones</span></th>
+                        @endif
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-line">
@@ -107,9 +157,23 @@
                             <td class="whitespace-nowrap px-4 py-2 text-right tabular-nums text-ink-muted">{{ $c->quantity ?: '—' }}</td>
                             <td class="max-w-[16rem] truncate px-4 py-2 text-ink-muted">{{ $c->comodity ?: '—' }}</td>
                             <td class="whitespace-nowrap px-4 py-2 text-ink-muted">{{ $fecha($c->pick_up_date) }}</td>
+                            @if (auth()->user()?->isAdmin() && ! $booking->locked)
+                                <td class="whitespace-nowrap px-4 py-2 text-right">
+                                    <div class="flex justify-end gap-3 text-xs">
+                                        <button type="button" wire:click="editContainer({{ $c->container_ID }})" class="text-brand hover:underline">Editar</button>
+                                        <button type="button" wire:click="deleteContainer({{ $c->container_ID }})"
+                                                wire:confirm="¿Quitar este contenedor del booking?"
+                                                class="text-ink-muted transition hover:text-brand">Quitar</button>
+                                    </div>
+                                </td>
+                            @endif
                         </tr>
                     @empty
-                        <tr><td colspan="6" class="px-4 py-10 text-center text-ink-faint">Este booking no tiene contenedores.</td></tr>
+                        <tr>
+                            <td colspan="{{ auth()->user()?->isAdmin() && ! $booking->locked ? 7 : 6 }}" class="px-4 py-10 text-center text-ink-faint">
+                                Este booking no tiene contenedores.
+                            </td>
+                        </tr>
                     @endforelse
                 </tbody>
             </table>

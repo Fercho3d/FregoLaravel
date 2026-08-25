@@ -6,8 +6,10 @@ use App\Queries\BookingFilters;
 use App\Queries\BookingQuery;
 use App\Queries\TransactionFilters;
 use App\Queries\TransactionQuery;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Livewire\Component;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
@@ -21,6 +23,23 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 class BookingDetail extends Component
 {
     public int $bookingId;
+
+    // --- Formulario de contenedor ---
+    public bool $editingContainer = false;
+
+    public ?int $containerId = null;
+
+    public string $containerNumber = '';
+
+    public string $containerSeal = '';
+
+    public string $containerType = '';
+
+    public string $containerQuantity = '1';
+
+    public string $containerCommodity = '';
+
+    public string $containerPickup = '';
 
     public function mount(int $booking): void
     {
@@ -102,6 +121,118 @@ class BookingDetail extends Component
             ->all();
     }
 
+    // ------------------------------------------------------- Contenedores
+
+    /** Un booking cerrado ya no recibe movimientos de carga. */
+    private function assertEditable(): void
+    {
+        abort_unless(auth()->user()?->isAdmin() ?? false, 403);
+        abort_if((bool) $this->header()->locked, 403, 'Este booking está cerrado.');
+    }
+
+    public function addContainer(): void
+    {
+        $this->assertEditable();
+        $this->resetContainerForm();
+        $this->editingContainer = true;
+    }
+
+    public function editContainer(int $container): void
+    {
+        $this->assertEditable();
+
+        $fila = DB::table('containers')
+            ->where('booking', $this->bookingId)
+            ->where('container_ID', $container)
+            ->first();
+
+        abort_if($fila === null, 404);
+
+        $this->containerId = (int) $fila->container_ID;
+        $this->containerNumber = (string) $fila->number;
+        $this->containerSeal = (string) $fila->seal;
+        $this->containerType = $this->asOption($fila->container_type);
+        $this->containerQuantity = (string) ($fila->quantity ?? 1);
+        $this->containerCommodity = (string) $fila->comodity;
+        $this->containerPickup = $fila->pick_up_date
+            ? Carbon::parse($fila->pick_up_date)->toDateString()
+            : '';
+        $this->editingContainer = true;
+        $this->resetErrorBag();
+    }
+
+    public function saveContainer(): void
+    {
+        $this->assertEditable();
+
+        $datos = $this->validate([
+            'containerNumber' => ['nullable', 'string', 'max:50'],
+            'containerSeal' => ['nullable', 'string', 'max:50'],
+            'containerType' => ['nullable', Rule::exists('container_types', 'contType_id')],
+            'containerQuantity' => ['required', 'integer', 'min:1'],
+            'containerCommodity' => ['nullable', 'string', 'max:25'],
+            'containerPickup' => ['nullable', 'date'],
+        ], attributes: [
+            'containerNumber' => 'número',
+            'containerSeal' => 'sello',
+            'containerType' => 'tipo',
+            'containerQuantity' => 'cantidad',
+            'containerCommodity' => 'mercancía',
+            'containerPickup' => 'fecha de recolección',
+        ]);
+
+        $valores = [
+            'booking' => $this->bookingId,
+            'number' => $datos['containerNumber'] ?: null,
+            'seal' => $datos['containerSeal'] ?: null,
+            'container_type' => $datos['containerType'] === '' ? null : (int) $datos['containerType'],
+            'quantity' => (int) $datos['containerQuantity'],
+            'comodity' => $datos['containerCommodity'] ?: null,
+            'pick_up_date' => $datos['containerPickup'] ?: null,
+            'modified_by' => auth()->id(),
+        ];
+
+        if ($this->containerId === null) {
+            DB::table('containers')->insert($valores + ['created_by' => auth()->id(), 'created_at' => now()]);
+        } else {
+            DB::table('containers')->where('container_ID', $this->containerId)->update($valores);
+        }
+
+        $this->resetContainerForm();
+    }
+
+    public function deleteContainer(int $container): void
+    {
+        $this->assertEditable();
+
+        DB::table('containers')
+            ->where('booking', $this->bookingId)
+            ->where('container_ID', $container)
+            ->delete();
+
+        $this->resetContainerForm();
+    }
+
+    public function cancelContainerEdit(): void
+    {
+        $this->resetContainerForm();
+    }
+
+    private function resetContainerForm(): void
+    {
+        $this->reset([
+            'editingContainer', 'containerId', 'containerNumber', 'containerSeal',
+            'containerType', 'containerCommodity', 'containerPickup',
+        ]);
+        $this->containerQuantity = '1';
+        $this->resetErrorBag();
+    }
+
+    private function asOption(mixed $valor): string
+    {
+        return $valor === null ? '' : (string) $valor;
+    }
+
     public function render()
     {
         $fila = $this->header();
@@ -111,6 +242,7 @@ class BookingDetail extends Component
             'contenedores' => $this->containers(),
             'transacciones' => $this->transactions(),
             'checklist' => $this->checklist(),
+            'tiposContenedor' => DB::table('container_types')->orderBy('container_name')->pluck('container_name', 'contType_id')->all(),
         ])->layout('components.app-layout', [
             'title' => trim((string) $fila->booking_number) ?: 'Booking '.$this->bookingId,
         ]);

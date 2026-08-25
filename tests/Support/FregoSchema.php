@@ -162,6 +162,10 @@ class FregoSchema
             $table->string('number')->nullable();
             $table->string('seal')->nullable();
             $table->dateTime('pick_up_date')->nullable();
+            $table->integer('created_by')->nullable();
+            $table->integer('modified_by')->nullable();
+            $table->dateTime('created_at')->nullable();
+            $table->dateTime('modified_at')->nullable();
         });
 
         Schema::create('container_types', function ($table) {
