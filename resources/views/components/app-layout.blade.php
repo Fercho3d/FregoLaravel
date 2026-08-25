@@ -30,6 +30,7 @@
             ['Facturas', route('transactions.invoice'), request()->routeIs('transactions.invoice'), 'factura'],
             ['Costos', route('transactions.bill'), request()->routeIs('transactions.bill'), 'costo'],
             ['Transacciones', route('transactions.all'), request()->routeIs('transactions.all', 'transactions.booking'), 'transaccion'],
+            ['Utilidad por booking', route('transactions.report.booking'), request()->routeIs('transactions.report.*'), 'reporte'],
         ] : [],
         [
             ['Catálogos', '#', false, 'catalogo'],

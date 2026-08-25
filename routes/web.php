@@ -3,6 +3,7 @@
 use App\Http\Controllers\ThemeController;
 use App\Http\Controllers\TransactionFileController;
 use App\Http\Middleware\EnsureUserIsAdmin;
+use App\Livewire\Transactions\BookingReport;
 use App\Livewire\Transactions\TransactionDetail;
 use App\Livewire\Transactions\TransactionForm;
 use App\Livewire\Transactions\TransactionTable;
@@ -37,6 +38,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/todas', TransactionTable::class)->defaults('screen', 'all')->name('all');
         Route::get('/booking/{booking}', TransactionTable::class)->defaults('screen', 'booking')->name('booking');
         Route::get('/nueva', TransactionForm::class)->name('create');
+        Route::get('/reporte/booking', BookingReport::class)->name('report.booking');
         Route::get('/{transaction}', TransactionDetail::class)->whereNumber('transaction')->name('show');
         Route::get('/{transaction}/editar', TransactionForm::class)->whereNumber('transaction')->name('edit');
         Route::get('/{transaction}/archivo/{kind}', TransactionFileController::class)
