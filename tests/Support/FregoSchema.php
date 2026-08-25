@@ -14,6 +14,31 @@ use Illuminate\Support\Facades\Schema;
  */
 class FregoSchema
 {
+    /**
+     * Tabla `users` heredada de Yii2. Va aparte porque la mayoría de las pruebas
+     * no la necesita: para autenticar basta un modelo en memoria.
+     */
+    public static function createUsers(): void
+    {
+        Schema::create('users', function ($table) {
+            $table->increments('usr_id');
+            $table->string('name')->nullable();
+            $table->string('email')->nullable();
+            $table->string('username')->nullable();
+            $table->string('password')->nullable();
+            $table->tinyInteger('role')->nullable();
+            $table->tinyInteger('access')->nullable();
+            $table->integer('client_id')->nullable();
+            $table->integer('provider_id')->nullable();
+            $table->tinyInteger('status')->default(1);
+            $table->string('remember_token', 100)->nullable();
+            $table->text('two_factor_secret')->nullable();
+            $table->dateTime('last_login')->nullable();
+            $table->dateTime('created_at')->nullable();
+            $table->dateTime('modified_at')->nullable();
+        });
+    }
+
     public static function create(): void
     {
         // No es del esquema heredado, pero cualquier prueba que pinte una

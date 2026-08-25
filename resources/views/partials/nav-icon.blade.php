@@ -20,6 +20,9 @@
         @case('operacion')
             <path stroke-linecap="round" stroke-linejoin="round" d="M3 16V8l4-3 4 3v8m0-6h6l4 3v3m-14 0a2 2 0 1 0 4 0 2 2 0 0 0-4 0zm10 0a2 2 0 1 0 4 0 2 2 0 0 0-4 0z"/>
             @break
+        @case('usuarios')
+            <path stroke-linecap="round" stroke-linejoin="round" d="M16 19v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1M9.5 7.5a3 3 0 1 0 0 .01M21 19v-1a4 4 0 0 0-3-3.87M16 4.13a4 4 0 0 1 0 7.75"/>
+            @break
         @case('reporte')
             <path stroke-linecap="round" stroke-linejoin="round" d="M4 19h16M7 16V9m5 7V5m5 11v-4"/>
             @break

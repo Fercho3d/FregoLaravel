@@ -4,6 +4,7 @@ use App\Http\Controllers\ThemeController;
 use App\Http\Controllers\TransactionFileController;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Livewire\Catalogs\CatalogManager;
+use App\Livewire\Users\UserManager;
 use App\Livewire\Operations\BookingDetail;
 use App\Livewire\Operations\BookingList;
 use App\Livewire\Payments\PaymentRequestForm;
@@ -37,6 +38,12 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/bookings', BookingList::class)->name('bookings');
         Route::get('/bookings/{booking}', BookingDetail::class)->whereNumber('booking')->name('bookings.show');
     });
+
+    /*
+     * Usuarios y accesos. Solo el super administrador entra aquí, igual que el
+     * `UserController` de Yii2.
+     */
+    Route::get('/usuarios', UserManager::class)->name('users');
 
     /*
      * Catálogos maestros. Una sola pantalla para los dieciséis: lo que cambia

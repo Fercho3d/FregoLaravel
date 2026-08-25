@@ -36,6 +36,11 @@
             ['Pagos por proveedor', route('payments.report.vendor'), request()->routeIs('payments.report.vendor'), 'banco'],
             ['Cobros y pagos', route('payments.report.general'), request()->routeIs('payments.report.general'), 'banco'],
         ] : [],
+        // Los usuarios los administra solo el super administrador; para el resto
+        // la ruta responde 403, así que ni se lista.
+        (auth()->user()?->isSuperAdmin() ?? false)
+            ? [['Usuarios', route('users'), request()->routeIs('users'), 'usuarios']]
+            : [],
         [
             ['Catálogos', route('catalogs.show', 'companias'), request()->routeIs('catalogs.*'), 'catalogo'],
             ['Operación', route('operations.bookings'), request()->routeIs('operations.*'), 'operacion'],
