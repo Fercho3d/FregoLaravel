@@ -4,7 +4,6 @@ use App\Http\Controllers\ThemeController;
 use App\Http\Controllers\TransactionFileController;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Livewire\Catalogs\CatalogManager;
-use App\Livewire\Users\UserManager;
 use App\Livewire\Operations\BookingDetail;
 use App\Livewire\Operations\BookingList;
 use App\Livewire\Payments\PaymentRequestForm;
@@ -14,6 +13,7 @@ use App\Livewire\Transactions\BookingReport;
 use App\Livewire\Transactions\TransactionDetail;
 use App\Livewire\Transactions\TransactionForm;
 use App\Livewire\Transactions\TransactionTable;
+use App\Livewire\Users\UserManager;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
