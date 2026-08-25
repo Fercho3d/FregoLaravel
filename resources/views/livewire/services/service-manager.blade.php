@@ -95,11 +95,88 @@
                     @error('form.price') <span class="mt-1 block text-xs text-brand">{{ $message }}</span> @enderror
                 </label>
 
+                <label class="block">
+                    <span class="field-label">Divisa</span>
+                    <select wire:model="form.account_id" class="field-input mt-1.5" required>
+                        <option value="">Selecciona</option>
+                        @foreach ($divisas as $id => $prefijo)
+                            <option value="{{ $id }}" @selected((string) $id === (string) ($form['account_id'] ?? ''))>{{ $prefijo }}</option>
+                        @endforeach
+                    </select>
+                    @error('form.account_id') <span class="mt-1 block text-xs text-brand">{{ $message }}</span> @enderror
+                </label>
+
+                @foreach ([['min', 'Precio mínimo'], ['max', 'Precio máximo']] as [$campo, $etiqueta])
+                    <label class="block">
+                        <span class="field-label">
+                            {{ $etiqueta }} <span class="font-normal text-ink-faint">(referencia)</span>
+                        </span>
+                        <input type="number" step="0.0001" min="0" wire:model="form.{{ $campo }}" value="{{ $form[$campo] ?? '' }}"
+                               class="field-input mt-1.5 text-right tabular-nums">
+                        @error('form.'.$campo) <span class="mt-1 block text-xs text-brand">{{ $message }}</span> @enderror
+                    </label>
+                @endforeach
+
                 <label class="flex items-end gap-2 pb-2.5 text-sm text-ink-soft">
                     <input type="checkbox" wire:model="form.active" @checked($form['active'] ?? false)
                            class="h-4 w-4 rounded border-line bg-panel text-accent-500 focus:ring-accent-500">
                     Activo
                 </label>
+            </div>
+
+            {{-- Lo que necesita la generación automática del booking --}}
+            <div class="rounded-xl border border-line bg-raised/40 p-4">
+                <label class="flex items-start gap-2.5 text-sm text-ink-soft">
+                    <input type="checkbox" wire:model.live="form.auto_include" @checked($form['auto_include'] ?? false)
+                           class="mt-0.5 h-4 w-4 rounded border-line bg-panel text-accent-500 focus:ring-accent-500">
+                    <span>
+                        Incluirlo solo en la factura y los costos del booking
+                        <span class="mt-0.5 block text-xs text-ink-faint">
+                            El booking lo propondrá cuando su ruta coincida con la de aquí abajo. Los campos
+                            que dejes vacíos solo empatan con bookings que tampoco los tengan.
+                        </span>
+                    </span>
+                </label>
+
+                <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    <label class="block">
+                        <span class="field-label">Tipo de precio</span>
+                        <select wire:model="form.price_type" class="field-input mt-1.5">
+                            <option value="">Sin definir</option>
+                            @foreach ($this->priceTypes() as $id => $etiqueta)
+                                <option value="{{ $id }}" @selected((string) $id === (string) ($form['price_type'] ?? ''))>{{ $etiqueta }}</option>
+                            @endforeach
+                        </select>
+                        @error('form.price_type') <span class="mt-1 block text-xs text-brand">{{ $message }}</span> @enderror
+                    </label>
+
+                    @foreach ([
+                        ['loading_port_id', 'Puerto de carga', $puertosCarga],
+                        ['dicharge_port_id', 'Puerto de descarga', $puertosDescarga],
+                        ['pickup_place_id', 'Lugar de recolección', $lugares],
+                        ['final_destination_id', 'Destino final', $destinos],
+                        ['container_type_id', 'Tipo de contenedor', $tiposContenedor],
+                    ] as [$campo, $etiqueta, $opciones])
+                        <label class="block">
+                            <span class="field-label">{{ $etiqueta }}</span>
+                            <select wire:model="form.{{ $campo }}" class="field-input mt-1.5">
+                                <option value="">Cualquiera</option>
+                                @foreach ($opciones as $id => $nombre)
+                                    <option value="{{ $id }}" @selected((string) $id === (string) ($form[$campo] ?? ''))>{{ $nombre }}</option>
+                                @endforeach
+                            </select>
+                            @error('form.'.$campo) <span class="mt-1 block text-xs text-brand">{{ $message }}</span> @enderror
+                        </label>
+                    @endforeach
+
+                    @foreach ([['start_date', 'Vigente desde'], ['end_date', 'Vigente hasta']] as [$campo, $etiqueta])
+                        <label class="block">
+                            <span class="field-label">{{ $etiqueta }}</span>
+                            <input type="date" wire:model="form.{{ $campo }}" value="{{ $form[$campo] ?? '' }}" class="field-input mt-1.5">
+                            @error('form.'.$campo) <span class="mt-1 block text-xs text-brand">{{ $message }}</span> @enderror
+                        </label>
+                    @endforeach
+                </div>
             </div>
 
             <div class="flex flex-wrap justify-end gap-3 border-t border-line pt-4">
@@ -138,8 +215,17 @@
                 <tbody class="divide-y divide-line">
                     @forelse ($servicios as $servicio)
                         <tr class="transition hover:bg-raised {{ $servicio->active ? '' : 'opacity-60' }}">
-                            <td class="max-w-[22rem] truncate px-4 py-2 text-ink" title="{{ $servicio->description }}">
-                                {{ $servicio->description ?: '—' }}
+                            <td class="max-w-[22rem] px-4 py-2">
+                                <p class="truncate text-ink" title="{{ $servicio->description }}">{{ $servicio->description ?: '—' }}</p>
+                                <p class="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-ink-faint">
+                                    <span>{{ $servicio->currency ?: '—' }}</span>
+                                    @if ($servicio->auto_include)
+                                        <span class="badge badge-neutral">Auto-incluible</span>
+                                        @if ($servicio->end_date)
+                                            <span>vigente hasta {{ $servicio->end_date }}</span>
+                                        @endif
+                                    @endif
+                                </p>
                             </td>
                             <td class="max-w-[14rem] truncate px-4 py-2 text-ink-muted">
                                 {{ ($esVenta ? $servicio->client_name : $servicio->provider_name) ?: '—' }}
