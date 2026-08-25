@@ -22,9 +22,9 @@
 
         <p class="mt-4 max-w-3xl text-sm text-ink-muted">
             Estos son los servicios contratados que empatan con la ruta del booking y con los contenedores
-            que lleva. Nada se escribe hasta que confirmes: revisa los renglones, quita los que no
-            correspondan y abajo verás exactamente qué documentos van a quedar, con fecha
-            {{ $hoy->format('d/m/Y') }}.
+            que lleva. Es la misma propuesta que armaba el sistema anterior, entera y marcada: confirmar
+            sin tocar nada escribe lo mismo que él. Nada se guarda hasta que confirmes, y abajo verás
+            exactamente qué documentos van a quedar, con fecha {{ $hoy->format('d/m/Y') }}.
         </p>
 
         @if ($existentes->isNotEmpty())
@@ -94,8 +94,17 @@
                                         <p class="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-ink-faint">
                                             <span>{{ $divisa($renglon->accountId) }}</span>
                                             @if ($renglon->documents > 1)
-                                                <span class="badge badge-neutral">{{ $renglon->documents }} costos, uno por contenedor</span>
+                                                <span class="badge badge-neutral">{{ $renglon->documents }} costos de este precio</span>
                                             @endif
+                                            @if ($renglon->discarded > 0)
+                                                <span class="badge badge-warn">
+                                                    {{ trans_choice('{1}Otro precio empata|[2,*]Otros :count precios empatan', $renglon->discarded, ['count' => $renglon->discarded]) }}
+                                                    con esta ruta
+                                                </span>
+                                            @endif
+                                            @unless ($renglon->active)
+                                                <span class="badge badge-danger">Servicio dado de baja</span>
+                                            @endunless
                                             @if ($renglon->priceType === null)
                                                 <span class="badge badge-danger">Sin tipo de precio</span>
                                             @endif
@@ -126,6 +135,17 @@
                     </table>
                 </div>
 
+                @php $descartados = collect($renglones)->max(fn ($r) => $r->discarded) ?? 0; @endphp
+
+                @if ($descartados > 0)
+                    <p class="border-t border-line px-5 py-3 text-xs" style="color: var(--warn-ink)">
+                        Con esta ruta empatan {{ $descartados + 1 }} precios distintos de este transportista.
+                        El sistema toma el primero y abre un costo por cada contenedor y por cada precio que
+                        empató, que es lo que hacía el sistema anterior. Si no es lo que corresponde, quita el
+                        renglón y captura el costo a mano.
+                    </p>
+                @endif
+
                 <footer class="border-t border-line px-5 py-3 text-xs text-ink-muted">
                     @if ($documentos === [])
                         Sin renglones marcados: no se creará ningún documento.
@@ -141,19 +161,6 @@
             @endif
         </section>
     @endforeach
-
-    {{-- Precios fuera de vigencia --}}
-    @if ($this->hiddenCount() > 0 || $showExpired)
-        <div class="text-center text-sm">
-            <button type="button" wire:click="$toggle('showExpired')" class="text-ink-muted underline transition hover:text-brand">
-                @if ($showExpired)
-                    Ocultar los precios fuera de vigencia
-                @else
-                    Ver {{ $this->hiddenCount() }} {{ $this->hiddenCount() === 1 ? 'precio' : 'precios' }} fuera de vigencia
-                @endif
-            </button>
-        </div>
-    @endif
 
     {{-- Confirmación --}}
     <section class="card p-5 sm:p-6">

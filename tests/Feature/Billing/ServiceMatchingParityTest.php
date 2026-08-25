@@ -18,14 +18,12 @@ use Tests\FregoDatabaseTestCase;
  * no con el mismo constructor de consultas, para que la comparación valga— y se
  * confronta con lo que propone `ServiceMatcher`.
  *
- * Se comparan los tres bloques donde la promesa es «lo mismo que antes». Los dos
- * cambios deliberados quedan fuera y tienen su propia prueba:
- *
- * · el costo del transportista, donde el original colapsaba todos los servicios
- *   que empataban en un renglón al azar (aquí se comprueba la parte donde sí
- *   coinciden: cuando empata uno solo);
- * · los servicios de aduana del cliente, donde el original no filtraba por
- *   `active` (se compara contra el resultado del original ya sin las bajas).
+ * Se comparan los cuatro bloques, rarezas incluidas: la promesa de esta pieza es
+ * proponer exactamente lo que proponía el sistema viejo. El costo del
+ * transportista se compara contra el SQL literal del original —esa suma sin
+ * `GROUP BY` que colapsa todos los precios que empataron en un solo renglón—,
+ * que es la única forma de saber si la fila que elige la base es la que se está
+ * replicando.
  *
  * Corre contra la base local `frego` con datos de producción, así que es lenta:
  *   vendor/bin/phpunit --group parity
@@ -97,11 +95,13 @@ class ServiceMatchingParityTest extends FregoDatabaseTestCase
     }
 
     /**
-     * El transportista es el cambio deliberado. Donde el original acertaba —un
-     * solo servicio empatando— la propuesta tiene que ser idéntica: el mismo
-     * servicio y un costo por contenedor.
+     * El transportista, contra el renglón único que devuelve el original.
+     *
+     * Aquí se comprueba lo que no se puede deducir leyendo el código: **de qué
+     * fila saca la base los datos** cuando colapsa varias, y que la cantidad
+     * inflada (contenedores × precios que empataron) coincide.
      */
-    public function test_el_transportista_coincide_cuando_el_original_no_se_confundia(): void
+    public function test_el_transportista_replica_el_renglon_unico_del_original(): void
     {
         $comparados = 0;
 
@@ -111,16 +111,18 @@ class ServiceMatchingParityTest extends FregoDatabaseTestCase
             }
 
             $original = $this->legacyTransport($booking);
+            $propuesta = $this->emparejador->forBlock($booking, BillingBlock::Transport);
+            $mensaje = 'Booking '.$booking->booking_id;
 
-            if (count($original) !== 1) {
+            if ($original->service_id === null) {
+                $this->assertSame([], $propuesta, $mensaje);
+
                 continue;
             }
 
-            $propuesta = $this->emparejador->forBlock($booking, BillingBlock::Transport);
-
-            $this->assertCount(1, $propuesta, 'Booking '.$booking->booking_id);
-            $this->assertSame((int) $original[0]->service_id, $propuesta[0]->serviceId);
-            $this->assertSame($this->totalContainers($booking), $propuesta[0]->documents);
+            $this->assertCount(1, $propuesta, $mensaje);
+            $this->assertSame((int) $original->service_id, $propuesta[0]->serviceId, $mensaje);
+            $this->assertSame((int) $original->quantity, $propuesta[0]->documents, $mensaje);
             $comparados++;
         }
 
@@ -206,12 +208,7 @@ class ServiceMatchingParityTest extends FregoDatabaseTestCase
         return $this->routeSelect($donde, $ataduras);
     }
 
-    /**
-     * `getBrockerServices()`, ya sin las bajas: el original no las filtraba y ese
-     * es uno de los dos cambios deliberados.
-     *
-     * @return list<object>
-     */
+    /** `getBrockerServices()` tal cual: sin filtro de ruta y sin filtro de baja. */
     private function legacyBrokerExtras(Booking $booking): array
     {
         if ($booking->custom_brocker_id === null) {
@@ -222,7 +219,6 @@ class ServiceMatchingParityTest extends FregoDatabaseTestCase
             'SELECT service_id, price_type, container_type_id, null AS quantity
              FROM service
              WHERE client_id = ? AND auto_include = 1 AND (price_type = 3 OR price_type = 4)
-               AND active = 1
              ORDER BY account_id',
             [$booking->client],
         );
@@ -260,14 +256,13 @@ class ServiceMatchingParityTest extends FregoDatabaseTestCase
     }
 
     /**
-     * Los servicios del transportista **sin** el `SUM` que el original dejaba sin
-     * agrupar: aquí interesa cuántos empataban de verdad.
-     *
-     * @return list<object>
+     * El SQL del transportista **tal cual lo arma Yii2**, con su `SUM` sin
+     * `GROUP BY`. Devuelve siempre una fila: o la del precio que la base eligió
+     * —con la cantidad ya multiplicada por cuántos empataron— o una de nulos.
      */
-    private function legacyTransport(Booking $booking): array
+    private function legacyTransport(Booking $booking): object
     {
-        $ataduras = [];
+        $ataduras = [$booking->booking_id];
         $donde = [
             $this->condition('loading_port_id', $booking->loading_port, $ataduras),
             $this->condition('pickup_place_id', $booking->pick_up_place_id, $ataduras),
@@ -277,10 +272,14 @@ class ServiceMatchingParityTest extends FregoDatabaseTestCase
         ];
 
         return DB::select(
-            'SELECT service_id, price_type, container_type_id, null AS quantity
-             FROM service WHERE '.implode(' AND ', $donde).' ORDER BY account_id',
+            'SELECT service.service_id, SUM(containers.quantity) AS quantity
+             FROM service
+             INNER JOIN containers ON containers.booking = ?
+             INNER JOIN container_types ON container_types.contType_id = containers.container_type
+             WHERE '.implode(' AND ', $donde).'
+             ORDER BY service.account_id',
             $ataduras,
-        );
+        )[0];
     }
 
     /**

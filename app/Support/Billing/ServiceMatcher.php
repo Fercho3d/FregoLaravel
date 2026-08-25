@@ -21,16 +21,16 @@ use Illuminate\Support\Facades\DB;
  * es `App\Actions\Bookings\PlanBookingBilling` y quien los guarda,
  * `GenerateBookingBilling`.
  *
- * Dos diferencias deliberadas con el original, las dos anotadas donde ocurren:
- * el costo del transportista deja de depender de un renglón al azar, y los
- * servicios dados de baja ya no se cuelan en la factura.
+ * **Propone exactamente lo mismo que el original**, rarezas incluidas: eso es lo
+ * que se está migrando. Las que se conservan a propósito llevan su nota y su
+ * prueba de paridad contra la base real.
  */
 class ServiceMatcher
 {
     /** Columnas del servicio que necesita un renglón. */
     private const COLUMNS = [
         's.service_id', 's.description', 's.price', 's.account_id', 's.charge_type_id',
-        's.price_type', 's.container_type_id', 's.start_date', 's.end_date',
+        's.price_type', 's.container_type_id', 's.start_date', 's.end_date', 's.active',
     ];
 
     /**
@@ -120,8 +120,9 @@ class ServiceMatcher
      * contenedor de aduana» (3) o «por BL de aduana» (4). Es `getBrockerServices()`,
      * y va después de los de ruta para que el original arme los mismos documentos.
      *
-     * ⚠️ Cambio deliberado: el original **no filtraba por `active`**, así que un
-     * precio dado de baja seguía apareciendo en facturas nuevas. Aquí no entra.
+     * ⚠️ Rareza que se conserva: es el único de los cinco caminos que **no filtra
+     * por `active`**, así que un precio dado de baja sigue apareciendo en facturas
+     * nuevas. Se deja igual que el original; la pantalla lo marca en rojo.
      *
      * @return list<object>
      */
@@ -135,7 +136,6 @@ class ServiceMatcher
             ->select(array_merge(self::COLUMNS, [DB::raw('null as container_name'), DB::raw('null as matched_quantity')]))
             ->where('s.client_id', $booking->client)
             ->where('s.auto_include', 1)
-            ->where('s.active', 1)
             ->whereIn('s.price_type', [Service::PRICE_BY_BROKER_CONTAINER, Service::PRICE_BY_BROKER_BL])
             ->orderBy('s.account_id')
             ->orderBy('s.service_id')
@@ -200,15 +200,18 @@ class ServiceMatcher
     /**
      * El acarreo terrestre se cobra por viaje: un costo por contenedor.
      *
-     * ⚠️ Cambio deliberado. El original pedía `SUM(containers.quantity)` **sin
-     * `GROUP BY`**, así que la base colapsaba todos los servicios que empataban en
-     * un solo renglón: se quedaba con los datos de uno al azar y con una suma
-     * inflada (servicios × contenedores). Con un solo servicio por ruta —el caso
-     * normal— daba lo correcto; con varios facturaba varias veces el mismo precio.
-     * En la base local hay rutas con hasta cinco precios distintos para el mismo
-     * transportista, así que no es un caso hipotético. Aquí cada servicio se
-     * enseña por separado y el operador elige; el número de costos por servicio
-     * sigue siendo el de contenedores del booking.
+     * ⚠️ Aquí vive la rareza más grande del original y **se replica tal cual**.
+     * La consulta pide `SUM(containers.quantity)` **sin `GROUP BY`**, así que la
+     * base colapsa en una sola fila todos los servicios que empataron: se queda
+     * con los datos de uno y con una suma que ya viene multiplicada por cuántos
+     * eran (servicios × contenedores). Con un solo precio por ruta —el caso
+     * normal— sale lo correcto: un costo por contenedor.
+     *
+     * De qué fila salen los datos lo decide el plan de ejecución, que no es algo
+     * que se pueda copiar. Se toma el primero del orden de la consulta
+     * (divisa, luego id), que es con el que coincide en la base real; la prueba
+     * de paridad lo compara booking por booking contra lo que devuelve el SQL
+     * original, así que si alguna vez no coincidiera, se sabría.
      *
      * @return list<ServiceCandidate>
      */
@@ -231,12 +234,15 @@ class ServiceMatcher
         $this->matchColumn($consulta, 's.loading_port_id', $booking->loading_port);
         $this->matchColumn($consulta, 's.pickup_place_id', $booking->pick_up_place_id);
 
-        $viajes = (int) $this->totalContainers($booking);
+        $empataron = $consulta->get()->all();
 
-        return array_map(
-            fn (object $fila) => $this->candidate(BillingBlock::Transport, $fila, 1.0, $viajes),
-            $consulta->get()->all(),
-        );
+        if ($empataron === []) {
+            return [];
+        }
+
+        $viajes = (int) $this->totalContainers($booking) * count($empataron);
+
+        return [$this->candidate(BillingBlock::Transport, $empataron[0], 1.0, $viajes, count($empataron) - 1)];
     }
 
     // --------------------------------------------- Costo del agente aduanal
@@ -333,7 +339,7 @@ class ServiceMatcher
         return (float) DB::table('containers')->where('booking', $booking->booking_id)->sum('quantity');
     }
 
-    private function candidate(BillingBlock $bloque, object $fila, float $cantidad, int $documentos = 1): ServiceCandidate
+    private function candidate(BillingBlock $bloque, object $fila, float $cantidad, int $documentos = 1, int $descartados = 0): ServiceCandidate
     {
         return new ServiceCandidate(
             block: $bloque,
@@ -348,7 +354,9 @@ class ServiceMatcher
             containerName: $fila->container_name,
             startDate: $fila->start_date,
             endDate: $fila->end_date,
+            active: (bool) $fila->active,
             documents: $documentos,
+            discarded: $descartados,
         );
     }
 }

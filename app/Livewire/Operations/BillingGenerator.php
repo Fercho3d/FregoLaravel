@@ -28,10 +28,10 @@ use Livewire\Component;
  * solo entonces se escribe. Es la misma prudencia que se le puso al timbrado, y
  * por la misma razón: son documentos financieros.
  *
- * Los renglones vienen marcados según su vigencia. El catálogo de precios se
- * pacta por temporadas y una ruta muy usada acumula años de precios; el original
- * los tomaba todos por igual, que es justo lo que hace inservible la generación
- * automática cuando la ruta tiene historia.
+ * La propuesta viene **entera y marcada**: confirmar sin tocar nada escribe
+ * exactamente lo que escribía el sistema viejo. Lo que la pantalla añade es
+ * poder verlo antes —y quitar lo que no corresponda— en vez de descubrirlo
+ * después en la lista de transacciones.
  */
 class BillingGenerator extends Component
 {
@@ -39,9 +39,6 @@ class BillingGenerator extends Component
 
     /** Llaves de los renglones que se van a escribir. */
     public array $selected = [];
-
-    /** Enseñar también los precios fuera de vigencia. */
-    public bool $showExpired = false;
 
     /** @var array<string, list<ServiceCandidate>>|null */
     private ?array $cache = null;
@@ -59,12 +56,7 @@ class BillingGenerator extends Component
         $this->model = $modelo;
         $this->cache = $emparejador->candidates($modelo);
 
-        // Marcados de entrada solo los precios vigentes hoy. Lo demás está a la
-        // vista, pero exige que alguien lo elija a propósito.
-        $this->selected = array_map(
-            fn (ServiceCandidate $candidato) => $candidato->key(),
-            array_values(array_filter($this->all(), fn (ServiceCandidate $candidato) => $candidato->isCurrentOn($this->date()))),
-        );
+        $this->selected = array_map(fn (ServiceCandidate $candidato) => $candidato->key(), $this->all());
     }
 
     public function booking(): Booking
@@ -91,33 +83,14 @@ class BillingGenerator extends Component
     }
 
     /**
-     * Los renglones de un bloque que se enseñan: los vigentes siempre, y los
-     * caducados solo si se pidieron o si alguien los marcó.
+     * Los renglones de un bloque. Se enseñan todos: el original no descartaba
+     * ninguno y aquí tampoco.
      *
      * @return list<ServiceCandidate>
      */
     public function visible(BillingBlock $bloque): array
     {
-        return array_values(array_filter(
-            $this->candidates()[$bloque->value] ?? [],
-            fn (ServiceCandidate $candidato) => $this->showExpired
-                || $candidato->isCurrentOn($this->date())
-                || in_array($candidato->key(), $this->selected, true),
-        ));
-    }
-
-    /** Cuántos precios fuera de vigencia quedaron ocultos. */
-    public function hiddenCount(): int
-    {
-        if ($this->showExpired) {
-            return 0;
-        }
-
-        return count(array_filter(
-            $this->all(),
-            fn (ServiceCandidate $candidato) => ! $candidato->isCurrentOn($this->date())
-                && ! in_array($candidato->key(), $this->selected, true),
-        ));
+        return $this->candidates()[$bloque->value] ?? [];
     }
 
     public function plan(): BillingPlan
@@ -139,7 +112,7 @@ class BillingGenerator extends Component
             ->get(['transc_id', 'tran_number', 'tran_type', 'vendor', 'customer']);
     }
 
-    /** Marca todo lo que se está enseñando de un bloque. */
+    /** Vuelve a marcar el bloque completo. */
     public function selectAll(string $bloque): void
     {
         $llaves = array_map(

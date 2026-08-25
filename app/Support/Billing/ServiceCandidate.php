@@ -30,11 +30,23 @@ final class ServiceCandidate
         public readonly ?string $startDate,
         public readonly ?string $endDate,
         /**
-         * Cuántos documentos abre este renglón. Solo lo usa el transportista:
-         * el original le abre un costo por cada contenedor del booking, cada uno
-         * con un solo concepto de cantidad 1.
+         * Si el servicio sigue de alta. Solo puede llegar en falso por los
+         * servicios de aduana del cliente, el único camino que el original no
+         * filtra por `active`.
+         */
+        public readonly bool $active = true,
+        /**
+         * Cuántos documentos abre este renglón. Solo lo usa el transportista: el
+         * original le abre un costo por cada contenedor del booking —multiplicado
+         * por los precios que empataron, ver `ServiceMatcher::transportCandidates()`—,
+         * cada uno con un solo concepto de cantidad 1.
          */
         public readonly int $documents = 1,
+        /**
+         * Precios que empataron con la ruta y que el original descarta. Solo lo usa
+         * el transportista, y está aquí para que la pantalla lo pueda decir.
+         */
+        public readonly int $discarded = 0,
     ) {}
 
     /**
@@ -66,11 +78,10 @@ final class ServiceCandidate
     /**
      * Si el precio pactado sigue vigente en la fecha del documento.
      *
-     * El original **no mira las fechas del servicio**, y por eso una ruta muy
-     * usada acumula todos sus precios históricos: en la base local, la ruta
-     * Veracruz–Rotterdam de una naviera empata con diez servicios de meses
-     * distintos. Aquí la vigencia no descarta nada por su cuenta, solo decide qué
-     * viene marcado en la pantalla.
+     * El original **no mira las fechas del servicio** al emparejar, y aquí tampoco:
+     * un servicio caducado se propone igual, marcado como los demás. La vigencia se
+     * calcula solo para poder avisarlo en pantalla, porque una ruta muy usada
+     * acumula precios de años distintos y conviene que se note antes de confirmar.
      */
     public function isCurrentOn(Carbon $fecha): bool
     {

@@ -210,12 +210,16 @@ class ServiceMatchingTest extends TestCase
         $this->assertSame([], $this->match($this->booking(['custom_brocker_id' => null]), BillingBlock::Invoice));
     }
 
-    /** Cambio deliberado sobre el original, que no filtraba por `active` aquí. */
-    public function test_un_servicio_de_aduana_dado_de_baja_no_entra(): void
+    /**
+     * Rareza del original que se conserva: es el único camino que no filtra por
+     * `active`, así que un precio de aduana dado de baja sigue entrando a la
+     * factura. Si esto cambia algún día, que sea a propósito.
+     */
+    public function test_un_servicio_de_aduana_dado_de_baja_entra_igual(): void
     {
         $this->servicio(1, ['price_type' => 3, 'container_type_id' => null, 'active' => 0]);
 
-        $this->assertSame([], $this->match($this->booking(), BillingBlock::Invoice));
+        $this->assertCount(1, $this->match($this->booking(), BillingBlock::Invoice));
     }
 
     // ------------------------------------------------------------- Naviera
@@ -269,11 +273,12 @@ class ServiceMatchingTest extends TestCase
     }
 
     /**
-     * El original devolvía un solo renglón cuando varios servicios empataban
-     * —una suma sin `GROUP BY` que se quedaba con los datos de uno al azar—.
-     * Aquí se enseñan los dos y decide el operador.
+     * Cuando varios precios empatan, el original devuelve un solo renglón: la
+     * suma sin `GROUP BY` colapsa las filas y de paso multiplica la cantidad por
+     * cuántos eran. Se replica igual —dos precios y cinco contenedores dan diez
+     * costos del primer precio— y la pantalla avisa de los descartados.
      */
-    public function test_se_enseñan_todos_los_precios_del_transportista_que_empatan(): void
+    public function test_con_varios_precios_el_transportista_replica_el_renglon_unico_del_original(): void
     {
         foreach ([1, 2] as $id) {
             $this->servicio($id, [
@@ -284,8 +289,10 @@ class ServiceMatchingTest extends TestCase
 
         $renglones = $this->match($this->booking(), BillingBlock::Transport);
 
-        $this->assertCount(2, $renglones);
-        $this->assertSame([1000.0, 2000.0], array_map(fn (ServiceCandidate $c) => $c->price, $renglones));
+        $this->assertCount(1, $renglones);
+        $this->assertSame(1000.0, $renglones[0]->price);
+        $this->assertSame(10, $renglones[0]->documents);
+        $this->assertSame(1, $renglones[0]->discarded);
     }
 
     // ------------------------------------------------------- Agente aduanal
@@ -310,6 +317,7 @@ class ServiceMatchingTest extends TestCase
 
     // ------------------------------------------------------------ Vigencia
 
+    /** La vigencia no descarta nada, como en el original; solo se puede avisar. */
     public function test_la_vigencia_no_descarta_pero_si_se_sabe(): void
     {
         $this->servicio(1, ['start_date' => '2020-01-01', 'end_date' => '2020-12-31']);

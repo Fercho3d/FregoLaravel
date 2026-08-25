@@ -99,23 +99,29 @@ class BillingGeneratorTest extends TestCase
 
     // ---------------------------------------------------------- Propuesta
 
-    public function test_solo_se_marcan_de_entrada_los_precios_vigentes(): void
+    /**
+     * La propuesta llega entera y marcada: confirmar sin tocar nada tiene que
+     * escribir lo mismo que el sistema anterior.
+     */
+    public function test_la_propuesta_llega_completa_y_marcada(): void
     {
         $this->servicio(1);
-        $this->servicio(2, ['start_date' => '2020-01-01', 'end_date' => '2020-12-31', 'container_type_id' => 2]);
+        $this->servicio(2, ['container_type_id' => 2]);
 
-        $this->pantalla()->assertSet('selected', ['invoice:1:1']);
+        $this->pantalla()->assertSet('selected', ['invoice:1:1', 'invoice:2:2']);
     }
 
-    public function test_los_precios_fuera_de_vigencia_se_pueden_pedir(): void
+    /** Un precio caducado se propone igual —el original no miraba fechas—, avisando. */
+    public function test_un_precio_fuera_de_vigencia_se_propone_igual(): void
     {
         $this->servicio(1, ['start_date' => '2020-01-01', 'end_date' => '2020-12-31']);
 
         $this->pantalla()
-            ->assertSet('selected', [])
-            ->assertSee('Ver 1 precio fuera de vigencia')
-            ->set('showExpired', true)
-            ->assertSee('Servicio 1 - 40 HC');
+            ->assertSet('selected', ['invoice:1:1'])
+            ->assertSee('Fuera de vigencia')
+            ->call('generate');
+
+        $this->assertSame(1, DB::table('charge')->count());
     }
 
     public function test_cada_divisa_abre_su_propio_documento(): void
@@ -219,6 +225,19 @@ class BillingGeneratorTest extends TestCase
             ->assertHasErrors('plan');
 
         $this->assertSame(0, DB::table('transaction')->count());
+    }
+
+    /**
+     * Los servicios de aduana entran aunque estén dados de baja —el original no
+     * los filtraba— así que al menos tiene que verse.
+     */
+    public function test_se_avisa_de_un_servicio_dado_de_baja(): void
+    {
+        DB::table('booking')->where('booking_id', 1)->update(['custom_brocker_id' => 300]);
+        DB::table('provider')->insert([['provider_id' => 300, 'fullName' => 'Agente', 'type_id' => 3]]);
+        $this->servicio(1, ['price_type' => 3, 'container_type_id' => null, 'active' => 0]);
+
+        $this->pantalla()->assertSee('Servicio dado de baja');
     }
 
     public function test_se_avisa_de_las_transacciones_que_el_booking_ya_tiene(): void
