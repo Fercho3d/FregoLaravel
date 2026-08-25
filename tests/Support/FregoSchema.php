@@ -187,6 +187,13 @@ class FregoSchema
             $table->string('invoice_use')->nullable();
             $table->string('regimen_fiscal_id')->nullable();
             $table->string('postal_code')->nullable();
+            $table->string('phone')->nullable();
+            $table->string('address')->nullable();
+            $table->string('city')->nullable();
+            $table->string('state')->nullable();
+            $table->integer('account_id')->nullable();
+            $table->integer('created_by')->nullable();
+            $table->integer('modified_by')->nullable();
         });
 
         Schema::create('provider', function ($table) {
@@ -197,6 +204,15 @@ class FregoSchema
             $table->dateTime('modified_at')->nullable();
             // 1 naviera, 2 transportista, 3 agente aduanal.
             $table->integer('type_id')->nullable();
+            $table->string('rfc')->nullable();
+            $table->string('phone')->nullable();
+            $table->string('address')->nullable();
+            $table->string('city')->nullable();
+            $table->string('state')->nullable();
+            $table->string('postal_code')->nullable();
+            $table->integer('account_id')->nullable();
+            $table->integer('created_by')->nullable();
+            $table->integer('modified_by')->nullable();
         });
 
         Schema::create('charge_type', function ($table) {

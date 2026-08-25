@@ -10,6 +10,7 @@ use App\Livewire\Catalogs\CatalogManager;
 use App\Livewire\Operations\BookingDetail;
 use App\Livewire\Operations\BookingForm;
 use App\Livewire\Operations\BookingList;
+use App\Livewire\Parties\PartyManager;
 use App\Livewire\Payments\PaymentRequestForm;
 use App\Livewire\Payments\PaymentRequestList;
 use App\Livewire\Payments\PaymentsReport;
@@ -72,6 +73,15 @@ Route::middleware(['auth', EnsureUserIsInternal::class])->group(function () {
      * `UserController` de Yii2.
      */
     Route::get('/usuarios', UserManager::class)->name('users');
+
+    /*
+     * Clientes y proveedores. No son catálogos planos: llevan datos fiscales y de
+     * facturación, y los del cliente son los que viajan al CFDI.
+     */
+    Route::middleware(EnsureUserIsAdmin::class)->prefix('terceros')->name('parties.')->group(function () {
+        Route::get('/clientes', PartyManager::class)->defaults('mode', 'client')->name('clients');
+        Route::get('/proveedores', PartyManager::class)->defaults('mode', 'provider')->name('providers');
+    });
 
     /*
      * Catálogos maestros. Una sola pantalla para los dieciséis: lo que cambia
