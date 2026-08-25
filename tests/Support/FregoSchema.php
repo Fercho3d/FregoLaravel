@@ -146,6 +146,14 @@ class FregoSchema
             $table->integer('prepaid')->nullable();
         });
 
+        Schema::create('bank', function ($table) {
+            $table->integer('bank_id')->primary();
+            $table->string('bank_name')->nullable();
+            $table->string('account_number')->nullable();
+            $table->boolean('active')->default(true);
+            $table->boolean('default')->default(false);
+        });
+
         Schema::create('payment_request', function ($table) {
             $table->integer('request_id')->primary();
             $table->string('number')->default('');
@@ -159,6 +167,13 @@ class FregoSchema
             $table->date('date')->nullable();
             $table->dateTime('created_at')->nullable();
             $table->dateTime('modified_at')->nullable();
+            $table->integer('created_by')->nullable();
+            $table->integer('modified_by')->nullable();
+            $table->integer('opened')->default(1);
+            $table->integer('custom_tc')->nullable();
+            $table->decimal('tc_value', 16, 4)->nullable();
+            $table->decimal('total_to_pay', 18, 4)->nullable();
+            $table->text('payments')->nullable();
         });
 
         Schema::create('payments_by_transaction', function ($table) {

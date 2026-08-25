@@ -31,6 +31,7 @@
             ['Costos', route('transactions.bill'), request()->routeIs('transactions.bill'), 'costo'],
             ['Transacciones', route('transactions.all'), request()->routeIs('transactions.all', 'transactions.booking'), 'transaccion'],
             ['Utilidad por booking', route('transactions.report.booking'), request()->routeIs('transactions.report.*'), 'reporte'],
+            ['Solicitudes de pago', route('payments.requests'), request()->routeIs('payments.requests'), 'banco'],
             ['Cobros por cliente', route('payments.report.customer'), request()->routeIs('payments.report.customer'), 'banco'],
             ['Pagos por proveedor', route('payments.report.vendor'), request()->routeIs('payments.report.vendor'), 'banco'],
             ['Cobros y pagos', route('payments.report.general'), request()->routeIs('payments.report.general'), 'banco'],

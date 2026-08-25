@@ -4,6 +4,8 @@ use App\Http\Controllers\ThemeController;
 use App\Http\Controllers\TransactionFileController;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Livewire\Catalogs\CatalogManager;
+use App\Livewire\Payments\PaymentRequestForm;
+use App\Livewire\Payments\PaymentRequestList;
 use App\Livewire\Payments\PaymentsReport;
 use App\Livewire\Transactions\BookingReport;
 use App\Livewire\Transactions\TransactionDetail;
@@ -39,6 +41,8 @@ Route::middleware(['auth'])->group(function () {
      * origen es otro: la tabla de solicitudes de pago, no la de documentos.
      */
     Route::middleware(EnsureUserIsAdmin::class)->prefix('pagos')->name('payments.')->group(function () {
+        Route::get('/solicitudes', PaymentRequestList::class)->name('requests');
+        Route::get('/solicitudes/nueva', PaymentRequestForm::class)->name('requests.create');
         Route::get('/reporte/clientes', PaymentsReport::class)->defaults('mode', 'customer')->name('report.customer');
         Route::get('/reporte/proveedores', PaymentsReport::class)->defaults('mode', 'vendor')->name('report.vendor');
         Route::get('/reporte/general', PaymentsReport::class)->defaults('mode', 'general')->name('report.general');

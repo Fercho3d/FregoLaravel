@@ -74,6 +74,13 @@ class TransactionTable extends Component
      */
     public ?array $profit = null;
 
+    /**
+     * Transacciones marcadas para agrupar en una solicitud de pago.
+     *
+     * @var int[]
+     */
+    public array $selected = [];
+
     /** Milisegundos que tardó la consulta de la última pintada. */
     public float $queryMs = 0;
 
@@ -108,6 +115,7 @@ class TransactionTable extends Component
         $this->resetPage();
         $this->totals = null;
         $this->profit = null;
+        $this->selected = [];
     }
 
     public function sortBy(string $column): void
@@ -129,6 +137,26 @@ class TransactionTable extends Component
         $this->totals = null;
         $this->profit = null;
         $this->resetPage();
+    }
+
+    /** Manda a armar una solicitud de pago con lo que esté marcado. */
+    public function createPaymentRequest(): void
+    {
+        abort_unless(auth()->user()?->isAdmin() ?? false, 403);
+
+        if ($this->selected === []) {
+            $this->addError('selected', 'Marca al menos una transacción.');
+
+            return;
+        }
+
+        $this->redirectRoute('payments.requests.create', ['ids' => implode(',', $this->selected)], navigate: true);
+    }
+
+    /** ¿Esta pantalla permite agrupar en solicitudes de pago? */
+    public function allowsSelection(): bool
+    {
+        return in_array($this->screen, ['invoice', 'bill'], true);
     }
 
     /** Utilidad por booking: facturas menos costos, a TC del documento y del pago. */

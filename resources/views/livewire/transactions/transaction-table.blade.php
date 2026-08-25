@@ -148,6 +148,13 @@
                 <button type="button" wire:click="calculateTotals" class="btn-ghost !py-1.5 !px-3 text-xs">
                     Sumar todo el filtro
                 </button>
+                @if ($this->allowsSelection() && auth()->user()?->isAdmin())
+                    <button type="button" wire:click="createPaymentRequest" class="btn-ghost !py-1.5 !px-3 text-xs"
+                            @disabled($selected === [])>
+                        Agrupar en solicitud de pago
+                        @if ($selected !== []) <span class="text-brand">({{ count($selected) }})</span> @endif
+                    </button>
+                @endif
                 <label class="ml-auto flex items-center gap-2 text-xs text-ink-muted">
                     Por página
                     <select wire:model.live="perPage" class="field-input !w-auto py-1 text-xs">
@@ -159,6 +166,8 @@
             </div>
         </div>
     </div>
+
+    @error('selected') <p class="alert-danger">{{ $message }}</p> @enderror
 
     {{-- Utilidad por booking. Solo en Facturas y bajo demanda: es la consulta
          más cara de la pantalla y no siempre se ocupa. --}}
@@ -320,6 +329,9 @@
             <table class="min-w-full text-sm">
                 <thead class="border-b border-line bg-panel text-xs uppercase tracking-wide text-ink-muted">
                     <tr>
+                        @if ($this->allowsSelection())
+                            <th class="w-8 px-3 py-2.5"><span class="sr-only">Selección</span></th>
+                        @endif
                         @foreach ($columns as [$sortKey, $label, $align])
                             <th class="whitespace-nowrap px-3 py-2.5 font-semibold {{ $align }}">
                                 @if ($sortKey)
@@ -341,6 +353,13 @@
                     @forelse ($rows as $row)
                         @php $status = PaymentStatus::for($row); @endphp
                         <tr class="transition hover:bg-raised {{ $row->cancelled ? 'opacity-50' : '' }}">
+                            @if ($this->allowsSelection())
+                                <td class="px-3 py-2">
+                                    <input type="checkbox" wire:model.live="selected" value="{{ $row->transc_id }}"
+                                           aria-label="Seleccionar transacción {{ $row->tran_number }}"
+                                           class="h-4 w-4 rounded border-line bg-panel text-accent-500 focus:ring-accent-500">
+                                </td>
+                            @endif
                             <td class="whitespace-nowrap px-3 py-2">
                                 <a href="{{ route('transactions.booking', $row->booking) }}" wire:navigate
                                    class="text-brand hover:underline">{{ trim((string) $row->booking_number) ?: '—' }}</a>
@@ -378,7 +397,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="{{ count($columns) }}" class="px-3 py-12 text-center text-ink-faint">
+                            <td colspan="{{ count($columns) + ($this->allowsSelection() ? 1 : 0) }}" class="px-3 py-12 text-center text-ink-faint">
                                 No hay transacciones con estos filtros.
                             </td>
                         </tr>
@@ -388,7 +407,7 @@
                 @if ($totals)
                     <tfoot class="border-t border-line bg-panel text-sm font-semibold">
                         <tr>
-                            <td colspan="6" class="px-3 py-2.5 text-ink-muted">Total del filtro completo</td>
+                            <td colspan="{{ 6 + ($this->allowsSelection() ? 1 : 0) }}" class="px-3 py-2.5 text-ink-muted">Total del filtro completo</td>
                             <td class="px-3 py-2.5 text-right tabular-nums text-ink">{{ $money($totals['amount_original']) }}</td>
                             <td></td>
                             <td class="px-3 py-2.5 text-right tabular-nums text-ink-soft">{{ $money($totals['sub_0_mxn']) }}</td>
