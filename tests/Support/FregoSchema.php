@@ -101,9 +101,67 @@ class FregoSchema
             // confirmación las sigue imprimiendo tal cual.
             $table->string('dicharge_port')->nullable();
             $table->string('final_destination')->nullable();
+            // Instrucciones de embarque: cada parte, como viene y como debe decir.
+            foreach (['shipper', 'consignee', 'notify_party', 'description'] as $parte) {
+                $table->text($parte.'_is')->nullable();
+                $table->text($parte.'_should')->nullable();
+            }
             $table->text('remarks')->nullable();
             $table->dateTime('created_at')->nullable();
             $table->dateTime('modified_at')->nullable();
+        });
+
+        // Bitácoras. Las escribe la propia base en producción (no la aplicación),
+        // así que aquí solo hace falta poder leerlas.
+        Schema::create('booking_history', function ($table) {
+            $table->string('change_type')->nullable();
+            $table->dateTime('change_date')->nullable();
+            $table->integer('booking_id')->nullable();
+            $table->string('booking_number')->nullable();
+            $table->integer('client')->nullable();
+            $table->integer('vessel')->nullable();
+            $table->integer('loading_port')->nullable();
+            $table->integer('carrier_id')->nullable();
+            $table->string('commodity')->nullable();
+            $table->text('remarks')->nullable();
+            $table->integer('modified_by')->nullable();
+        });
+
+        Schema::create('containers_history', function ($table) {
+            $table->string('change_type')->nullable();
+            $table->dateTime('change_date')->nullable();
+            $table->integer('container_ID')->nullable();
+            $table->integer('booking')->nullable();
+            $table->integer('quantity')->nullable();
+            $table->string('comodity')->nullable();
+            $table->string('number')->nullable();
+            $table->string('seal')->nullable();
+            $table->integer('container_type')->nullable();
+            $table->integer('modified_by')->nullable();
+        });
+
+        Schema::create('booking_continuity_history', function ($table) {
+            $table->string('change_type')->nullable();
+            $table->dateTime('change_date')->nullable();
+            $table->integer('cont_id')->nullable();
+            $table->integer('booking')->nullable();
+            $table->dateTime('pickup_date')->nullable();
+            $table->dateTime('SI_date')->nullable();
+            $table->dateTime('departure')->nullable();
+            $table->integer('modified_by')->nullable();
+        });
+
+        Schema::create('check_list_history', function ($table) {
+            $table->string('change_type')->nullable();
+            $table->dateTime('change_date')->nullable();
+            $table->integer('check_id')->nullable();
+            $table->integer('booking')->nullable();
+            $table->integer('modified_by')->nullable();
+
+            foreach (['booking_number', 'departure', 'delivered'] as $casilla) {
+                $table->dateTime($casilla.'_chk_date')->nullable();
+                $table->integer($casilla.'_chk_by')->nullable();
+            }
         });
 
         // Tablas que acompañan al booking en el listado de operación.

@@ -67,6 +67,27 @@
                 @endforeach
             </div>
 
+            @if ($this->isClient())
+                {{-- Qué papeles se le piden a este cliente en cada booking --}}
+                <div class="rounded-xl border border-line bg-raised/40 p-4">
+                    <p class="text-sm font-medium text-ink">Documentos que se le piden</p>
+                    <p class="mt-0.5 text-xs text-ink-faint">
+                        Son los campos donde operación sube papeles en cada booking de este cliente.
+                        Si no marcas ninguno, su booking no ofrecerá dónde subirlos.
+                    </p>
+
+                    <div class="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                        @foreach ($this->documentCatalog() as $id => $etiqueta)
+                            <label class="flex items-center gap-2 text-sm text-ink-soft">
+                                <input type="checkbox" wire:model="documentFields" value="{{ $id }}"
+                                       class="h-4 w-4 rounded border-line bg-panel text-accent-500 focus:ring-accent-500">
+                                {{ $etiqueta }}
+                            </label>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+
             <p class="text-xs text-ink-faint">
                 Los accesos al portal se administran en la pantalla de usuarios, no aquí:
                 así las contraseñas se cambian en un solo lugar.

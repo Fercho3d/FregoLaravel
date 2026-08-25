@@ -47,15 +47,93 @@ class BookingDetail extends Component
 
     public string $containerPickup = '';
 
+    // --- Instrucciones de embarque ---
+    /** @var array<string, string|null> */
+    public array $instructions = [];
+
+    public bool $editingInstructions = false;
+
     // --- Documentos del booking ---
     /** Campo al que se está subiendo, para no mezclar los archivos. */
     public ?int $uploadField = null;
 
     public $upload = null;
 
+    /**
+     * Los ocho campos de las instrucciones de embarque: cómo viene cada parte en
+     * el documento y cómo debería decir. Es el «SI» del que cuelga el BL.
+     */
+    private const INSTRUCCIONES = [
+        'shipper' => 'Shipper',
+        'consignee' => 'Consignee',
+        'notify_party' => 'Notify party',
+        'description' => 'Descripción de la mercancía',
+    ];
+
     public function mount(int $booking): void
     {
         $this->bookingId = $booking;
+        $this->loadInstructions();
+    }
+
+    // ------------------------------------------- Instrucciones de embarque
+
+    private function loadInstructions(): void
+    {
+        $modelo = Booking::findOrFail($this->bookingId);
+
+        foreach (array_keys(self::INSTRUCCIONES) as $parte) {
+            foreach (['is', 'should'] as $lado) {
+                $this->instructions["{$parte}_{$lado}"] = $modelo->{"{$parte}_{$lado}"};
+            }
+        }
+    }
+
+    /** @return array<string, string> */
+    public function instructionParts(): array
+    {
+        return self::INSTRUCCIONES;
+    }
+
+    public function editInstructions(): void
+    {
+        $this->assertEditable();
+
+        $this->editingInstructions = true;
+        $this->resetErrorBag();
+    }
+
+    public function cancelInstructions(): void
+    {
+        $this->editingInstructions = false;
+        $this->loadInstructions();
+        $this->resetErrorBag();
+    }
+
+    /**
+     * Guarda solo esos ocho campos, como el `actionSaveIntructions` del original,
+     * que usaba un escenario aparte para no tocar el resto del booking.
+     */
+    public function saveInstructions(): void
+    {
+        $this->assertEditable();
+
+        $reglas = [];
+
+        foreach (array_keys(self::INSTRUCCIONES) as $parte) {
+            foreach (['is', 'should'] as $lado) {
+                $reglas["instructions.{$parte}_{$lado}"] = ['nullable', 'string', 'max:1000'];
+            }
+        }
+
+        $this->validate($reglas);
+
+        Booking::findOrFail($this->bookingId)
+            ->forceFill(array_merge($this->instructions, ['modified_by' => auth()->id()]))
+            ->save();
+
+        $this->editingInstructions = false;
+        session()->flash('status', 'Instrucciones de embarque guardadas.');
     }
 
     /** El encabezado sale del mismo motor que el listado, para que el avance cuadre. */
@@ -268,6 +346,44 @@ class BookingDetail extends Component
         session()->flash('status', $avisados === []
             ? 'No se mandó: el cliente no tiene correos de notificación.'
             : 'Confirmación enviada a '.implode(', ', $avisados).'.');
+    }
+
+    /**
+     * Borra el booking.
+     *
+     * El original lo borra sin preguntar nada; aquí se niega si tiene
+     * facturación viva. Un booking con documentos financieros colgando no debe
+     * desaparecer de debajo de ellos, y recuperarlo después no es posible: el
+     * borrado es físico, como en el original.
+     *
+     * Lo que cuelga del booking —contenedores, lista de verificación,
+     * continuidad— tampoco se borra en el original y aquí se conserva igual: la
+     * bitácora de la base guarda el renglón de baja.
+     */
+    public function delete(): void
+    {
+        abort_unless(auth()->user()?->isAdmin() ?? false, 403);
+
+        $facturacion = DB::table('transaction')
+            ->where('booking', $this->bookingId)
+            ->where('cancelled', 0)
+            ->count();
+
+        if ($facturacion > 0) {
+            session()->flash('error', trans_choice(
+                '{1}No se puede borrar: el booking tiene :count transacción sin cancelar.'
+                .'|[2,*]No se puede borrar: el booking tiene :count transacciones sin cancelar.',
+                $facturacion,
+                ['count' => $facturacion],
+            ));
+
+            return;
+        }
+
+        Booking::findOrFail($this->bookingId)->delete();
+
+        session()->flash('status', 'Booking borrado.');
+        $this->redirectRoute('operations.bookings', navigate: true);
     }
 
     public function lock(): void

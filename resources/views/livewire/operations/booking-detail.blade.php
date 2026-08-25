@@ -15,6 +15,10 @@
         Volver a bookings
     </a>
 
+    @if (session('error'))
+        <div class="alert-danger">{{ session('error') }}</div>
+    @endif
+
     {{-- Encabezado --}}
     <section class="card p-5 sm:p-6">
         <div class="flex flex-wrap items-start justify-between gap-3">
@@ -43,10 +47,19 @@
                             wire:confirm="Al cerrarlo ya no se podrán tocar sus contenedores ni sus documentos. ¿Continuar?"
                             class="btn-ghost px-3 py-1.5 text-xs">Cerrar booking</button>
                 @endif
+                @if (auth()->user()?->isAdmin() && ! $booking->locked)
+                    <button type="button" wire:click="delete"
+                            wire:confirm="Se borrará el booking y no se puede deshacer. ¿Continuar?"
+                            class="btn-ghost px-3 py-1.5 text-xs text-brand">Borrar</button>
+                @endif
                 @if ($booking->locked && auth()->user()?->isSuperAdmin())
                     <button type="button" wire:click="unlock"
                             wire:confirm="Reabrir permite volver a tocar importes ya conciliados. ¿Continuar?"
                             class="btn-ghost px-3 py-1.5 text-xs text-brand">Reabrir</button>
+                @endif
+                @if (auth()->user()?->isAdmin())
+                    <a href="{{ route('operations.bookings.history', $booking->booking_id) }}" wire:navigate
+                       class="btn-ghost px-3 py-1.5 text-xs">Historial</a>
                 @endif
                 <a href="{{ route('operations.bookings.pdf', $booking->booking_id) }}" target="_blank"
                    class="btn-ghost px-3 py-1.5 text-xs">Confirmación PDF</a>
@@ -201,6 +214,75 @@
                     @endforelse
                 </tbody>
             </table>
+        </div>
+    </section>
+
+    {{-- Instrucciones de embarque --}}
+    <section class="card overflow-hidden">
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-3">
+            <div>
+                <h3 class="text-sm font-semibold text-ink">Instrucciones de embarque</h3>
+                <p class="text-xs text-ink-faint">Cómo viene cada parte en el documento y cómo debería decir.</p>
+            </div>
+
+            @if (auth()->user()?->isAdmin() && ! $booking->locked && ! $editingInstructions)
+                <button type="button" wire:click="editInstructions" class="btn-ghost !px-3 !py-1.5 text-xs">Editar</button>
+            @endif
+        </header>
+
+        <div class="p-5">
+            @if ($editingInstructions)
+                <form wire:submit="saveInstructions" class="space-y-4">
+                    @foreach ($this->instructionParts() as $parte => $etiqueta)
+                        <div class="grid gap-4 sm:grid-cols-2">
+                            @foreach ([['is', 'como viene'], ['should', 'como debe decir']] as [$lado, $pie])
+                                <label class="block">
+                                    <span class="field-label">
+                                        {{ $etiqueta }}
+                                        <span class="font-normal text-ink-faint">({{ $pie }})</span>
+                                    </span>
+                                    <textarea wire:model="instructions.{{ $parte }}_{{ $lado }}" rows="3"
+                                              class="field-input mt-1.5">{{ $instructions[$parte.'_'.$lado] ?? '' }}</textarea>
+                                    @error('instructions.'.$parte.'_'.$lado)
+                                        <span class="mt-1 block text-xs text-brand">{{ $message }}</span>
+                                    @enderror
+                                </label>
+                            @endforeach
+                        </div>
+                    @endforeach
+
+                    <div class="flex flex-wrap justify-end gap-3 border-t border-line pt-4">
+                        <button type="button" wire:click="cancelInstructions" class="btn-ghost !px-3 !py-1.5 text-xs">Cancelar</button>
+                        <button type="submit" wire:loading.attr="disabled" wire:target="saveInstructions" class="btn-accent !px-3 !py-1.5 text-xs">
+                            <x-spinner wire:loading wire:target="saveInstructions" class="h-3.5 w-3.5" />
+                            Guardar
+                        </button>
+                    </div>
+                </form>
+            @else
+                @php $capturadas = collect($instructions)->filter()->isNotEmpty(); @endphp
+
+                @if (! $capturadas)
+                    <p class="py-6 text-center text-sm text-ink-faint">Este booking no tiene instrucciones capturadas.</p>
+                @else
+                    <dl class="space-y-4 text-sm">
+                        @foreach ($this->instructionParts() as $parte => $etiqueta)
+                            @continue (blank($instructions[$parte.'_is']) && blank($instructions[$parte.'_should']))
+                            <div>
+                                <dt class="text-xs font-semibold uppercase tracking-wide text-ink-faint">{{ $etiqueta }}</dt>
+                                <dd class="mt-1 grid gap-3 sm:grid-cols-2">
+                                    @foreach ([['is', 'Como viene'], ['should', 'Como debe decir']] as [$lado, $pie])
+                                        <div class="rounded-lg border border-line px-3 py-2">
+                                            <p class="text-xs text-ink-faint">{{ $pie }}</p>
+                                            <p class="mt-0.5 whitespace-pre-line text-ink">{{ $instructions[$parte.'_'.$lado] ?: '—' }}</p>
+                                        </div>
+                                    @endforeach
+                                </dd>
+                            </div>
+                        @endforeach
+                    </dl>
+                @endif
+            @endif
         </div>
     </section>
 

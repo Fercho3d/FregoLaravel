@@ -14,6 +14,7 @@ use App\Livewire\Exchange\ExchangeManager;
 use App\Livewire\Operations\BillingGenerator;
 use App\Livewire\Operations\BookingDetail;
 use App\Livewire\Operations\BookingForm;
+use App\Livewire\Operations\BookingHistory;
 use App\Livewire\Operations\BookingList;
 use App\Livewire\Operations\ContinuityReport;
 use App\Livewire\Parties\PartyManager;
@@ -75,6 +76,8 @@ Route::middleware(['auth', EnsureUserIsInternal::class])->group(function () {
         Route::get('/bookings/{booking}/editar', BookingForm::class)->whereNumber('booking')->name('bookings.edit');
         Route::get('/bookings/{booking}/generar', BillingGenerator::class)->whereNumber('booking')->name('bookings.generate');
         Route::get('/bookings/{booking}', BookingDetail::class)->whereNumber('booking')->name('bookings.show');
+        Route::get('/bookings/{booking}/historial', BookingHistory::class)
+            ->whereNumber('booking')->name('bookings.history');
         Route::get('/bookings/{booking}/confirmacion.pdf', BookingConfirmationController::class)
             ->whereNumber('booking')->name('bookings.pdf');
         Route::get('/bookings/{booking}/documento/{nombre}', BookingFileController::class)

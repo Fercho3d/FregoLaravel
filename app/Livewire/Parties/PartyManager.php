@@ -123,12 +123,24 @@ class PartyManager extends Component
 
     // ------------------------------------------------------------ Edición
 
+    /**
+     * Documentos que se le piden a este cliente (`fields_by_client`).
+     *
+     * Sin esto, un cliente nuevo no ofrece ni un solo campo donde subir papeles:
+     * la pantalla del booking saca los campos de aquí. En Yii2 era un CRUD suelto
+     * («Fields by client») que había que ir a buscar por su cuenta.
+     *
+     * @var array<int, string>
+     */
+    public array $documentFields = [];
+
     public function create(): void
     {
         $this->assertAdmin();
 
         $this->editing = 0;
         $this->form = collect($this->fields())->map(fn () => '')->all();
+        $this->documentFields = [];
         $this->resetErrorBag();
     }
 
@@ -144,13 +156,26 @@ class PartyManager extends Component
         $this->form = collect($this->fields())
             ->mapWithKeys(fn ($definicion, $campo) => [$campo => (string) ($fila->{$campo} ?? '')])
             ->all();
+        $this->documentFields = $this->isClient()
+            ? DB::table('fields_by_client')->where('client_id', $id)->pluck('field_id')
+                ->map(fn ($valor) => (string) $valor)->all()
+            : [];
         $this->resetErrorBag();
     }
 
     public function cancel(): void
     {
-        $this->reset(['editing', 'form']);
+        $this->reset(['editing', 'form', 'documentFields']);
         $this->resetErrorBag();
+    }
+
+    /** El catálogo de documentos, para las casillas. @return array<int, string> */
+    public function documentCatalog(): array
+    {
+        return DB::table('file_fields')->orderBy('label')
+            ->pluck('label', 'field_id')
+            ->map(fn ($etiqueta, $id) => (string) ($etiqueta ?: $id))
+            ->all();
     }
 
     public function save(): void
@@ -169,15 +194,42 @@ class PartyManager extends Component
             ->all();
 
         if ($this->editing === 0) {
-            DB::table($this->table())->insert($valores + ['created_by' => auth()->id(), 'created_at' => now()]);
+            $id = DB::table($this->table())->insertGetId(
+                array_merge($valores, ['created_by' => auth()->id(), 'created_at' => now()]),
+                $this->key(),
+            );
         } else {
+            $id = $this->editing;
             DB::table($this->table())
-                ->where($this->key(), $this->editing)
-                ->update($valores + ['modified_by' => auth()->id(), 'modified_at' => now()]);
+                ->where($this->key(), $id)
+                ->update(array_merge($valores, ['modified_by' => auth()->id(), 'modified_at' => now()]));
         }
+
+        $this->syncDocumentFields((int) $id);
 
         session()->flash('status', $this->editing === 0 ? 'Registro creado.' : 'Registro actualizado.');
         $this->cancel();
+    }
+
+    /** Deja `fields_by_client` con exactamente los documentos marcados. */
+    private function syncDocumentFields(int $clientId): void
+    {
+        if (! $this->isClient()) {
+            return;
+        }
+
+        $elegidos = collect($this->documentFields)->map(fn ($id) => (int) $id)->filter()->unique();
+        $actuales = DB::table('fields_by_client')->where('client_id', $clientId)->pluck('field_id')
+            ->map(fn ($id) => (int) $id);
+
+        DB::table('fields_by_client')
+            ->where('client_id', $clientId)
+            ->whereIn('field_id', $actuales->diff($elegidos)->all())
+            ->delete();
+
+        foreach ($elegidos->diff($actuales) as $fieldId) {
+            DB::table('fields_by_client')->insert(['client_id' => $clientId, 'field_id' => $fieldId]);
+        }
     }
 
     private function assertAdmin(): void
