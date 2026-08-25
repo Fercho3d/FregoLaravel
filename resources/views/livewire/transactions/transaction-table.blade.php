@@ -153,9 +153,15 @@
          campos que de verdad se consultan de pie frente a un contenedor. --}}
     <div class="relative rounded-xl border border-line bg-panel">
 
-        {{-- Velo de carga. Con `delay` para que un filtro rápido no parpadee. --}}
-        <div wire:loading.delay.flex
-             class="absolute inset-0 z-20 items-start justify-center rounded-xl bg-panel/75 backdrop-blur-[1px]">
+        {{-- Velo de carga. Con `delay` para que un filtro rápido no parpadee.
+             OJO: el modificador de display (`.flex`, `.block`…) NO se puede
+             combinar con `.delay` — Livewire solo genera la regla que oculta el
+             elemento para los modificadores sueltos, y el velo se quedaría
+             visible tapando la tabla hasta que arrancara su JavaScript. Al estar
+             posicionado en absoluto, el navegador ya lo trata como bloque, así
+             que basta con centrar el aviso con `text-center`. --}}
+        <div wire:loading.delay
+             class="absolute inset-0 z-20 rounded-xl bg-panel/75 text-center backdrop-blur-[1px]">
             <span class="mt-14 inline-flex items-center gap-2 rounded-full border border-line bg-panel px-4 py-2 text-sm text-ink-muted shadow-lg">
                 <x-spinner class="h-4 w-4 text-brand" />
                 Actualizando…
@@ -173,7 +179,10 @@
                                class="font-semibold text-brand hover:underline">
                                 {{ trim((string) $row->booking_number) ?: '—' }}
                             </a>
-                            <p class="truncate text-sm text-ink">{{ $row->tran_number ?: 'Sin número' }}</p>
+                            <a href="{{ route('transactions.show', $row->transc_id) }}" wire:navigate
+                               class="block truncate text-sm text-ink hover:underline">
+                                {{ $row->tran_number ?: 'Sin número' }}
+                            </a>
                         </div>
                         <span class="{{ $status->classes() }} shrink-0">{{ $status->label() }}</span>
                     </div>
@@ -237,7 +246,10 @@
                             <td class="whitespace-nowrap px-3 py-2 text-ink-muted">
                                 {{ $row->tran_date ? \Illuminate\Support\Carbon::parse($row->tran_date)->format('d/m/Y') : '—' }}
                             </td>
-                            <td class="whitespace-nowrap px-3 py-2 text-ink">{{ $row->tran_number ?: '—' }}</td>
+                            <td class="whitespace-nowrap px-3 py-2">
+                                <a href="{{ route('transactions.show', $row->transc_id) }}" wire:navigate
+                                   class="text-ink hover:text-brand hover:underline">{{ $row->tran_number ?: 'Ver' }}</a>
+                            </td>
                             <td class="max-w-[16rem] truncate px-3 py-2 text-ink-muted" title="{{ $row->customerName ?: $row->vendorName }}">
                                 {{ $row->customerName ?: ($row->vendorName ?: '—') }}
                             </td>

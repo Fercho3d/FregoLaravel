@@ -22,6 +22,8 @@ class AppServiceProvider extends ServiceProvider
     {
         // Paginador propio: usa los tokens de tema en lugar de los grises fijos
         // de la vista que trae Laravel, que solo se ven bien en tema claro.
+        // Ojo: los componentes Livewire NO heredan esto — cada uno declara su
+        // `paginationView()`, porque Livewire vuelve a fijar el valor al pintar.
         Paginator::defaultView('vendor.pagination.frego');
         Paginator::defaultSimpleView('vendor.pagination.frego');
     }

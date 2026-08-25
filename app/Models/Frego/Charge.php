@@ -36,4 +36,28 @@ class Charge extends FregoModel
     {
         return $this->belongsTo(ChargeType::class, 'type', 'charge_type_id');
     }
+
+    // Importes de la línea. Son los mismos que agrega el motor de consulta
+    // (`price * quantity`, por las tasas del tipo de cargo), pero fila por fila
+    // para poder enseñar el desglose. No son columnas de la tabla.
+
+    public function getSubtotalAttribute(): float
+    {
+        return (float) $this->price * (float) $this->quantity;
+    }
+
+    public function getTaxAttribute(): float
+    {
+        return $this->subtotal * (float) ($this->chargeType?->tax_rate ?? 0);
+    }
+
+    public function getRetentionAttribute(): float
+    {
+        return $this->subtotal * (float) ($this->chargeType?->tax_retention ?? 0);
+    }
+
+    public function getTotalAttribute(): float
+    {
+        return $this->subtotal + $this->tax - $this->retention;
+    }
 }

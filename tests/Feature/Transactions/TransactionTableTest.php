@@ -220,4 +220,19 @@ class TransactionTableTest extends FregoDatabaseTestCase
             $this->assertSame((int) $booking, (int) $row->booking);
         }
     }
+
+    /**
+     * Livewire vuelve a fijar la vista del paginador en cada render, así que la
+     * propia solo se aplica si el componente la declara. Sin esto salía la vista
+     * que trae Laravel, con grises fijos que en tema oscuro no se leen.
+     */
+    public function test_el_listado_usa_el_paginador_propio(): void
+    {
+        $this->actAsUser();
+
+        $this->get(route('transactions.invoice'))
+            ->assertOk()
+            ->assertSee('Página 1 de')
+            ->assertDontSee('dusk="nextPage.before"', false);
+    }
 }

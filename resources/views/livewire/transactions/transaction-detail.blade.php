@@ -1,0 +1,209 @@
+@use('App\Support\PaymentStatus')
+@use('App\Models\Frego\Transaction')
+
+@php
+    $money = fn ($v) => $v === null ? '—' : number_format((float) $v, 2);
+    $estado = PaymentStatus::for($fila);
+    $esFactura = (int) $fila->tran_type === Transaction::TYPE_INVOICE;
+    $contraparte = $esFactura ? $fila->customerName : $fila->vendorName;
+
+    // El desglose del pie se toma de las mismas columnas que alimentan la tabla,
+    // para que los importes cuadren al centavo con el listado.
+    $desglose = [
+        ['Subtotal 0 %', $fila->sub_0_mxn],
+        ['Subtotal 16 %', $fila->sub_16_mxn],
+        ['IVA 16 %', $fila->tax_16_mxn],
+        ['Retención IVA', $fila->tax_ret_mxn],
+    ];
+@endphp
+
+<div class="mx-auto max-w-5xl space-y-4">
+
+    {{-- Regreso al listado --}}
+    <a href="{{ route($esFactura ? 'transactions.invoice' : 'transactions.bill') }}" wire:navigate
+       class="inline-flex items-center gap-1.5 text-sm text-ink-muted transition hover:text-ink">
+        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+        Volver a {{ $esFactura ? 'Facturas' : 'Costos' }}
+    </a>
+
+    {{-- Encabezado --}}
+    <section class="card p-5 sm:p-6">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+            <div class="min-w-0">
+                <p class="text-xs font-semibold uppercase tracking-wide text-ink-faint">
+                    {{ Transaction::typeText($fila->invoice_type, $fila->tran_type) }}
+                </p>
+                <h2 class="mt-0.5 truncate text-2xl font-semibold text-ink">
+                    {{ $fila->tran_number ?: 'Sin número' }}
+                </h2>
+                <p class="mt-1 truncate text-sm text-ink-muted">{{ $contraparte ?: '—' }}</p>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2">
+                <span class="{{ $estado->classes() }}">{{ $estado->label() }}</span>
+                @if ($fila->cancelled)
+                    <span class="badge badge-danger">Cancelada</span>
+                @endif
+                @if (filled($fila->seal))
+                    <span class="badge badge-ok">Timbrada</span>
+                @endif
+            </div>
+        </div>
+
+        @if ($candado->locked)
+            <p class="mt-4 flex items-start gap-2 rounded-lg border border-line bg-raised px-3 py-2 text-xs text-ink-muted">
+                <svg class="mt-0.5 h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                    <rect x="5" y="11" width="14" height="9" rx="2"/><path stroke-linecap="round" d="M8 11V8a4 4 0 0 1 8 0v3"/>
+                </svg>
+                <span>{{ $candado->reason }} Solo la compañía emisora puede modificarse.</span>
+            </p>
+        @endif
+
+        <dl class="mt-5 grid grid-cols-2 gap-x-6 gap-y-4 border-t border-line pt-5 text-sm sm:grid-cols-3 lg:grid-cols-4">
+            <div>
+                <dt class="text-xs uppercase tracking-wide text-ink-faint">Booking</dt>
+                <dd class="mt-0.5">
+                    <a href="{{ route('transactions.booking', $fila->booking) }}" wire:navigate
+                       class="font-medium text-brand hover:underline">
+                        {{ trim((string) $fila->booking_number) ?: '—' }}
+                    </a>
+                </dd>
+            </div>
+            <div>
+                <dt class="text-xs uppercase tracking-wide text-ink-faint">Fecha</dt>
+                <dd class="mt-0.5 text-ink">
+                    {{ $fila->tran_date ? \Illuminate\Support\Carbon::parse($fila->tran_date)->format('d/m/Y') : '—' }}
+                </dd>
+            </div>
+            <div>
+                <dt class="text-xs uppercase tracking-wide text-ink-faint">Compañía</dt>
+                <dd class="mt-0.5 truncate text-ink" title="{{ $fila->companyName }}">{{ $fila->companyName ?: '—' }}</dd>
+            </div>
+            <div>
+                <dt class="text-xs uppercase tracking-wide text-ink-faint">Moneda</dt>
+                <dd class="mt-0.5 text-ink">
+                    {{ $fila->currency ?: '—' }}
+                    <span class="text-ink-faint">
+                        @ {{ $fila->exchange_value === null ? '—' : number_format((float) $fila->exchange_value, 4) }}
+                    </span>
+                </dd>
+            </div>
+            @if (filled($fila->seal))
+                <div class="col-span-2 min-w-0 sm:col-span-3 lg:col-span-4">
+                    <dt class="text-xs uppercase tracking-wide text-ink-faint">Sello CFDI</dt>
+                    <dd class="mt-0.5 break-all font-mono text-xs text-ink-soft">{{ $fila->seal }}</dd>
+                </div>
+            @endif
+        </dl>
+
+        @if ($fila->pdf_attach || $fila->xml_attach)
+            <div class="mt-5 flex flex-wrap gap-2 border-t border-line pt-4">
+                @foreach ([['pdf', $fila->pdf_attach], ['xml', $fila->xml_attach]] as [$tipo, $archivo])
+                    @if ($archivo)
+                        <span class="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-xs text-ink-muted">
+                            <span class="font-semibold uppercase text-ink-faint">{{ $tipo }}</span>
+                            <span class="max-w-[14rem] truncate">{{ $archivo }}</span>
+                        </span>
+                    @endif
+                @endforeach
+            </div>
+        @endif
+    </section>
+
+    {{-- Conceptos --}}
+    <section class="card overflow-hidden">
+        <header class="flex items-center justify-between gap-3 border-b border-line px-5 py-3">
+            <h3 class="text-sm font-semibold text-ink">Conceptos</h3>
+            <span class="text-xs text-ink-faint">{{ $cargos->count() }} {{ \Illuminate\Support\Str::plural('línea', $cargos->count()) }}</span>
+        </header>
+
+        {{-- Tarjetas en móvil --}}
+        <ul class="divide-y divide-line md:hidden">
+            @forelse ($cargos as $cargo)
+                <li class="space-y-2 p-4">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <p class="truncate text-sm font-medium text-ink">{{ $cargo->description ?: '—' }}</p>
+                            <p class="text-xs text-ink-faint">{{ $cargo->chargeType?->charge_type_name ?: 'Sin tipo' }}</p>
+                        </div>
+                        <span class="shrink-0 font-semibold tabular-nums text-ink">{{ $money($cargo->total) }}</span>
+                    </div>
+                    <p class="text-xs text-ink-muted">
+                        {{ number_format((float) $cargo->quantity, 2) }} × {{ $money($cargo->price) }}
+                        · IVA {{ $money($cargo->tax) }}
+                        @if ($cargo->retention > 0) · Ret. {{ $money($cargo->retention) }} @endif
+                    </p>
+                </li>
+            @empty
+                <li class="px-4 py-10 text-center text-sm text-ink-faint">Esta transacción no tiene conceptos.</li>
+            @endforelse
+        </ul>
+
+        {{-- Tabla desde md --}}
+        <div class="hidden overflow-x-auto md:block">
+            <table class="min-w-full text-sm">
+                <thead class="border-b border-line text-xs uppercase tracking-wide text-ink-muted">
+                    <tr>
+                        <th class="px-4 py-2.5 text-left font-semibold">Tipo</th>
+                        <th class="px-4 py-2.5 text-left font-semibold">Descripción</th>
+                        <th class="px-4 py-2.5 text-right font-semibold">Cantidad</th>
+                        <th class="px-4 py-2.5 text-right font-semibold">Precio</th>
+                        <th class="px-4 py-2.5 text-right font-semibold">Subtotal</th>
+                        <th class="px-4 py-2.5 text-right font-semibold">IVA</th>
+                        <th class="px-4 py-2.5 text-right font-semibold">Retención</th>
+                        <th class="px-4 py-2.5 text-right font-semibold">Total</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-line">
+                    @forelse ($cargos as $cargo)
+                        <tr class="transition hover:bg-raised">
+                            <td class="whitespace-nowrap px-4 py-2 text-ink-muted">{{ $cargo->chargeType?->charge_type_name ?: '—' }}</td>
+                            <td class="max-w-[20rem] truncate px-4 py-2 text-ink" title="{{ $cargo->description }}">{{ $cargo->description ?: '—' }}</td>
+                            <td class="whitespace-nowrap px-4 py-2 text-right tabular-nums text-ink-muted">{{ number_format((float) $cargo->quantity, 2) }}</td>
+                            <td class="whitespace-nowrap px-4 py-2 text-right tabular-nums text-ink-muted">{{ $money($cargo->price) }}</td>
+                            <td class="whitespace-nowrap px-4 py-2 text-right tabular-nums text-ink-soft">{{ $money($cargo->subtotal) }}</td>
+                            <td class="whitespace-nowrap px-4 py-2 text-right tabular-nums text-ink-muted">{{ $money($cargo->tax) }}</td>
+                            <td class="whitespace-nowrap px-4 py-2 text-right tabular-nums text-ink-muted">{{ $money($cargo->retention) }}</td>
+                            <td class="whitespace-nowrap px-4 py-2 text-right font-semibold tabular-nums text-ink">{{ $money($cargo->total) }}</td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="8" class="px-4 py-10 text-center text-ink-faint">Esta transacción no tiene conceptos.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    {{-- Totales --}}
+    <section class="card p-5 sm:p-6">
+        <h3 class="text-sm font-semibold text-ink">Totales</h3>
+
+        <dl class="mt-4 space-y-2 text-sm">
+            @foreach ($desglose as [$etiqueta, $valor])
+                <div class="flex justify-between gap-4">
+                    <dt class="text-ink-muted">{{ $etiqueta }}</dt>
+                    <dd class="tabular-nums text-ink-soft">{{ $money($valor) }}</dd>
+                </div>
+            @endforeach
+
+            <div class="flex justify-between gap-4 border-t border-line pt-2 text-base font-semibold">
+                <dt class="text-ink">Total</dt>
+                <dd class="tabular-nums {{ (float) $fila->total_amount < 0 ? 'text-brand' : 'text-ink' }}">{{ $money($fila->total_amount) }}</dd>
+            </div>
+
+            <div class="flex justify-between gap-4">
+                <dt class="text-ink-muted">Cobrado / pagado</dt>
+                <dd class="tabular-nums text-ink-soft">{{ $money($fila->tran_paid_amount) }}</dd>
+            </div>
+
+            <div class="flex justify-between gap-4">
+                <dt class="text-ink-muted">Por cobrar / pagar</dt>
+                <dd class="tabular-nums {{ abs((float) $fila->left_to_pay) > 0.005 ? 'text-brand' : 'text-ink-soft' }}">
+                    {{ $money($fila->left_to_pay) }}
+                </dd>
+            </div>
+        </dl>
+    </section>
+</div>

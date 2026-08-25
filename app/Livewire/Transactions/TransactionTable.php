@@ -70,6 +70,21 @@ class TransactionTable extends Component
     /** Milisegundos que tardó la consulta de la última pintada. */
     public float $queryMs = 0;
 
+    /**
+     * Livewire pisa `Paginator::defaultView()` con su propia vista en cada
+     * render, así que la vista propia hay que declararla aquí; el registro del
+     * `AppServiceProvider` solo cubre los paginadores fuera de Livewire.
+     */
+    public function paginationView(): string
+    {
+        return 'vendor.pagination.frego';
+    }
+
+    public function paginationSimpleView(): string
+    {
+        return 'vendor.pagination.frego';
+    }
+
     public function mount(string $screen = 'invoice', ?int $booking = null): void
     {
         $this->screen = $screen;
