@@ -235,6 +235,10 @@ class FregoSchema
             $table->decimal('price', 16, 4)->nullable();
             $table->string('description')->nullable();
             $table->integer('active')->default(1);
+            $table->integer('created_by')->nullable();
+            $table->integer('modified_by')->nullable();
+            $table->dateTime('created_at')->nullable();
+            $table->dateTime('modified_at')->nullable();
         });
 
         Schema::create('exchange', function ($table) {

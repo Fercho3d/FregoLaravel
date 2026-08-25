@@ -15,6 +15,7 @@ use App\Livewire\Payments\PaymentRequestForm;
 use App\Livewire\Payments\PaymentRequestList;
 use App\Livewire\Payments\PaymentsReport;
 use App\Livewire\Portal\PortalHome;
+use App\Livewire\Services\ServiceManager;
 use App\Livewire\Transactions\BookingReport;
 use App\Livewire\Transactions\TransactionDetail;
 use App\Livewire\Transactions\TransactionForm;
@@ -81,6 +82,7 @@ Route::middleware(['auth', EnsureUserIsInternal::class])->group(function () {
     Route::middleware(EnsureUserIsAdmin::class)->prefix('terceros')->name('parties.')->group(function () {
         Route::get('/clientes', PartyManager::class)->defaults('mode', 'client')->name('clients');
         Route::get('/proveedores', PartyManager::class)->defaults('mode', 'provider')->name('providers');
+        Route::get('/servicios', ServiceManager::class)->name('services');
     });
 
     /*

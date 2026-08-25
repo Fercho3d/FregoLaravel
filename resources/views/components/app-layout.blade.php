@@ -42,7 +42,8 @@
             ? [['Usuarios', route('users'), request()->routeIs('users'), 'usuarios']]
             : [],
         [
-            ['Clientes y proveedores', route('parties.clients'), request()->routeIs('parties.*'), 'usuarios'],
+            ['Clientes y proveedores', route('parties.clients'), request()->routeIs('parties.clients', 'parties.providers'), 'usuarios'],
+            ['Servicios y precios', route('parties.services'), request()->routeIs('parties.services'), 'costo'],
             ['Catálogos', route('catalogs.show', 'companias'), request()->routeIs('catalogs.*'), 'catalogo'],
             ['Operación', route('operations.bookings'), request()->routeIs('operations.*'), 'operacion'],
         ]
