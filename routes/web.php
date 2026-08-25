@@ -3,6 +3,7 @@
 use App\Http\Controllers\ThemeController;
 use App\Http\Controllers\TransactionFileController;
 use App\Http\Middleware\EnsureUserIsAdmin;
+use App\Livewire\Catalogs\CatalogManager;
 use App\Livewire\Payments\PaymentsReport;
 use App\Livewire\Transactions\BookingReport;
 use App\Livewire\Transactions\TransactionDetail;
@@ -24,6 +25,14 @@ Route::middleware(['auth'])->group(function () {
     // Seguridad de la cuenta (contraseña + 2FA). Las acciones (activar/confirmar/
     // desactivar 2FA, cambiar contraseña) las expone Laravel Fortify.
     Route::view('/seguridad', 'security.show')->name('security.show');
+
+    /*
+     * Catálogos maestros. Una sola pantalla para los dieciséis: lo que cambia
+     * entre ellos son los campos, y esos viven en `CatalogRegistry`.
+     */
+    Route::middleware(EnsureUserIsAdmin::class)
+        ->get('/catalogos/{catalog}', CatalogManager::class)
+        ->name('catalogs.show');
 
     /*
      * Reportes de cobros y pagos. Viven aparte de las transacciones porque su

@@ -36,7 +36,7 @@
             ['Cobros y pagos', route('payments.report.general'), request()->routeIs('payments.report.general'), 'banco'],
         ] : [],
         [
-            ['Catálogos', '#', false, 'catalogo'],
+            ['Catálogos', route('catalogs.show', 'companias'), request()->routeIs('catalogs.*'), 'catalogo'],
             ['Operación', '#', false, 'operacion'],
         ]
     );
