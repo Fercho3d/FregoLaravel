@@ -78,10 +78,17 @@ class TransactionFormTest extends TestCase
         return $usuario;
     }
 
-    /** @param  array<string, mixed>  $campos */
+    /**
+     * Abre el formulario como lo abre el navegador: al editar, el id viaja en la
+     * ruta; al crear, el booking y el tipo viajan en la cadena de consulta.
+     *
+     * @param  array<string, mixed>  $campos
+     */
     private function formulario(array $parametros, array $campos = []): Testable
     {
-        $componente = Livewire::test(TransactionForm::class, $parametros);
+        $componente = isset($parametros['transaction'])
+            ? Livewire::test(TransactionForm::class, $parametros)
+            : Livewire::withQueryParams($parametros)->test(TransactionForm::class);
 
         foreach ($campos as $campo => $valor) {
             $componente->set($campo, $valor);
@@ -301,5 +308,25 @@ class TransactionFormTest extends TestCase
         DB::table('charge')->insert([
             'charge_id' => 1, 'transaction' => 1, 'type' => 1, 'quantity' => 1, 'price' => 100,
         ]);
+    }
+
+    /**
+     * Livewire solo inyecta en `mount()` los parámetros de la RUTA. El booking y
+     * el tipo viajan en la cadena de consulta, así que hay que leerlos de la
+     * petición: sin eso, la pantalla de alta respondía 404.
+     */
+    public function test_la_pantalla_de_alta_abre_con_el_booking_de_la_direccion(): void
+    {
+        $this->actingAs($this->usuario())
+            ->get(route('transactions.create', ['booking' => 1, 'tipo' => 'costo']))
+            ->assertOk()
+            ->assertSee('Nuevo costo');
+    }
+
+    public function test_la_pantalla_de_alta_sin_booking_responde_404(): void
+    {
+        $this->actingAs($this->usuario())
+            ->get(route('transactions.create'))
+            ->assertNotFound();
     }
 }

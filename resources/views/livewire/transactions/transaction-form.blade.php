@@ -137,6 +137,37 @@
             </div>
         @endif
 
+        @unless ($bloqueada)
+            <div class="grid gap-4 border-t border-line pt-4 sm:grid-cols-2">
+                @foreach ([['pdfFile', 'pdfAttached', 'PDF', 'application/pdf', 'pdf'], ['xmlFile', 'xmlAttached', 'XML', 'text/xml,application/xml', 'xml']] as [$campo, $actual, $etiqueta, $accept, $kind])
+                    <label class="block">
+                        <span class="field-label">Factura en {{ $etiqueta }}</span>
+
+                        <input type="file" wire:model="{{ $campo }}" accept="{{ $accept }}"
+                               class="mt-1.5 block w-full text-sm text-ink-muted file:mr-3 file:rounded-lg file:border-0 file:bg-raised file:px-3 file:py-2 file:text-sm file:font-medium file:text-ink hover:file:bg-line">
+
+                        <span wire:loading wire:target="{{ $campo }}" class="mt-1 inline-flex items-center gap-1.5 text-xs text-ink-muted">
+                            <x-spinner class="h-3 w-3" /> Subiendo…
+                        </span>
+
+                        @if ($$actual)
+                            <span class="mt-1 block truncate text-xs text-ink-faint">
+                                Actual:
+                                @if ($transactionId)
+                                    <a href="{{ route('transactions.file', [$transactionId, $kind]) }}" target="_blank"
+                                       class="text-brand hover:underline">{{ $$actual }}</a>
+                                @else
+                                    {{ $$actual }}
+                                @endif
+                            </span>
+                        @endif
+
+                        @error($campo) <span class="mt-1 block text-xs text-brand">{{ $message }}</span> @enderror
+                    </label>
+                @endforeach
+            </div>
+        @endunless
+
         <footer class="flex flex-wrap items-center justify-end gap-3 border-t border-line pt-4">
             <a href="{{ $transactionId ? route('transactions.show', $transactionId) : route('transactions.booking', $bookingId) }}"
                wire:navigate class="btn-ghost">Cancelar</a>

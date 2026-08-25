@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ThemeController;
+use App\Http\Controllers\TransactionFileController;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Livewire\Transactions\TransactionDetail;
 use App\Livewire\Transactions\TransactionForm;
@@ -38,5 +39,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/nueva', TransactionForm::class)->name('create');
         Route::get('/{transaction}', TransactionDetail::class)->whereNumber('transaction')->name('show');
         Route::get('/{transaction}/editar', TransactionForm::class)->whereNumber('transaction')->name('edit');
+        Route::get('/{transaction}/archivo/{kind}', TransactionFileController::class)
+            ->whereNumber('transaction')->name('file');
     });
 });

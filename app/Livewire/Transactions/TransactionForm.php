@@ -11,11 +11,13 @@ use App\Models\Frego\Provider;
 use App\Models\Frego\Transaction;
 use App\Queries\TransactionFilters;
 use App\Queries\TransactionQuery;
+use App\Support\TransactionFiles;
 use App\Support\TransactionLock;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
@@ -30,6 +32,8 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
  */
 class TransactionForm extends Component
 {
+    use WithFileUploads;
+
     public ?int $transactionId = null;
 
     public int $bookingId;
@@ -70,11 +74,33 @@ class TransactionForm extends Component
      */
     public bool $dateIsEditable = false;
 
-    public function mount(?int $transaction = null, ?int $booking = null, string $tipo = 'factura'): void
+    /*
+     * Adjuntos. Los dos van a la MISMA subcarpeta `pdf` de la transacción, igual
+     * que en el sistema original; la columna guarda solo el nombre del archivo.
+     */
+    public $pdfFile = null;
+
+    public $xmlFile = null;
+
+    public ?string $pdfAttached = null;
+
+    public ?string $xmlAttached = null;
+
+    public function mount(?int $transaction = null): void
     {
-        $transaction === null
-            ? $this->mountForCreate($booking, $tipo)
-            : $this->mountForUpdate($transaction);
+        if ($transaction !== null) {
+            $this->mountForUpdate($transaction);
+
+            return;
+        }
+
+        // El booking y el tipo llegan por cadena de consulta y se leen de la
+        // petición: en un componente de página completa, Livewire solo inyecta
+        // en `mount()` los parámetros de la ruta.
+        $this->mountForCreate(
+            request()->integer('booking') ?: null,
+            request()->string('tipo', 'factura')->toString(),
+        );
     }
 
     private function mountForCreate(?int $booking, string $tipo): void
@@ -105,6 +131,8 @@ class TransactionForm extends Component
         $this->invoiceType = $this->asOption($modelo->invoice_type);
         $this->seal = $modelo->seal;
         $this->newSeal = $modelo->new_seal;
+        $this->pdfAttached = $modelo->pdf_attach ?: null;
+        $this->xmlAttached = $modelo->xml_attach ?: null;
 
         $this->lockReason = $this->lockFor($modelo)->reason;
         $this->dateIsEditable = TransactionLock::canChangeDate(
@@ -161,6 +189,8 @@ class TransactionForm extends Component
             'invoiceType' => [Rule::requiredIf($this->isInvoice()), 'nullable', 'integer'],
             'customerId' => [Rule::requiredIf($this->isInvoice()), 'nullable', Rule::exists('client', 'client_id')],
             'vendorId' => [Rule::requiredIf(! $this->isInvoice()), 'nullable', Rule::exists('provider', 'provider_id')],
+            'pdfFile' => ['nullable', 'file', 'extensions:pdf', 'max:20480'],
+            'xmlFile' => ['nullable', 'file', 'extensions:xml', 'max:20480'],
         ];
     }
 
@@ -185,6 +215,8 @@ class TransactionForm extends Component
             'invoiceType' => 'tipo de factura',
             'customerId' => 'cliente',
             'vendorId' => 'proveedor',
+            'pdfFile' => 'archivo PDF',
+            'xmlFile' => 'archivo XML',
         ];
     }
 
@@ -245,8 +277,32 @@ class TransactionForm extends Component
 
         $guardar->handle($modelo, $this->attributesForSave(), auth()->user());
 
+        // Los adjuntos van después de guardar: hasta entonces no hay id con el
+        // que nombrar su carpeta. Es el mismo orden que sigue el original.
+        $this->storeAttachments($modelo);
+
         session()->flash('status', $this->transactionId === null ? 'Transacción creada.' : 'Transacción actualizada.');
         $this->redirectRoute('transactions.show', $modelo->transc_id, navigate: true);
+    }
+
+    /** Sube los archivos elegidos y deja el nombre en la transacción. */
+    private function storeAttachments(Transaction $modelo): void
+    {
+        $archivos = app(TransactionFiles::class);
+        $columnas = [];
+
+        if ($this->pdfFile !== null) {
+            $columnas['pdf_attach'] = $archivos->store($modelo, $this->pdfFile);
+        }
+
+        if ($this->xmlFile !== null) {
+            $columnas['xml_attach'] = $archivos->store($modelo, $this->xmlFile);
+        }
+
+        if ($columnas !== []) {
+            $modelo->forceFill($columnas)->save();
+            $this->reset(['pdfFile', 'xmlFile']);
+        }
     }
 
     /** @return array<string, mixed> */
@@ -282,10 +338,12 @@ class TransactionForm extends Component
 
     public function title(): string
     {
-        $sustantivo = $this->isInvoice() ? 'factura' : 'costo';
-
-        return $this->transactionId === null
-            ? 'Nueva '.$sustantivo
-            : 'Editar '.$sustantivo;
+        // Se escribe entero y no armando la cadena por partes: «factura» es
+        // femenino y «costo» masculino, y así no sale «Nueva costo».
+        return match (true) {
+            $this->transactionId !== null => $this->isInvoice() ? 'Editar factura' : 'Editar costo',
+            $this->isInvoice() => 'Nueva factura',
+            default => 'Nuevo costo',
+        };
     }
 }

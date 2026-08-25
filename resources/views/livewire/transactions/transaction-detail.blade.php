@@ -110,10 +110,11 @@
             <div class="mt-5 flex flex-wrap gap-2 border-t border-line pt-4">
                 @foreach ([['pdf', $fila->pdf_attach], ['xml', $fila->xml_attach]] as [$tipo, $archivo])
                     @if ($archivo)
-                        <span class="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-xs text-ink-muted">
+                        <a href="{{ route('transactions.file', [$fila->transc_id, $tipo]) }}" target="_blank"
+                           class="inline-flex max-w-full items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-xs text-ink-muted transition hover:bg-raised hover:text-ink">
                             <span class="font-semibold uppercase text-ink-faint">{{ $tipo }}</span>
                             <span class="max-w-[14rem] truncate">{{ $archivo }}</span>
-                        </span>
+                        </a>
                     @endif
                 @endforeach
             </div>
