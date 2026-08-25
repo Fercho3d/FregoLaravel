@@ -12,6 +12,7 @@ use App\Models\Frego\Transaction;
 use App\Queries\TransactionFilters;
 use App\Queries\TransactionQuery;
 use App\Support\TransactionLock;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Component;
@@ -62,6 +63,13 @@ class TransactionForm extends Component
     /** Motivo por el que el formulario está bloqueado, o null si se puede editar. */
     public ?string $lockReason = null;
 
+    /**
+     * La fecha es la excepción a la excepción: aunque el documento esté
+     * bloqueado, el super administrador puede corregirla mientras el booking siga
+     * abierto. Es la acción `modify-date` del sistema original.
+     */
+    public bool $dateIsEditable = false;
+
     public function mount(?int $transaction = null, ?int $booking = null, string $tipo = 'factura'): void
     {
         $transaction === null
@@ -99,6 +107,10 @@ class TransactionForm extends Component
         $this->newSeal = $modelo->new_seal;
 
         $this->lockReason = $this->lockFor($modelo)->reason;
+        $this->dateIsEditable = TransactionLock::canChangeDate(
+            (bool) ($modelo->bookingModel?->locked ?? false),
+            auth()->user(),
+        );
     }
 
     private function asOption(mixed $valor): ?string
@@ -209,12 +221,19 @@ class TransactionForm extends Component
             ? new Transaction
             : Transaction::with('bookingModel')->findOrFail($this->transactionId);
 
-        // Bloqueada: solo se acepta el cambio de compañía, lo demás se descarta.
+        // Bloqueada: solo se aceptan la compañía y, para el super administrador,
+        // la fecha. Todo lo demás que venga en la petición se descarta.
         if ($this->isLocked()) {
             $modelo->company_id = $this->companyId === null ? null : (int) $this->companyId;
+
+            if ($this->dateIsEditable) {
+                $this->validateOnly('tranDate');
+                $modelo->tran_date = Carbon::parse($this->tranDate)->toDateString();
+            }
+
             $modelo->save();
 
-            session()->flash('status', 'Se actualizó la compañía emisora.');
+            session()->flash('status', 'Se actualizó la transacción.');
             $this->redirectRoute('transactions.show', $modelo->transc_id, navigate: true);
 
             return;

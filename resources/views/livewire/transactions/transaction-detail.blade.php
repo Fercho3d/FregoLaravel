@@ -45,6 +45,11 @@
                         Editar
                     </a>
                 @endif
+                @if ($sePuedeBorrar)
+                    <button type="button" wire:click="deleteTransaction"
+                            wire:confirm="Se borrará la transacción y todos sus conceptos. ¿Continuar?"
+                            class="btn-ghost px-3 py-1.5 text-xs text-brand">Borrar</button>
+                @endif
                 <span class="{{ $estado->classes() }}">{{ $estado->label() }}</span>
                 @if ($fila->cancelled)
                     <span class="badge badge-danger">Cancelada</span>

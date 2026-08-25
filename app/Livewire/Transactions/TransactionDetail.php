@@ -221,6 +221,31 @@ class TransactionDetail extends Component
         $this->refreshHeader();
     }
 
+    /**
+     * Borra la transacción completa. Los conceptos se van con ella por la llave
+     * foránea (`ON DELETE CASCADE`); las condiciones las decide `TransactionLock`.
+     */
+    public function deleteTransaction(): void
+    {
+        $transaccion = $this->transaction();
+        $booking = (int) $transaccion->booking;
+
+        abort_unless(
+            TransactionLock::canDelete(
+                $this->header(),
+                (bool) ($transaccion->bookingModel?->locked ?? false),
+                auth()->user(),
+            ),
+            403,
+            'Esta transacción no se puede borrar.',
+        );
+
+        $transaccion->delete();
+
+        session()->flash('status', 'Transacción borrada.');
+        $this->redirectRoute('transactions.booking', $booking, navigate: true);
+    }
+
     public function cancelChargeEdit(): void
     {
         $this->resetChargeForm();
@@ -252,6 +277,11 @@ class TransactionDetail extends Component
             'transaccion' => $transaccion,
             'cargos' => $this->charges(),
             'candado' => $this->lock(),
+            'sePuedeBorrar' => TransactionLock::canDelete(
+                $this->header(),
+                (bool) ($transaccion->bookingModel?->locked ?? false),
+                auth()->user(),
+            ),
             'tiposDeCargo' => ChargeType::optionsFor($contraparte, $tipoServicio),
             'servicios' => $this->chargeType === ''
                 ? collect()

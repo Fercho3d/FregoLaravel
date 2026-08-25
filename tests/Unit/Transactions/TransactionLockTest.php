@@ -119,4 +119,50 @@ class TransactionLockTest extends TestCase
         $this->assertTrue($candado->locked);
         $this->assertStringContainsString('saldada', $candado->reason);
     }
+
+    // ------------------------------------------------------------ Borrado
+
+    public function test_solo_el_super_administrador_borra(): void
+    {
+        $this->assertFalse(TransactionLock::canDelete($this->fila(), false, $this->usuario(User::ROLE_ADMIN)));
+        $this->assertTrue(TransactionLock::canDelete($this->fila(), false, $this->usuario(User::ROLE_SUPER_ADMIN)));
+        $this->assertFalse(TransactionLock::canDelete($this->fila(), false, null));
+    }
+
+    public function test_no_se_borra_con_el_booking_cerrado_ni_saldada_ni_con_pagos(): void
+    {
+        $superAdmin = $this->usuario(User::ROLE_SUPER_ADMIN);
+
+        $this->assertFalse(
+            TransactionLock::canDelete($this->fila(), true, $superAdmin),
+            'Booking cerrado.',
+        );
+        $this->assertFalse(
+            TransactionLock::canDelete($this->fila(['left_to_pay' => 0.0]), false, $superAdmin),
+            'Transacción saldada.',
+        );
+        $this->assertFalse(
+            TransactionLock::canDelete($this->fila(['tran_paid_amount' => 10.0]), false, $superAdmin),
+            'Transacción con pagos.',
+        );
+    }
+
+    /** En el original el sello y el PDF no estorban cuando quien borra es super administrador. */
+    public function test_el_sello_no_impide_borrar_al_super_administrador(): void
+    {
+        $this->assertTrue(TransactionLock::canDelete(
+            $this->fila(['seal' => 'ABC123']),
+            false,
+            $this->usuario(User::ROLE_SUPER_ADMIN),
+        ));
+    }
+
+    // ------------------------------------------------------- Cambio de fecha
+
+    public function test_la_fecha_solo_la_corrige_el_super_administrador_con_booking_abierto(): void
+    {
+        $this->assertTrue(TransactionLock::canChangeDate(false, $this->usuario(User::ROLE_SUPER_ADMIN)));
+        $this->assertFalse(TransactionLock::canChangeDate(true, $this->usuario(User::ROLE_SUPER_ADMIN)));
+        $this->assertFalse(TransactionLock::canChangeDate(false, $this->usuario(User::ROLE_ADMIN)));
+    }
 }

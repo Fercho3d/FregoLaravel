@@ -60,4 +60,37 @@ final class TransactionLock
             default => 'La transacción está bloqueada.',
         });
     }
+
+    /**
+     * ¿Se puede borrar la transacción?
+     *
+     * Traducción del botón `delete` del listado en Yii2, donde la última condición
+     * (`|| !isSuperAdmin`) domina a todas: **solo el super administrador borra**,
+     * y aun así no si el booking está cerrado, la transacción está saldada o tiene
+     * pagos aplicados. Para el super administrador el sello y el PDF adjunto no
+     * estorban — así está en el original.
+     */
+    public static function canDelete(object $row, bool $bookingLocked, ?User $user): bool
+    {
+        if (! ($user?->isSuperAdmin() ?? false) || $bookingLocked) {
+            return false;
+        }
+
+        $saldada = (float) ($row->amount_original ?? 0) !== 0.0
+            && (float) ($row->left_to_pay ?? 0) === 0.0;
+
+        return ! $saldada && (float) ($row->tran_paid_amount ?? 0) <= 0;
+    }
+
+    /**
+     * ¿Se puede cambiar la fecha aunque el documento esté bloqueado?
+     *
+     * Es la acción `modify-date` del original, que aparece como un lápiz junto a
+     * la fecha solo cuando el formulario está deshabilitado, el booking sigue
+     * abierto y quien mira es super administrador.
+     */
+    public static function canChangeDate(bool $bookingLocked, ?User $user): bool
+    {
+        return ! $bookingLocked && ($user?->isSuperAdmin() ?? false);
+    }
 }

@@ -4,6 +4,7 @@ namespace Tests\Feature\Transactions;
 
 use App\Livewire\Transactions\TransactionDetail;
 use App\Models\Frego\Charge;
+use App\Models\Frego\Transaction;
 use App\Models\User;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
@@ -76,9 +77,9 @@ class TransactionChargesTest extends TestCase
         return $usuario;
     }
 
-    private function detalle(): Testable
+    private function detalle(int $rol = User::ROLE_ADMIN): Testable
     {
-        $this->actingAs($this->usuario());
+        $this->actingAs($this->usuario($rol));
 
         return Livewire::test(TransactionDetail::class, ['transaction' => 1]);
     }
@@ -209,5 +210,49 @@ class TransactionChargesTest extends TestCase
         $this->expectException(ModelNotFoundException::class);
 
         $this->detalle()->call('editCharge', 9);
+    }
+
+    // ------------------------------------------------------------ Borrado
+
+    public function test_el_super_administrador_borra_la_transaccion_con_sus_conceptos(): void
+    {
+        DB::table('charge')->insert([
+            'charge_id' => 5, 'transaction' => 1, 'type' => 1, 'service_id' => 10,
+            'description' => 'Flete Monterrey', 'quantity' => 1, 'price' => 850,
+        ]);
+
+        $this->detalle(User::ROLE_SUPER_ADMIN)
+            ->call('deleteTransaction')
+            ->assertRedirect(route('transactions.booking', 1));
+
+        $this->assertSame(0, Transaction::count());
+        // En la base real los conceptos se van con la llave foránea en cascada;
+        // el esquema de pruebas no la declara, así que aquí solo se comprueba
+        // que la transacción desapareció.
+    }
+
+    public function test_un_administrador_normal_no_borra(): void
+    {
+        $this->detalle()->call('deleteTransaction')->assertForbidden();
+
+        $this->assertSame(1, Transaction::count());
+    }
+
+    public function test_una_transaccion_con_pagos_no_se_borra(): void
+    {
+        DB::table('charge')->insert([
+            'charge_id' => 5, 'transaction' => 1, 'type' => 1, 'service_id' => 10,
+            'description' => 'Flete', 'quantity' => 1, 'price' => 100,
+        ]);
+        DB::table('payment_request')->insert([
+            'request_id' => 1, 'date' => '2026-01-16', 'currency_id' => 1, 'type' => 1,
+        ]);
+        DB::table('payments_by_transaction')->insert([
+            'request_id' => 1, 'transc_id' => 1, 'amount' => 50,
+        ]);
+
+        $this->detalle(User::ROLE_SUPER_ADMIN)->call('deleteTransaction')->assertForbidden();
+
+        $this->assertSame(1, Transaction::count());
     }
 }

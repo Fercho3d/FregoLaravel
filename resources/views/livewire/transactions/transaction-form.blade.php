@@ -4,6 +4,9 @@
     $bloqueada = $this->isLocked();
     $esFactura = $this->isInvoice();
     $numeroEditable = $this->numberIsEditable();
+    // Con el documento bloqueado, la fecha sigue abierta para el super
+    // administrador: es lo que en el original hacía el lápiz de `modify-date`.
+    $fechaBloqueada = $bloqueada && ! $dateIsEditable;
 @endphp
 
 <div class="mx-auto max-w-3xl space-y-4">
@@ -30,7 +33,10 @@
                 <svg class="mt-0.5 h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                     <rect x="5" y="11" width="14" height="9" rx="2"/><path stroke-linecap="round" d="M8 11V8a4 4 0 0 1 8 0v3"/>
                 </svg>
-                <span>{{ $lockReason }} Solo puedes cambiar la compañía emisora.</span>
+                <span>
+                    {{ $lockReason }}
+                    Solo puedes cambiar la compañía emisora{{ $dateIsEditable ? ' y la fecha' : '' }}.
+                </span>
             </p>
         @endif
 
@@ -40,7 +46,7 @@
             <label class="block">
                 <span class="field-label">Fecha</span>
                 <input type="date" wire:model="tranDate" value="{{ $tranDate }}"
-                       @disabled($bloqueada) class="field-input mt-1.5" required>
+                       @disabled($fechaBloqueada) class="field-input mt-1.5" required>
                 @error('tranDate') <span class="mt-1 block text-xs text-brand">{{ $message }}</span> @enderror
             </label>
 

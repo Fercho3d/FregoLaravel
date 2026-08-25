@@ -258,4 +258,48 @@ class TransactionFormTest extends TestCase
             ->assertSeeHtml('<option value="1" selected>Proveedor Uno</option>')
             ->assertSeeHtml('<option value="2" selected>FTA</option>');
     }
+
+    /**
+     * `modify-date` del original: con el documento bloqueado, el super
+     * administrador todavía corrige la fecha mientras el booking siga abierto.
+     */
+    public function test_el_super_administrador_corrige_la_fecha_de_una_transaccion_timbrada(): void
+    {
+        $this->actingAs($this->usuario(User::ROLE_SUPER_ADMIN));
+
+        $this->transaccionTimbrada();
+
+        $this->formulario(['transaction' => 1], ['tranDate' => '2026-02-01'])
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame('2026-02-01', Transaction::find(1)->tran_date->toDateString());
+    }
+
+    public function test_un_administrador_normal_no_corrige_la_fecha_de_una_timbrada(): void
+    {
+        $this->actingAs($this->usuario());
+
+        $this->transaccionTimbrada();
+
+        $this->formulario(['transaction' => 1], ['tranDate' => '2026-02-01'])
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame('2026-01-15', Transaction::find(1)->tran_date->toDateString());
+    }
+
+    /** Factura con sello y con cargos: bloqueada para todo menos la compañía. */
+    private function transaccionTimbrada(): void
+    {
+        DB::table('transaction')->insert([
+            'transc_id' => 1, 'booking' => 1, 'tran_type' => 0, 'customer' => 1, 'company_id' => 1,
+            'tran_number' => 'F-1', 'tran_date' => '2026-01-15', 'account' => 1,
+            'invoice_type' => 1, 'seal' => 'SELLO-CFDI',
+        ]);
+
+        DB::table('charge')->insert([
+            'charge_id' => 1, 'transaction' => 1, 'type' => 1, 'quantity' => 1, 'price' => 100,
+        ]);
+    }
 }
