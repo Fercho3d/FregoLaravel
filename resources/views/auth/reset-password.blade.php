@@ -1,7 +1,7 @@
 <x-guest-layout :title="'Restablecer contraseña'">
     <div class="mb-6">
-        <h1 class="text-lg font-semibold text-white">Nueva contraseña</h1>
-        <p class="mt-1 text-sm text-frego-400">Define una contraseña segura para tu cuenta.</p>
+        <h1 class="text-lg font-semibold text-ink">Nueva contraseña</h1>
+        <p class="mt-1 text-sm text-ink-muted">Define una contraseña segura para tu cuenta.</p>
     </div>
 
     @include('partials.validation-errors')
@@ -26,6 +26,6 @@
                    autocomplete="new-password" class="field-input mt-1.5" placeholder="••••••••">
         </div>
 
-        <button type="submit" class="btn-accent w-full">Restablecer contraseña</button>
+        <x-submit-button class="w-full">Restablecer contraseña</x-submit-button>
     </form>
 </x-guest-layout>

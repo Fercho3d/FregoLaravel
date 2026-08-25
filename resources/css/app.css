@@ -4,6 +4,13 @@
 @source '../../storage/framework/views/*.php';
 @source '../../app/Livewire/**/*.php';
 
+/*
+ * El tema se controla con la clase `dark` en <html>, que pone el layout antes de
+ * pintar (ver el script en <head>). No se usa `prefers-color-scheme` directo:
+ * el usuario puede forzar claro u oscuro por encima del sistema.
+ */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
@@ -25,23 +32,186 @@
     --color-accent-500: #e11d2a;
     --color-accent-600: #c11020;
     --color-accent-700: #9e0c19;
+
+    --animate-shimmer: shimmer 1.6s ease-in-out infinite;
 }
 
-/* Utilidades de marca reutilizables */
+/*
+ * Tokens semánticos. Se declaran `inline` para que las utilidades emitan
+ * `var(--surface)` y no un color fijo: así el mismo `bg-surface` cambia de valor
+ * al alternar el tema, sin duplicar clases `dark:` por toda la aplicación.
+ */
+@theme inline {
+    --color-surface: var(--surface);
+    --color-panel: var(--panel);
+    --color-raised: var(--raised);
+    --color-line: var(--line);
+    --color-line-soft: var(--line-soft);
+    --color-ink: var(--ink);
+    --color-ink-soft: var(--ink-soft);
+    --color-ink-muted: var(--ink-muted);
+    --color-ink-faint: var(--ink-faint);
+    --color-brand: var(--brand);
+}
+
+/* Tema claro (por omisión) */
+:root {
+    color-scheme: light;
+
+    --surface: #f4f4f6;
+    --panel: #ffffff;
+    --raised: #ededf0;
+    --line: #dcdde2;
+    --line-soft: #ededf0;
+    --ink: #18191c;
+    --ink-soft: #3a3b41;
+    --ink-muted: #63656e;
+    --ink-faint: #83868f;
+    --brand: #c11020;
+
+    --ok-bg: #dcfce7;
+    --ok-ink: #15803d;
+    --warn-bg: #fef3c7;
+    --warn-ink: #b45309;
+    --danger-bg: #fee2e2;
+    --danger-ink: #b91c1c;
+
+    --ring-shadow: 0 1px 2px 0 rgb(16 17 20 / 0.06), 0 1px 3px 0 rgb(16 17 20 / 0.08);
+    --livewire-progress-bar-color: #e11d2a;
+}
+
+/* Tema oscuro */
+.dark {
+    color-scheme: dark;
+
+    --surface: #0c0d0f;
+    --panel: #18191c;
+    --raised: #26272b;
+    --line: #2e2f34;
+    --line-soft: #26272b;
+    --ink: #f7f7f8;
+    --ink-soft: #d6d7dc;
+    --ink-muted: #9b9ea7;
+    --ink-faint: #6f727a;
+    --brand: #f04452;
+
+    --ok-bg: rgb(6 78 59 / 0.45);
+    --ok-ink: #6ee7b7;
+    --warn-bg: rgb(120 53 15 / 0.45);
+    --warn-ink: #fcd34d;
+    --danger-bg: rgb(127 29 29 / 0.45);
+    --danger-ink: #fca5a5;
+
+    --ring-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.4), 0 1px 3px 0 rgb(0 0 0 / 0.5);
+}
+
+@layer base {
+    html {
+        /* Evita el salto horizontal al aparecer y desaparecer la barra de scroll. */
+        scrollbar-gutter: stable;
+    }
+
+    body {
+        background-color: var(--surface);
+        color: var(--ink);
+    }
+
+    /* Transición suave al alternar el tema, sin arrastrar las demás animaciones. */
+    .theme-transition * {
+        transition:
+            background-color 200ms ease,
+            border-color 200ms ease,
+            color 200ms ease;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .theme-transition * {
+            transition: none;
+        }
+    }
+}
+
 @layer components {
     .btn-accent {
-        @apply inline-flex items-center justify-center gap-2 rounded-lg bg-accent-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-accent-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 focus-visible:ring-offset-2 focus-visible:ring-offset-frego-950 disabled:opacity-60;
+        @apply inline-flex items-center justify-center gap-2 rounded-lg bg-accent-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-accent-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:cursor-not-allowed disabled:opacity-60;
     }
 
     .btn-ghost {
-        @apply inline-flex items-center justify-center gap-2 rounded-lg border border-frego-700 px-4 py-2.5 text-sm font-semibold text-frego-100 transition hover:bg-frego-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-frego-500;
+        @apply inline-flex items-center justify-center gap-2 rounded-lg border border-line px-4 py-2.5 text-sm font-semibold text-ink-soft transition hover:bg-raised focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/50 disabled:cursor-not-allowed disabled:opacity-60;
     }
 
     .field-label {
-        @apply block text-sm font-medium text-frego-200;
+        @apply block text-sm font-medium text-ink-soft;
     }
 
     .field-input {
-        @apply block w-full rounded-lg border border-frego-700 bg-frego-900 px-3.5 py-2.5 text-frego-50 placeholder-frego-500 shadow-sm transition focus:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-500/40;
+        @apply block w-full rounded-lg border border-line bg-panel px-3.5 py-2.5 text-ink placeholder-ink-faint shadow-sm transition focus:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-500/40;
     }
+
+    .card {
+        @apply rounded-2xl border border-line bg-panel shadow-sm;
+    }
+
+    .badge {
+        @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold;
+    }
+
+    .badge-neutral {
+        @apply bg-raised text-ink-muted;
+    }
+
+    .badge-ok {
+        background-color: var(--ok-bg);
+        color: var(--ok-ink);
+    }
+
+    .badge-warn {
+        background-color: var(--warn-bg);
+        color: var(--warn-ink);
+    }
+
+    .badge-danger {
+        background-color: var(--danger-bg);
+        color: var(--danger-ink);
+    }
+
+    .alert-ok {
+        @apply rounded-lg px-4 py-3 text-sm;
+        background-color: var(--ok-bg);
+        color: var(--ok-ink);
+    }
+
+    .alert-danger {
+        @apply rounded-lg px-4 py-3 text-sm;
+        background-color: var(--danger-bg);
+        color: var(--danger-ink);
+    }
+
+    /* Bloque gris animado para los estados de carga. */
+    .skeleton {
+        @apply animate-shimmer rounded-md bg-raised;
+    }
+}
+
+@keyframes shimmer {
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.45;
+    }
+}
+
+/* Barra de progreso de wire:navigate, con el rojo de la marca. */
+#nprogress .bar {
+    background: var(--color-accent-500) !important;
+    height: 3px !important;
+}
+
+#nprogress .peg {
+    box-shadow:
+        0 0 10px var(--color-accent-500),
+        0 0 5px var(--color-accent-500) !important;
 }

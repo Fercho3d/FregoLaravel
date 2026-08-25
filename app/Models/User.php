@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Support\Theme;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
@@ -63,11 +65,51 @@ class User extends Authenticatable
         ];
     }
 
+    /** Roles heredados de Yii2 (`User::ROLE_*`). */
+    public const ROLE_USER = 9;
+
+    public const ROLE_ADMIN = 10;
+
+    public const ROLE_SUPER_ADMIN = 20;
+
     /**
      * Solo los usuarios activos pueden autenticarse.
      */
     public function isActive(): bool
     {
         return (bool) $this->status;
+    }
+
+    /**
+     * Equivalente a `User::isUserAdmin()` de Yii2: administrador o super
+     * administrador. Es la puerta de los módulos internos — el resto de los roles
+     * (clientes, proveedores, operación) no debe ver facturación.
+     */
+    public function isAdmin(): bool
+    {
+        return in_array((int) $this->role, [self::ROLE_ADMIN, self::ROLE_SUPER_ADMIN], true);
+    }
+
+    public function isSuperAdmin(): bool
+    {
+        return (int) $this->role === self::ROLE_SUPER_ADMIN;
+    }
+
+    /**
+     * Preferencias de interfaz (tema, densidad). Vive en una tabla propia de
+     * Laravel para no alterar la tabla `users` heredada de Yii2.
+     */
+    public function preference(): HasOne
+    {
+        return $this->hasOne(UserPreference::class, 'usr_id', 'usr_id');
+    }
+
+    /**
+     * Tema elegido por el usuario. Se llama `themePreference` y no `theme` para
+     * que Eloquent no lo confunda con una relación al resolver `$user->theme`.
+     */
+    public function themePreference(): Theme
+    {
+        return $this->preference?->theme ?? Theme::System;
     }
 }

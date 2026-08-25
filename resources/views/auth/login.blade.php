@@ -1,7 +1,7 @@
 <x-guest-layout :title="'Iniciar sesión'">
     <div class="mb-6">
-        <h1 class="text-lg font-semibold text-white">Iniciar sesión</h1>
-        <p class="mt-1 text-sm text-frego-400">Accede con tu usuario o correo.</p>
+        <h1 class="text-lg font-semibold text-ink">Iniciar sesión</h1>
+        <p class="mt-1 text-sm text-ink-muted">Accede con tu usuario o correo.</p>
     </div>
 
     @include('partials.session-status')
@@ -21,7 +21,7 @@
             <div class="flex items-center justify-between">
                 <label for="password" class="field-label">Contraseña</label>
                 @if (Route::has('password.request'))
-                    <a href="{{ route('password.request') }}" class="text-xs font-medium text-accent-400 hover:text-accent-500">
+                    <a href="{{ route('password.request') }}" class="text-xs font-medium text-brand hover:text-accent-500">
                         ¿Olvidaste tu contraseña?
                     </a>
                 @endif
@@ -30,12 +30,12 @@
                    class="field-input mt-1.5" placeholder="••••••••">
         </div>
 
-        <label for="remember" class="flex items-center gap-2 text-sm text-frego-300 select-none">
+        <label for="remember" class="flex items-center gap-2 text-sm text-ink-muted select-none">
             <input id="remember" name="remember" type="checkbox"
-                   class="h-4 w-4 rounded border-frego-600 bg-frego-900 text-accent-500 focus:ring-accent-500">
+                   class="h-4 w-4 rounded border-line bg-panel text-accent-500 focus:ring-accent-500">
             Recordar mi sesión en este equipo
         </label>
 
-        <button type="submit" class="btn-accent w-full">Entrar</button>
+        <x-submit-button class="w-full">Entrar</x-submit-button>
     </form>
 </x-guest-layout>

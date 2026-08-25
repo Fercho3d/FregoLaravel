@@ -1,10 +1,10 @@
 <x-app-layout :title="'Panel'">
     <div class="mx-auto max-w-6xl space-y-6">
-        <div class="rounded-2xl border border-frego-800 bg-gradient-to-br from-frego-900 to-frego-950 p-6 sm:p-8">
-            <h2 class="text-xl font-semibold text-white">
+        <div class="rounded-2xl border border-line bg-gradient-to-br from-panel to-surface p-6 sm:p-8">
+            <h2 class="text-xl font-semibold text-ink">
                 Bienvenido, {{ auth()->user()->name ?? auth()->user()->username }}
             </h2>
-            <p class="mt-1 text-sm text-frego-400">
+            <p class="mt-1 text-sm text-ink-muted">
                 Sistema FregoCargo — plataforma unificada de operación, facturación y portal.
             </p>
             @unless (auth()->user()->two_factor_secret)
@@ -24,12 +24,12 @@
                 ['Portal', 'Proveedores y clientes', 'Etapa 7'],
                 ['Reportes', 'Utilidad y pagos', 'Etapa 6'],
             ] as [$t, $d, $stage])
-                <div class="rounded-xl border border-frego-800 bg-frego-900/60 p-5">
+                <div class="rounded-xl border border-line bg-panel p-5">
                     <div class="flex items-center justify-between">
-                        <h3 class="font-semibold text-white">{{ $t }}</h3>
-                        <span class="rounded-full bg-frego-800 px-2 py-0.5 text-[10px] font-medium text-frego-400">{{ $stage }}</span>
+                        <h3 class="font-semibold text-ink">{{ $t }}</h3>
+                        <span class="rounded-full bg-raised px-2 py-0.5 text-[10px] font-medium text-ink-muted">{{ $stage }}</span>
                     </div>
-                    <p class="mt-1 text-sm text-frego-400">{{ $d }}</p>
+                    <p class="mt-1 text-sm text-ink-muted">{{ $d }}</p>
                 </div>
             @endforeach
         </div>

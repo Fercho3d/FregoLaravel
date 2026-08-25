@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\Theme;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -12,7 +13,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        // El tema es una preferencia de interfaz, no un dato sensible: se deja
+        // en claro para que el navegador pueda leerlo si hiciera falta y para
+        // que no cueste un descifrado en cada petición.
+        $middleware->encryptCookies(except: [Theme::COOKIE]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

@@ -1,7 +1,7 @@
 <x-guest-layout :title="'Confirmar contraseña'">
     <div class="mb-6">
-        <h1 class="text-lg font-semibold text-white">Confirma tu contraseña</h1>
-        <p class="mt-1 text-sm text-frego-400">Esta es una zona segura. Confirma tu contraseña para continuar.</p>
+        <h1 class="text-lg font-semibold text-ink">Confirma tu contraseña</h1>
+        <p class="mt-1 text-sm text-ink-muted">Esta es una zona segura. Confirma tu contraseña para continuar.</p>
     </div>
 
     @include('partials.validation-errors')
@@ -13,6 +13,6 @@
             <input id="password" name="password" type="password" required autocomplete="current-password"
                    autofocus class="field-input mt-1.5" placeholder="••••••••">
         </div>
-        <button type="submit" class="btn-accent w-full">Confirmar</button>
+        <x-submit-button class="w-full">Confirmar</x-submit-button>
     </form>
 </x-guest-layout>

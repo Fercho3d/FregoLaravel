@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -19,6 +20,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Paginador propio: usa los tokens de tema en lugar de los grises fijos
+        // de la vista que trae Laravel, que solo se ven bien en tema claro.
+        Paginator::defaultView('vendor.pagination.frego');
+        Paginator::defaultSimpleView('vendor.pagination.frego');
     }
 }

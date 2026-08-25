@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ThemeController;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Livewire\Transactions\TransactionTable;
 use Illuminate\Support\Facades\Route;
@@ -7,6 +8,10 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return redirect()->route(auth()->check() ? 'dashboard' : 'login');
 });
+
+// Tema claro/oscuro. Sin `auth` a propósito: la pantalla de acceso también
+// deja elegirlo (se recuerda por cookie hasta que haya sesión).
+Route::put('/preferencias/tema', ThemeController::class)->name('preferences.theme');
 
 Route::middleware(['auth'])->group(function () {
     Route::view('/dashboard', 'dashboard')->name('dashboard');

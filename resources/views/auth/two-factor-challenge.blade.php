@@ -1,7 +1,7 @@
 <x-guest-layout :title="'Verificación en dos pasos'">
     <div class="mb-6">
-        <h1 class="text-lg font-semibold text-white">Verificación en dos pasos</h1>
-        <p class="mt-1 text-sm text-frego-400" x-data x-show="true">
+        <h1 class="text-lg font-semibold text-ink">Verificación en dos pasos</h1>
+        <p class="mt-1 text-sm text-ink-muted" x-data x-show="true">
             Ingresa el código de tu app de autenticación, o un código de recuperación.
         </p>
     </div>
@@ -23,9 +23,9 @@
                    class="field-input mt-1.5" placeholder="xxxxxxxx-xxxxxxxx" x-ref="recovery_code">
         </div>
 
-        <button type="submit" class="btn-accent w-full">Verificar</button>
+        <x-submit-button class="w-full">Verificar</x-submit-button>
 
-        <button type="button" class="block w-full text-center text-sm text-frego-400 hover:text-frego-200"
+        <button type="button" class="block w-full text-center text-sm text-ink-muted hover:text-ink-soft"
                 x-on:click="recovery = !recovery; $nextTick(() => (recovery ? $refs.recovery_code : $refs.code).focus())">
             <span x-show="!recovery">Usar un código de recuperación</span>
             <span x-show="recovery" x-cloak>Usar un código de autenticación</span>
