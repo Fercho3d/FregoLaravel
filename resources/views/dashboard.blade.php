@@ -9,7 +9,7 @@
             </p>
             @unless (auth()->user()->two_factor_secret)
                 <div class="mt-4 flex flex-wrap items-center gap-3 rounded-xl border border-accent-700/50 bg-accent-700/10 px-4 py-3 text-sm">
-                    <span class="text-accent-300">Refuerza tu cuenta activando la verificación en dos pasos.</span>
+                    <span class="text-brand">Refuerza tu cuenta activando la verificación en dos pasos.</span>
                     <a href="{{ route('security.show') }}" class="btn-accent !py-1.5 !px-3 text-xs">Activar 2FA</a>
                 </div>
             @endunless

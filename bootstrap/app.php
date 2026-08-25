@@ -13,10 +13,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // El tema es una preferencia de interfaz, no un dato sensible: se deja
-        // en claro para que el navegador pueda leerlo si hiciera falta y para
-        // que no cueste un descifrado en cada petición.
-        $middleware->encryptCookies(except: [Theme::COOKIE]);
+        // Las cookies del tema no llevan datos sensibles y una de ellas la
+        // escribe el propio navegador, así que van sin cifrar.
+        $middleware->encryptCookies(except: [Theme::COOKIE, Theme::RESOLVED_COOKIE]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

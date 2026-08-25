@@ -1,6 +1,13 @@
 @props(['title' => 'Panel'])
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full" data-theme="{{ \App\Support\Theme::current()->value }}">
+@php
+    $tema = \App\Support\Theme::current();
+    $temaResuelto = \App\Support\Theme::resolved();
+@endphp
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}"
+      class="h-full {{ $temaResuelto === \App\Support\Theme::Dark ? 'dark' : '' }}"
+      data-theme="{{ $tema->value }}"
+      style="color-scheme: {{ $temaResuelto->value }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">

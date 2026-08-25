@@ -14,7 +14,20 @@ function aplicarTema(tema) {
     raiz.dataset.theme = tema;
     raiz.classList.toggle('dark', oscuro);
     raiz.style.colorScheme = oscuro ? 'dark' : 'light';
+
+    // El servidor no puede saber qué tema tiene el sistema operativo. Se lo
+    // dejamos aquí para que pinte el <html> ya correcto en la siguiente carga.
+    document.cookie = `frego_theme_resolved=${oscuro ? 'dark' : 'light'};path=/;max-age=31536000;samesite=lax`;
 }
+
+/*
+ * Al navegar con `wire:navigate`, Livewire copia los atributos del <html> que
+ * venga en la respuesta y borra los que falten. El tema hay que volver a
+ * aplicarlo: `data-theme` sí llega del servidor, la clase resuelta no siempre.
+ */
+document.addEventListener('livewire:navigated', () => {
+    aplicarTema(document.documentElement.dataset.theme || 'system');
+});
 
 // Si el usuario eligió "Sistema", seguimos los cambios del sistema en vivo.
 consultaOscuro.addEventListener('change', () => {

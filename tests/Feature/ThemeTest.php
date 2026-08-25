@@ -30,6 +30,7 @@ class ThemeTest extends TestCase
             $table->tinyInteger('role')->nullable();
             $table->tinyInteger('status')->default(1);
             $table->string('remember_token', 100)->nullable();
+            $table->text('two_factor_secret')->nullable();
             $table->dateTime('created_at')->nullable();
             $table->dateTime('modified_at')->nullable();
         });
@@ -116,5 +117,42 @@ class ThemeTest extends TestCase
             ->get(route('login'))
             ->assertOk()
             ->assertSee('data-theme="dark"', false);
+    }
+
+    /**
+     * Al navegar con `wire:navigate`, Livewire copia los atributos del `<html>`
+     * de la respuesta y borra los que no vengan. Si la clase `dark` la pusiera
+     * solo el JavaScript, cada cambio de pantalla devolvería el tema claro.
+     */
+    public function test_el_html_trae_la_clase_oscura_desde_el_servidor(): void
+    {
+        $this->withUnencryptedCookie(Theme::COOKIE, 'dark')
+            ->get(route('login'))
+            ->assertOk()
+            ->assertSee('class="h-full dark"', false)
+            ->assertSee('style="color-scheme: dark"', false);
+    }
+
+    public function test_con_tema_del_sistema_manda_la_cookie_que_escribe_el_navegador(): void
+    {
+        $this->withUnencryptedCookies([
+            Theme::COOKIE => 'system',
+            Theme::RESOLVED_COOKIE => 'dark',
+        ])
+            ->get(route('login'))
+            ->assertOk()
+            ->assertSee('class="h-full dark"', false)
+            ->assertSee('data-theme="system"', false);
+    }
+
+    public function test_el_usuario_sin_preferencia_hereda_el_tema_de_la_cookie(): void
+    {
+        // Elegir el tema en la pantalla de acceso y verlo cambiar al entrar
+        // sería desconcertante: sin preferencia guardada, manda la cookie.
+        $this->actingAs($this->usuario())
+            ->withUnencryptedCookie(Theme::COOKIE, 'dark')
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('class="h-full dark"', false);
     }
 }
