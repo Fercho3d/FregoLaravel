@@ -117,10 +117,93 @@
 
     {{-- Conceptos --}}
     <section class="card overflow-hidden">
-        <header class="flex items-center justify-between gap-3 border-b border-line px-5 py-3">
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-3">
             <h3 class="text-sm font-semibold text-ink">Conceptos</h3>
-            <span class="text-xs text-ink-faint">{{ $cargos->count() }} {{ \Illuminate\Support\Str::plural('línea', $cargos->count()) }}</span>
+
+            <div class="flex items-center gap-3">
+                <span class="text-xs text-ink-faint">
+                    {{ $cargos->count() }} {{ \Illuminate\Support\Str::plural('línea', $cargos->count()) }}
+                </span>
+                @unless ($candado->locked)
+                    <button type="button" wire:click="addCharge" class="btn-ghost px-3 py-1.5 text-xs">
+                        Agregar concepto
+                    </button>
+                @endunless
+            </div>
         </header>
+
+        {{-- Alta y edición de un concepto --}}
+        @if ($editingCharge)
+            <form wire:submit="saveCharge" class="space-y-4 border-b border-line bg-raised/60 p-5">
+                <p class="text-sm font-medium text-ink">
+                    {{ $chargeId ? 'Editar concepto' : 'Nuevo concepto' }}
+                </p>
+
+                @if ($tiposDeCargo === [])
+                    <p class="alert-danger">
+                        No hay servicios contratados con
+                        {{ $esFactura ? 'este cliente' : 'este proveedor' }}, así que no hay tipos de cargo
+                        que ofrecer. Da de alta el servicio en el catálogo primero.
+                    </p>
+                @endif
+
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <label class="block">
+                        <span class="field-label">Tipo de cargo</span>
+                        <select wire:model.live="chargeType" class="field-input mt-1.5" required>
+                            <option value="">Selecciona el tipo</option>
+                            @foreach ($tiposDeCargo as $id => $etiqueta)
+                                <option value="{{ $id }}" @selected((string) $id === $chargeType)>{{ $etiqueta }}</option>
+                            @endforeach
+                        </select>
+                        @error('chargeType') <span class="mt-1 block text-xs text-brand">{{ $message }}</span> @enderror
+                    </label>
+
+                    <label class="block">
+                        <span class="field-label">Servicio</span>
+                        <select wire:model.live="serviceId" class="field-input mt-1.5"
+                                @disabled($chargeType === '') required>
+                            <option value="">
+                                {{ $chargeType === '' ? 'Elige primero el tipo de cargo' : 'Selecciona el servicio' }}
+                            </option>
+                            @foreach ($servicios as $servicio)
+                                <option value="{{ $servicio->service_id }}" @selected((string) $servicio->service_id === $serviceId)>
+                                    {{ $servicio->description ?: 'Sin descripción' }} — {{ $money($servicio->price) }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('serviceId') <span class="mt-1 block text-xs text-brand">{{ $message }}</span> @enderror
+                    </label>
+
+                    <label class="block">
+                        <span class="field-label">Cantidad</span>
+                        <input type="number" step="0.0001" min="0" wire:model="quantity" value="{{ $quantity }}"
+                               class="field-input mt-1.5" required>
+                        @error('quantity') <span class="mt-1 block text-xs text-brand">{{ $message }}</span> @enderror
+                    </label>
+
+                    <label class="block">
+                        <span class="field-label">
+                            Precio
+                            @if ($this->priceIsFixed())
+                                <span class="font-normal text-ink-faint">(lo fija el servicio)</span>
+                            @endif
+                        </span>
+                        <input type="number" step="0.0001" min="0" wire:model="price" value="{{ $price }}"
+                               @disabled($this->priceIsFixed()) class="field-input mt-1.5" required>
+                        @error('price') <span class="mt-1 block text-xs text-brand">{{ $message }}</span> @enderror
+                    </label>
+                </div>
+
+                <div class="flex flex-wrap justify-end gap-3">
+                    <button type="button" wire:click="cancelChargeEdit" class="btn-ghost px-3 py-1.5 text-xs">Cancelar</button>
+                    <button type="submit" wire:loading.attr="disabled" wire:target="saveCharge" class="btn-accent px-3 py-1.5 text-xs">
+                        <x-spinner wire:loading wire:target="saveCharge" class="h-3.5 w-3.5" />
+                        Guardar concepto
+                    </button>
+                </div>
+            </form>
+        @endif
 
         {{-- Tarjetas en móvil --}}
         <ul class="divide-y divide-line md:hidden">
@@ -138,6 +221,13 @@
                         · IVA {{ $money($cargo->tax) }}
                         @if ($cargo->retention > 0) · Ret. {{ $money($cargo->retention) }} @endif
                     </p>
+                    @unless ($candado->locked)
+                        <div class="flex gap-3 text-xs">
+                            <button type="button" wire:click="editCharge({{ $cargo->charge_id }})" class="text-brand hover:underline">Editar</button>
+                            <button type="button" wire:click="deleteCharge({{ $cargo->charge_id }})"
+                                    wire:confirm="¿Quitar este concepto de la transacción?" class="text-ink-muted hover:text-brand">Quitar</button>
+                        </div>
+                    @endunless
                 </li>
             @empty
                 <li class="px-4 py-10 text-center text-sm text-ink-faint">Esta transacción no tiene conceptos.</li>
@@ -157,6 +247,9 @@
                         <th class="px-4 py-2.5 text-right font-semibold">IVA</th>
                         <th class="px-4 py-2.5 text-right font-semibold">Retención</th>
                         <th class="px-4 py-2.5 text-right font-semibold">Total</th>
+                        @unless ($candado->locked)
+                            <th class="px-4 py-2.5 text-right font-semibold"><span class="sr-only">Acciones</span></th>
+                        @endunless
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-line">
@@ -170,10 +263,21 @@
                             <td class="whitespace-nowrap px-4 py-2 text-right tabular-nums text-ink-muted">{{ $money($cargo->tax) }}</td>
                             <td class="whitespace-nowrap px-4 py-2 text-right tabular-nums text-ink-muted">{{ $money($cargo->retention) }}</td>
                             <td class="whitespace-nowrap px-4 py-2 text-right font-semibold tabular-nums text-ink">{{ $money($cargo->total) }}</td>
+                            @unless ($candado->locked)
+                                <td class="whitespace-nowrap px-4 py-2 text-right">
+                                    <div class="flex justify-end gap-3 text-xs">
+                                        <button type="button" wire:click="editCharge({{ $cargo->charge_id }})" class="text-brand hover:underline">Editar</button>
+                                        <button type="button" wire:click="deleteCharge({{ $cargo->charge_id }})"
+                                                wire:confirm="¿Quitar este concepto de la transacción?" class="text-ink-muted transition hover:text-brand">Quitar</button>
+                                    </div>
+                                </td>
+                            @endunless
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="px-4 py-10 text-center text-ink-faint">Esta transacción no tiene conceptos.</td>
+                            <td colspan="{{ $candado->locked ? 8 : 9 }}" class="px-4 py-10 text-center text-ink-faint">
+                                Esta transacción no tiene conceptos.
+                            </td>
                         </tr>
                     @endforelse
                 </tbody>

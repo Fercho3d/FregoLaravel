@@ -32,4 +32,29 @@ class ChargeType extends FregoModel
     {
         return $this->hasMany(Charge::class, 'type', 'charge_type_id');
     }
+
+    /**
+     * Tipos de cargo que tienen al menos un servicio contratado con esta
+     * contraparte. Réplica de `ChargeType::getListFilter()` en Yii2: no se ofrece
+     * un tipo de cargo suelto, sino los que de verdad se le pueden facturar.
+     *
+     * @return array<int, string>
+     */
+    public static function optionsFor(int $partyId, int $type): array
+    {
+        return static::query()
+            ->join('service', 'service.charge_type_id', '=', 'charge_type.charge_type_id')
+            ->where('service.'.Service::partyColumn($type), $partyId)
+            ->where('service.type', $type)
+            ->where('charge_type.deleted', 0)
+            ->groupBy('charge_type.charge_type_id', 'charge_type.charge_type_name', 'charge_type.tax_name')
+            ->orderBy('charge_type.charge_type_name')
+            ->get(['charge_type.charge_type_id', 'charge_type.charge_type_name', 'charge_type.tax_name'])
+            // La etiqueta se arma en PHP y no con CONCAT: el original usa MySQL,
+            // pero las pruebas corren en SQLite y ahí esa función no existe.
+            ->mapWithKeys(fn (self $tipo) => [
+                (int) $tipo->charge_type_id => trim($tipo->charge_type_name.' - '.$tipo->tax_name, ' -'),
+            ])
+            ->all();
+    }
 }

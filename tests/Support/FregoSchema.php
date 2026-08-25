@@ -59,11 +59,23 @@ class FregoSchema
         Schema::create('charge_type', function ($table) {
             $table->integer('charge_type_id')->primary();
             $table->string('charge_type_name')->nullable();
+            $table->string('tax_name')->nullable();
             $table->decimal('tax_rate', 7, 4)->default(0);
             $table->decimal('tax_retention', 7, 4)->default(0);
             $table->string('product_code')->nullable();
             $table->boolean('non_deductible')->default(false);
             $table->boolean('deleted')->default(false);
+        });
+
+        Schema::create('service', function ($table) {
+            $table->integer('service_id')->primary();
+            $table->integer('charge_type_id')->nullable();
+            $table->integer('client_id')->nullable();
+            $table->integer('provider_id')->nullable();
+            $table->integer('type')->nullable();
+            $table->decimal('price', 16, 4)->nullable();
+            $table->string('description')->nullable();
+            $table->integer('active')->default(1);
         });
 
         Schema::create('exchange', function ($table) {
