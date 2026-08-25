@@ -153,6 +153,28 @@ class FregoSchema
             }
         });
 
+        // Documentos que se adjuntan a un booking: qué campos pide cada cliente
+        // (`fields_by_client` sobre el catálogo `file_fields`) y qué se subió.
+        Schema::create('file_fields', function ($table) {
+            $table->increments('field_id');
+            $table->string('field')->nullable();
+            $table->string('label')->nullable();
+            $table->boolean('default')->default(false);
+        });
+
+        Schema::create('fields_by_client', function ($table) {
+            $table->increments('customer_field_id');
+            $table->integer('client_id')->nullable();
+            $table->integer('field_id')->nullable();
+        });
+
+        Schema::create('files_by_booking', function ($table) {
+            $table->increments('booking_file_id');
+            $table->integer('booking_id')->nullable();
+            $table->integer('field_id')->nullable();
+            $table->text('value')->nullable();
+        });
+
         Schema::create('containers', function ($table) {
             $table->increments('container_ID');
             $table->integer('booking')->nullable();

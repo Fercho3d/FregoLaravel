@@ -221,6 +221,70 @@
         </div>
     </section>
 
+    {{-- Documentos --}}
+    @if ($documentos !== [])
+        <section class="card overflow-hidden">
+            <header class="flex items-center justify-between gap-3 border-b border-line px-5 py-3">
+                <h3 class="text-sm font-semibold text-ink">Documentos</h3>
+                <span class="text-xs text-ink-faint">
+                    {{ collect($documentos)->sum(fn ($d) => count($d->files)) }} archivos
+                </span>
+            </header>
+
+            <p class="border-b border-line px-5 py-2 text-xs text-ink-faint">
+                Cada cliente pide los suyos: esta lista sale de los campos configurados para
+                {{ $booking->client_name ?: 'este cliente' }}.
+            </p>
+
+            @error('upload') <p class="alert-danger m-5">{{ $message }}</p> @enderror
+
+            <ul class="divide-y divide-line">
+                @foreach ($documentos as $campo)
+                    <li class="space-y-2 p-4">
+                        <div class="flex flex-wrap items-center justify-between gap-3">
+                            <p class="text-sm font-medium text-ink">{{ $campo->label }}</p>
+
+                            @if (auth()->user()?->isAdmin() && ! $booking->locked)
+                                @if ($uploadField === $campo->field_id)
+                                    <span class="flex items-center gap-2">
+                                        <input type="file" wire:model="upload"
+                                               class="block w-full text-xs text-ink-muted file:mr-3 file:rounded-lg file:border-0 file:bg-raised file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-ink hover:file:bg-line">
+                                        <span wire:loading wire:target="upload" class="inline-flex items-center gap-1.5 text-xs text-ink-muted">
+                                            <x-spinner class="h-3 w-3" /> Subiendo…
+                                        </span>
+                                    </span>
+                                @else
+                                    <button type="button" wire:click="chooseField({{ $campo->field_id }})"
+                                            class="btn-ghost !px-3 !py-1 text-xs">Adjuntar</button>
+                                @endif
+                            @endif
+                        </div>
+
+                        @if ($campo->files === [])
+                            <p class="text-xs text-ink-faint">Sin documentos.</p>
+                        @else
+                            <ul class="flex flex-wrap gap-2">
+                                @foreach ($campo->files as $archivo)
+                                    <li class="inline-flex items-center gap-2 rounded-lg border border-line px-3 py-1.5 text-xs">
+                                        <a href="{{ route('operations.bookings.file', [$booking->booking_id, urlencode($archivo)]) }}"
+                                           class="max-w-[16rem] truncate text-brand hover:underline" title="{{ $archivo }}">
+                                            {{ $archivo }}
+                                        </a>
+                                        @if (auth()->user()?->isAdmin() && ! $booking->locked)
+                                            <button type="button" wire:click="removeFile({{ $campo->field_id }}, @js($archivo))"
+                                                    wire:confirm="¿Quitar este documento del booking?"
+                                                    class="text-ink-faint transition hover:text-brand" aria-label="Quitar">×</button>
+                                        @endif
+                                    </li>
+                                @endforeach
+                            </ul>
+                        @endif
+                    </li>
+                @endforeach
+            </ul>
+        </section>
+    @endif
+
     {{-- Lista de verificación --}}
     @if ($checklist !== [])
         <section class="card p-5 sm:p-6">

@@ -6,11 +6,13 @@ use App\Queries\BookingFilters;
 use App\Queries\BookingQuery;
 use App\Queries\TransactionFilters;
 use App\Queries\TransactionQuery;
+use App\Support\BookingFiles;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
@@ -22,6 +24,8 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
  */
 class BookingDetail extends Component
 {
+    use WithFileUploads;
+
     public int $bookingId;
 
     // --- Formulario de contenedor ---
@@ -40,6 +44,12 @@ class BookingDetail extends Component
     public string $containerCommodity = '';
 
     public string $containerPickup = '';
+
+    // --- Documentos del booking ---
+    /** Campo al que se está subiendo, para no mezclar los archivos. */
+    public ?int $uploadField = null;
+
+    public $upload = null;
 
     public function mount(int $booking): void
     {
@@ -233,6 +243,44 @@ class BookingDetail extends Component
         return $valor === null ? '' : (string) $valor;
     }
 
+    // -------------------------------------------------------- Documentos
+
+    public function chooseField(int $fieldId): void
+    {
+        $this->assertEditable();
+
+        $this->uploadField = $fieldId;
+        $this->upload = null;
+        $this->resetErrorBag();
+    }
+
+    /** Livewire sube el archivo en cuanto se elige; aquí se guarda al vuelo. */
+    public function updatedUpload(): void
+    {
+        $this->assertEditable();
+
+        if ($this->uploadField === null) {
+            return;
+        }
+
+        $this->validate(
+            ['upload' => ['required', 'file', 'max:20480']],
+            attributes: ['upload' => 'archivo'],
+        );
+
+        app(BookingFiles::class)->store($this->bookingId, $this->uploadField, $this->upload);
+
+        $this->reset(['upload', 'uploadField']);
+        session()->flash('status', 'Documento adjuntado.');
+    }
+
+    public function removeFile(int $fieldId, string $nombre): void
+    {
+        $this->assertEditable();
+
+        app(BookingFiles::class)->remove($this->bookingId, $fieldId, $nombre);
+    }
+
     public function render()
     {
         $fila = $this->header();
@@ -243,6 +291,10 @@ class BookingDetail extends Component
             'transacciones' => $this->transactions(),
             'checklist' => $this->checklist(),
             'tiposContenedor' => DB::table('container_types')->orderBy('container_name')->pluck('container_name', 'contType_id')->all(),
+            'documentos' => app(BookingFiles::class)->fieldsFor(
+                $this->bookingId,
+                DB::table('booking')->where('booking_id', $this->bookingId)->value('client'),
+            ),
         ])->layout('components.app-layout', [
             'title' => trim((string) $fila->booking_number) ?: 'Booking '.$this->bookingId,
         ]);

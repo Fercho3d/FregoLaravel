@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\BookingFileController;
 use App\Http\Controllers\PortalFileController;
 use App\Http\Controllers\ThemeController;
 use App\Http\Controllers\TransactionFileController;
@@ -68,6 +69,8 @@ Route::middleware(['auth', EnsureUserIsInternal::class])->group(function () {
         Route::get('/bookings/nuevo', BookingForm::class)->name('bookings.create');
         Route::get('/bookings/{booking}/editar', BookingForm::class)->whereNumber('booking')->name('bookings.edit');
         Route::get('/bookings/{booking}', BookingDetail::class)->whereNumber('booking')->name('bookings.show');
+        Route::get('/bookings/{booking}/documento/{nombre}', BookingFileController::class)
+            ->whereNumber('booking')->name('bookings.file');
     });
 
     /*
