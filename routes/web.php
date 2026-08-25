@@ -3,6 +3,7 @@
 use App\Http\Controllers\ThemeController;
 use App\Http\Controllers\TransactionFileController;
 use App\Http\Middleware\EnsureUserIsAdmin;
+use App\Livewire\Payments\PaymentsReport;
 use App\Livewire\Transactions\BookingReport;
 use App\Livewire\Transactions\TransactionDetail;
 use App\Livewire\Transactions\TransactionForm;
@@ -23,6 +24,16 @@ Route::middleware(['auth'])->group(function () {
     // Seguridad de la cuenta (contraseña + 2FA). Las acciones (activar/confirmar/
     // desactivar 2FA, cambiar contraseña) las expone Laravel Fortify.
     Route::view('/seguridad', 'security.show')->name('security.show');
+
+    /*
+     * Reportes de cobros y pagos. Viven aparte de las transacciones porque su
+     * origen es otro: la tabla de solicitudes de pago, no la de documentos.
+     */
+    Route::middleware(EnsureUserIsAdmin::class)->prefix('pagos')->name('payments.')->group(function () {
+        Route::get('/reporte/clientes', PaymentsReport::class)->defaults('mode', 'customer')->name('report.customer');
+        Route::get('/reporte/proveedores', PaymentsReport::class)->defaults('mode', 'vendor')->name('report.vendor');
+        Route::get('/reporte/general', PaymentsReport::class)->defaults('mode', 'general')->name('report.general');
+    });
 
     /*
      * Módulo Transactions. Los cuatro listados son el mismo componente Livewire
