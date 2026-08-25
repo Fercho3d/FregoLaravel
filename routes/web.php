@@ -4,6 +4,8 @@ use App\Http\Controllers\ThemeController;
 use App\Http\Controllers\TransactionFileController;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Livewire\Catalogs\CatalogManager;
+use App\Livewire\Operations\BookingDetail;
+use App\Livewire\Operations\BookingList;
 use App\Livewire\Payments\PaymentRequestForm;
 use App\Livewire\Payments\PaymentRequestList;
 use App\Livewire\Payments\PaymentsReport;
@@ -27,6 +29,14 @@ Route::middleware(['auth'])->group(function () {
     // Seguridad de la cuenta (contraseña + 2FA). Las acciones (activar/confirmar/
     // desactivar 2FA, cambiar contraseña) las expone Laravel Fortify.
     Route::view('/seguridad', 'security.show')->name('security.show');
+
+    /*
+     * Operación: los embarques y lo que cuelga de ellos.
+     */
+    Route::prefix('operacion')->name('operations.')->group(function () {
+        Route::get('/bookings', BookingList::class)->name('bookings');
+        Route::get('/bookings/{booking}', BookingDetail::class)->whereNumber('booking')->name('bookings.show');
+    });
 
     /*
      * Catálogos maestros. Una sola pantalla para los dieciséis: lo que cambia

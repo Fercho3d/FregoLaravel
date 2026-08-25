@@ -38,7 +38,7 @@
         ] : [],
         [
             ['Catálogos', route('catalogs.show', 'companias'), request()->routeIs('catalogs.*'), 'catalogo'],
-            ['Operación', '#', false, 'operacion'],
+            ['Operación', route('operations.bookings'), request()->routeIs('operations.*'), 'operacion'],
         ]
     );
 @endphp
