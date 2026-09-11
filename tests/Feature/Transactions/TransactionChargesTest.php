@@ -3,14 +3,14 @@
 namespace Tests\Feature\Transactions;
 
 use App\Livewire\Transactions\TransactionDetail;
-use App\Models\Frego\Charge;
-use App\Models\Frego\Transaction;
+use App\Models\Core\Charge;
+use App\Models\Core\Transaction;
 use App\Models\User;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
-use Tests\Support\FregoSchema;
+use Tests\Support\CoreSchema;
 use Tests\TestCase;
 
 /**
@@ -26,7 +26,7 @@ class TransactionChargesTest extends TestCase
     {
         parent::setUp();
 
-        FregoSchema::create();
+        CoreSchema::create();
         $this->seedFixture();
     }
 

@@ -7,7 +7,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
-use Tests\Support\FregoSchema;
+use Tests\Support\CoreSchema;
 use Tests\TestCase;
 
 /**
@@ -22,8 +22,8 @@ class ClientDocumentFieldsTest extends TestCase
     {
         parent::setUp();
 
-        FregoSchema::create();
-        FregoSchema::createUsers();
+        CoreSchema::create();
+        CoreSchema::createUsers();
 
         DB::table('file_fields')->insert([
             ['field_id' => 1, 'field' => 'entrusts_letter_file', 'label' => 'Entrust Letter', 'default' => 1],

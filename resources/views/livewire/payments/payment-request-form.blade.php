@@ -6,7 +6,7 @@
 
 <div class="mx-auto max-w-4xl space-y-4">
 
-    <a href="{{ route($esCobro ? 'transactions.invoice' : 'transactions.bill') }}" wire:navigate
+    <a href="{{ $this->backUrl() }}" wire:navigate
        class="inline-flex items-center gap-1.5 text-sm text-ink-muted transition hover:text-ink">
         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
         {{ __('Volver al listado') }}
@@ -15,16 +15,14 @@
     <form wire:submit="save" class="card space-y-5 p-5 sm:p-6">
         <header>
             <h2 class="text-lg font-semibold text-ink">
-                {{ $esCobro ? 'Nueva solicitud de cobro' : 'Nueva solicitud de pago' }}
+                {{ $esCobro ? __('Nueva solicitud de cobro') : __('Nueva solicitud de pago') }}
             </h2>
             <p class="mt-0.5 text-sm text-ink-muted">
-                {{ $transacciones->count() }} {{ \Illuminate\Support\Str::plural('transacción', $transacciones->count()) }}
-                · {{ $esCobro ? ($primera?->customerName ?: 'Sin cliente') : ($primera?->vendorName ?: 'Sin proveedor') }}
+                {{ $transacciones->count() }} {{ $transacciones->count() === 1 ? __('transacción') : __('transacciones') }}
+                · {{ $esCobro ? ($primera?->customerName ?: __('Sin cliente')) : ($primera?->vendorName ?: __('Sin proveedor')) }}
                 · {{ $primera?->currency ?: '—' }}
             </p>
         </header>
-
-        @include('partials.validation-errors')
 
         @error('seleccion') <p class="alert-danger">{{ $message }}</p> @enderror
 
@@ -95,7 +93,7 @@
         </div>
 
         <footer class="flex flex-wrap items-center justify-end gap-3 border-t border-line pt-4">
-            <a href="{{ route('payments.requests') }}" wire:navigate class="btn-ghost">{{ __('Cancelar') }}</a>
+            <a href="{{ $this->backUrl() }}" wire:navigate class="btn-ghost">{{ __('Cancelar') }}</a>
             <button type="submit" wire:loading.attr="disabled" wire:target="save" class="btn-accent">
                 <x-spinner wire:loading wire:target="save" class="h-4 w-4" />
                 {{ __('Crear solicitud') }}

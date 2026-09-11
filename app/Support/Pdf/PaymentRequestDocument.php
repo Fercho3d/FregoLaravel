@@ -2,11 +2,12 @@
 
 namespace App\Support\Pdf;
 
-use App\Models\Frego\Bank;
-use App\Models\Frego\PaymentRequest;
-use App\Models\Frego\Provider;
+use App\Models\Core\Bank;
+use App\Models\Core\PaymentRequest;
+use App\Models\Core\Provider;
 use App\Queries\TransactionFilters;
 use App\Queries\TransactionQuery;
+use App\Support\Documentos;
 use Illuminate\Support\Carbon;
 use NumberFormatter;
 
@@ -34,6 +35,11 @@ class PaymentRequestDocument
     }
 
     public function html(PaymentRequest $solicitud): string
+    {
+        return Documentos::conIdioma(fn () => $this->arma($solicitud));
+    }
+
+    private function arma(PaymentRequest $solicitud): string
     {
         $transacciones = $this->transactions($solicitud);
         $importe = (float) $solicitud->amount;

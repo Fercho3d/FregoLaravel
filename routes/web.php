@@ -6,13 +6,16 @@ use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\PaymentRequestDocumentController;
 use App\Http\Controllers\PortalFileController;
 use App\Http\Controllers\ThemeController;
+use App\Http\Controllers\TransactionExportController;
 use App\Http\Controllers\TransactionFileController;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Middleware\EnsureUserIsInternal;
 use App\Http\Middleware\EnsureUserIsPortal;
 use App\Livewire\Catalogs\CatalogManager;
 use App\Livewire\Dashboard;
+use App\Livewire\DemoRequests;
 use App\Livewire\Exchange\ExchangeManager;
+use App\Livewire\Home;
 use App\Livewire\Notifications;
 use App\Livewire\Operations\BillingGenerator;
 use App\Livewire\Operations\BookingDetail;
@@ -24,8 +27,14 @@ use App\Livewire\Parties\PartyManager;
 use App\Livewire\Payments\PaymentRequestForm;
 use App\Livewire\Payments\PaymentRequestList;
 use App\Livewire\Payments\PaymentsReport;
+use App\Livewire\Payments\PayrollManager;
+use App\Livewire\Workshop\InventoryManager;
+use App\Livewire\Workshop\MaintenanceManager;
+use App\Livewire\Payments\SettlementManager;
+use App\Livewire\Portal\PortalDocument;
 use App\Livewire\Portal\PortalHome;
 use App\Livewire\Services\ServiceManager;
+use App\Livewire\Settings;
 use App\Livewire\Transactions\BookingReport;
 use App\Livewire\Transactions\TransactionDetail;
 use App\Livewire\Transactions\TransactionForm;
@@ -33,15 +42,10 @@ use App\Livewire\Transactions\TransactionTable;
 use App\Livewire\Users\UserManager;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    if (! auth()->check()) {
-        return redirect()->route('login');
-    }
-
-    // Cada cuenta a su sitio: el personal al sistema, el cliente y el proveedor
-    // a su portal.
-    return redirect()->route(auth()->user()->isPortal() ? 'portal' : 'dashboard');
-});
+// La raíz es la página pública. Quien ya tiene sesión no la ve: `Home::mount()`
+// lo manda a su sitio —el personal al sistema, el cliente y el proveedor a su
+// portal—, que es lo que hacía antes esta ruta para todo el mundo.
+Route::get('/', Home::class)->name('home');
 
 // Tema claro/oscuro. Sin `auth` a propósito: la pantalla de acceso también
 // deja elegirlo (se recuerda por cookie hasta que haya sesión).
@@ -61,6 +65,8 @@ Route::view('/seguridad', 'security.show')->middleware('auth')->name('security.s
  */
 Route::middleware(['auth', EnsureUserIsPortal::class])->prefix('portal')->group(function () {
     Route::get('/', PortalHome::class)->name('portal');
+    Route::get('/documento/{transaction}', PortalDocument::class)
+        ->whereNumber('transaction')->name('portal.document');
     Route::get('/documento/{transaction}/{kind}', PortalFileController::class)
         ->whereNumber('transaction')->name('portal.file');
 });
@@ -96,6 +102,9 @@ Route::middleware(['auth', EnsureUserIsInternal::class])->group(function () {
      * `UserController` de Yii2.
      */
     Route::get('/usuarios', UserManager::class)->name('users');
+    Route::get('/solicitudes-demo', DemoRequests::class)->name('demo-requests');
+    // Ajustes de la instalación: qué mueve la empresa, si factura con CFDI…
+    Route::get('/ajustes', Settings::class)->name('settings');
 
     /*
      * Clientes y proveedores. No son catálogos planos: llevan datos fiscales y de
@@ -129,12 +138,24 @@ Route::middleware(['auth', EnsureUserIsInternal::class])->group(function () {
      */
     Route::middleware(EnsureUserIsAdmin::class)->prefix('pagos')->name('payments.')->group(function () {
         Route::get('/solicitudes', PaymentRequestList::class)->name('requests');
+        // Liquidaciones de operadores: solo tienen sentido con flota propia.
+        Route::get('/liquidaciones', SettlementManager::class)->name('settlements');
+        Route::get('/nomina', PayrollManager::class)->name('payroll');
         Route::get('/solicitudes/nueva', PaymentRequestForm::class)->name('requests.create');
         Route::get('/solicitudes/{request}/documento.pdf', PaymentRequestDocumentController::class)
             ->whereNumber('request')->name('requests.document');
         Route::get('/reporte/clientes', PaymentsReport::class)->defaults('mode', 'customer')->name('report.customer');
         Route::get('/reporte/proveedores', PaymentsReport::class)->defaults('mode', 'vendor')->name('report.vendor');
         Route::get('/reporte/general', PaymentsReport::class)->defaults('mode', 'general')->name('report.general');
+    });
+
+    /*
+     * El taller: mantenimiento de la flota y su almacén de refacciones. Solo con
+     * flota propia; el menú no los enseña sin ella (`MARCA_TALLER`).
+     */
+    Route::middleware(EnsureUserIsAdmin::class)->prefix('taller')->name('workshop.')->group(function () {
+        Route::get('/mantenimiento', MaintenanceManager::class)->name('maintenance');
+        Route::get('/almacen', InventoryManager::class)->name('inventory');
     });
 
     /*
@@ -152,6 +173,7 @@ Route::middleware(['auth', EnsureUserIsInternal::class])->group(function () {
         Route::get('/booking/{booking}', TransactionTable::class)->defaults('screen', 'booking')->name('booking');
         Route::get('/nueva', TransactionForm::class)->name('create');
         Route::get('/reporte/booking', BookingReport::class)->name('report.booking');
+        Route::get('/exportar/{screen}', TransactionExportController::class)->name('export');
         Route::get('/{transaction}', TransactionDetail::class)->whereNumber('transaction')->name('show');
         Route::get('/{transaction}/editar', TransactionForm::class)->whereNumber('transaction')->name('edit');
         Route::get('/{transaction}/archivo/{kind}', TransactionFileController::class)

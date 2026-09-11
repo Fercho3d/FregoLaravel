@@ -3,8 +3,8 @@
 namespace App\Actions\Bookings;
 
 use App\Mail\BookingConfirmationMail;
-use App\Models\Frego\Booking;
-use App\Models\Frego\Client;
+use App\Models\Core\Booking;
+use App\Models\Core\Client;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Throwable;

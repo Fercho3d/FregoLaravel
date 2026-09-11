@@ -1,4 +1,4 @@
-<x-guest-layout :title="'Restablecer contraseña'">
+<x-guest-layout :title="__('Restablecer contraseña')">
     <div class="mb-6">
         <h1 class="text-lg font-semibold text-ink">{{ __('Nueva contraseña') }}</h1>
         <p class="mt-1 text-sm text-ink-muted">{{ __('Define una contraseña segura para tu cuenta.') }}</p>
@@ -17,13 +17,13 @@
         </div>
         <div>
             <label for="password" class="field-label">{{ __('Nueva contraseña') }}</label>
-            <input id="password" name="password" type="password" required autocomplete="new-password"
-                   class="field-input mt-1.5" placeholder="••••••••">
+            <x-password-input id="password" name="password" required autocomplete="new-password"
+                              wrapper="mt-1.5" placeholder="••••••••" />
         </div>
         <div>
             <label for="password_confirmation" class="field-label">{{ __('Confirmar contraseña') }}</label>
-            <input id="password_confirmation" name="password_confirmation" type="password" required
-                   autocomplete="new-password" class="field-input mt-1.5" placeholder="••••••••">
+            <x-password-input id="password_confirmation" name="password_confirmation" required
+                              autocomplete="new-password" wrapper="mt-1.5" placeholder="••••••••" />
         </div>
 
         <x-submit-button class="w-full">{{ __('Restablecer contraseña') }}</x-submit-button>

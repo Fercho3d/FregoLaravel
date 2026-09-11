@@ -3,12 +3,12 @@
 namespace Tests\Feature\Services;
 
 use App\Livewire\Services\ServiceManager;
-use App\Models\Frego\Service;
+use App\Models\Core\Service;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
-use Tests\Support\FregoSchema;
+use Tests\Support\CoreSchema;
 use Tests\TestCase;
 
 /**
@@ -23,8 +23,8 @@ class ServiceManagerTest extends TestCase
     {
         parent::setUp();
 
-        FregoSchema::create();
-        FregoSchema::createUsers();
+        CoreSchema::create();
+        CoreSchema::createUsers();
 
         DB::table('account')->insert([['account_id' => 1, 'account_name' => 'Pesos', 'prefix' => 'MXN', 'default' => 1]]);
         DB::table('client')->insert([['client_id' => 1, 'fullName' => 'Cliente Uno']]);

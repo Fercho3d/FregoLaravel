@@ -1,4 +1,4 @@
-<x-app-layout :title="'Seguridad'">
+<x-app-layout :title="__('Seguridad')">
     @php
         $user = auth()->user();
         $twoFactorEnabled = ! is_null($user->two_factor_secret);
@@ -18,16 +18,16 @@
                 @method('PUT')
                 <div>
                     <label for="current_password" class="field-label">{{ __('Contraseña actual') }}</label>
-                    <input id="current_password" name="current_password" type="password" autocomplete="current-password" class="field-input mt-1.5">
+                    <x-password-input id="current_password" name="current_password" autocomplete="current-password" wrapper="mt-1.5" />
                 </div>
                 <div class="grid gap-4 sm:grid-cols-2">
                     <div>
                         <label for="password" class="field-label">{{ __('Nueva contraseña') }}</label>
-                        <input id="password" name="password" type="password" autocomplete="new-password" class="field-input mt-1.5">
+                        <x-password-input id="password" name="password" autocomplete="new-password" wrapper="mt-1.5" />
                     </div>
                     <div>
                         <label for="password_confirmation" class="field-label">{{ __('Confirmar') }}</label>
-                        <input id="password_confirmation" name="password_confirmation" type="password" autocomplete="new-password" class="field-input mt-1.5">
+                        <x-password-input id="password_confirmation" name="password_confirmation" autocomplete="new-password" wrapper="mt-1.5" />
                     </div>
                 </div>
                 <x-submit-button>{{ __('Actualizar contraseña') }}</x-submit-button>
@@ -42,7 +42,7 @@
                     <p class="mt-1 text-sm text-ink-muted">{{ __('Añade una capa extra con una app de autenticación (Google Authenticator, Authy…).') }}</p>
                 </div>
                 <span class="badge shrink-0 px-3 py-1 {{ $twoFactorConfirmed ? 'badge-ok' : 'badge-neutral' }}">
-                    {{ $twoFactorConfirmed ? 'Activada' : 'Inactiva' }}
+                    {{ $twoFactorConfirmed ? __('Activada') : __('Inactiva') }}
                 </span>
             </div>
 
@@ -50,6 +50,9 @@
                 <form method="POST" action="/user/two-factor-authentication" class="mt-4">
                     @csrf
                     <x-submit-button>{{ __('Activar 2FA') }}</x-submit-button>
+                    <p class="mt-2 text-xs text-ink-faint">
+                        {{ __('Te pediremos tu contraseña antes de activarlo y volverás aquí para terminar.') }}
+                    </p>
                 </form>
             @else
                 @if (! $twoFactorConfirmed)

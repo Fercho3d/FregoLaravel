@@ -108,6 +108,12 @@ class NoticeFeed
     /** @return Collection<int, Notice> */
     private function sinTimbrar(): Collection
     {
+        // Donde no se factura al SAT no hay nada que timbrar, y este aviso
+        // saldría siempre y para todas las facturas.
+        if (! config('timbrado.habilitado')) {
+            return collect();
+        }
+
         return collect(
             DB::table('transaction as t')
                 ->join('booking as b', 'b.booking_id', '=', 't.booking')

@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Frego\Booking;
+use App\Models\Core\Booking;
 use App\Support\Pdf\BookingConfirmation;
 use Illuminate\Http\Response;
 

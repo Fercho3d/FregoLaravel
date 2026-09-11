@@ -5,7 +5,7 @@ namespace Tests\Feature\Transactions;
 use App\Queries\TransactionFilters;
 use App\Queries\TransactionQuery;
 use Illuminate\Support\Facades\DB;
-use Tests\Support\FregoSchema;
+use Tests\Support\CoreSchema;
 use Tests\TestCase;
 
 /**
@@ -28,7 +28,7 @@ class TransactionMathTest extends TestCase
     {
         parent::setUp();
 
-        FregoSchema::create();
+        CoreSchema::create();
         $this->seedFixture();
     }
 

@@ -2,9 +2,9 @@
 
 namespace App\Mail;
 
-use App\Models\Frego\Booking;
-use App\Models\Frego\Client;
-use App\Models\Frego\Provider;
+use App\Models\Core\Booking;
+use App\Models\Core\Client;
+use App\Models\Core\Provider;
 use App\Support\Pdf\BookingConfirmation;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
@@ -31,11 +31,19 @@ class BookingConfirmationMail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public function __construct(public Booking $booking) {}
+    public function __construct(public Booking $booking)
+    {
+        // El correo se arma en el idioma de los DOCUMENTOS y no en el de quien
+        // lo dispara: lo lee el cliente, no el operador. `locale()` es el
+        // mecanismo propio del Mailable y cubre el asunto Y el cuerpo; envolver
+        // solo el asunto no habría servido, porque el cuerpo lo pinta Laravel
+        // más tarde, ya fuera de cualquier envoltura nuestra.
+        $this->locale((string) config('marca.idioma_documentos'));
+    }
 
     public function envelope(): Envelope
     {
-        return new Envelope(subject: 'Booking ['.$this->booking->booking_number.']');
+        return new Envelope(subject: __('Booking').' ['.$this->booking->booking_number.']');
     }
 
     public function content(): Content

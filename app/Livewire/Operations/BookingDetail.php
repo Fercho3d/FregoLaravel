@@ -3,12 +3,15 @@
 namespace App\Livewire\Operations;
 
 use App\Actions\Bookings\SendBookingConfirmation;
-use App\Models\Frego\Booking;
+use App\Models\Core\Booking;
 use App\Queries\BookingFilters;
 use App\Queries\BookingQuery;
 use App\Queries\TransactionFilters;
 use App\Queries\TransactionQuery;
 use App\Support\BookingFiles;
+use App\Support\Fleet\TripExpenses;
+use App\Support\Milestones\BookingMilestones;
+use App\Support\Milestones\MilestoneCatalog;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -45,6 +48,27 @@ class BookingDetail extends Component
 
     public string $containerCommodity = '';
 
+    // --- Gastos de viaje (solo con flota propia) ---
+    public ?string $hitoEditando = null;
+
+    public string $hitoFecha = '';
+
+    public ?int $gastoId = null;
+
+    public string $gastoTipo = 'combustible';
+
+    public string $gastoFecha = '';
+
+    public string $gastoDescripcion = '';
+
+    public string $gastoImporte = '';
+
+    public string $gastoLitros = '';
+
+    public string $gastoOdometro = '';
+
+    public string $gastoFolio = '';
+
     public string $containerPickup = '';
 
     // --- Instrucciones de embarque ---
@@ -80,7 +104,12 @@ class BookingDetail extends Component
 
     private function loadInstructions(): void
     {
-        $modelo = Booking::findOrFail($this->bookingId);
+        // `findOrFail` levantaría `ModelNotFoundException`, que fuera de una
+        // petición HTTP (una prueba de Livewire, por ejemplo) no se traduce a
+        // 404. Se usa la misma excepción que `header()` para que un booking que
+        // no existe responda igual por los dos caminos.
+        $modelo = Booking::find($this->bookingId)
+            ?? throw new NotFoundHttpException(__('No existe el booking ').$this->bookingId);
 
         foreach (array_keys(self::INSTRUCCIONES) as $parte) {
             foreach (['is', 'should'] as $lado) {
@@ -92,7 +121,7 @@ class BookingDetail extends Component
     /** @return array<string, string> */
     public function instructionParts(): array
     {
-        return self::INSTRUCCIONES;
+        return array_map(fn (string $etiqueta) => __($etiqueta), self::INSTRUCCIONES);
     }
 
     public function editInstructions(): void
@@ -152,7 +181,7 @@ class BookingDetail extends Component
             }
         }
 
-        throw new NotFoundHttpException('No existe el booking '.$this->bookingId);
+        throw new NotFoundHttpException(__('No existe el booking ').$this->bookingId);
     }
 
     /** @return Collection<int, object> */
@@ -179,45 +208,97 @@ class BookingDetail extends Component
     }
 
     /**
-     * Las casillas de la lista de verificación con la fecha en que se marcaron.
+     * Los hitos del expediente: en qué va, y con qué fecha se marcó cada paso.
      *
-     * @return array<string, string|null>
+     * ⚠️ Antes esto pintaba las 27 columnas `_chk_date` de `check_list` con sus
+     * rótulos escritos a mano —«Zarpe», «SWB», «VGM», «Buque»—, así que en una
+     * empresa de camiones la lista no significaba nada **y no se podía marcar**:
+     * era de solo lectura. Ahora sale del catálogo de hitos, que cada instalación
+     * ajusta desde Catálogos, y se marca aquí mismo.
+     *
+     * El porcentaje de avance del listado sigue saliendo de `check_list`, que se
+     * escribe sola por el espejo de los hitos que tienen columna heredada.
+     *
+     * @return list<array{clave: string, etiqueta: string, fecha: ?string}>
      */
-    private function checklist(): array
+    private function hitos(): array
     {
-        $fila = DB::table('check_list')->where('booking', $this->bookingId)->first();
+        $capturados = BookingMilestones::de($this->bookingId);
 
-        if ($fila === null) {
-            return [];
-        }
-
-        $etiquetas = [
-            'booking_number' => 'Número de booking', 'pickup_date' => 'Fecha de recolección',
-            'modality' => 'Modalidad', 'doc_cut_of' => 'Corte documental', 'SI_date' => 'Instrucciones de embarque',
-            'cleared' => 'Despacho aduanal', 'departure' => 'Zarpe', 'bl_payment' => 'Pago del BL',
-            'swb' => 'SWB', 'vessel' => 'Buque', 'number' => 'Número', 'client' => 'Cliente',
-            'loading_port' => 'Puerto de carga', 'loading_EDT' => 'Fecha de carga',
-            'dicharge_port' => 'Puerto de descarga', 'container_type' => 'Tipo de contenedor',
-            'commodity' => 'Mercancía', 'set_point' => 'Temperatura', 'dicharge_ETA' => 'Arribo estimado',
-            'vacuum_maneuver' => 'Maniobra de vacío', 'draf_client' => 'Draft del cliente',
-            'gated_IN' => 'Gate in', 'gated_out' => 'Gate out', 'delivered' => 'Entregado',
-            'insurance' => 'Seguro', 'corrected_draft' => 'Draft corregido', 'vgm' => 'VGM',
-        ];
-
-        return collect($etiquetas)
-            ->mapWithKeys(fn (string $etiqueta, string $campo) => [
-                $etiqueta => $fila->{$campo.'_chk_date'} ?? null,
+        return MilestoneCatalog::activos()
+            ->map(fn (object $hito) => [
+                'clave' => $hito->clave,
+                'etiqueta' => $hito->etiqueta,
+                'fecha' => $capturados[$hito->clave] ?? null,
             ])
             ->all();
     }
 
-    // ------------------------------------------------------- Contenedores
+    /**
+     * Marca un hito con la fecha de hoy, o lo desmarca si ya estaba.
+     *
+     * Un clic y ya: en la práctica se marca el día que pasa la cosa, y quien
+     * necesite otra fecha la escribe en el recuadro que sale al lado.
+     */
+    public function marcaHito(string $clave): void
+    {
+        $this->assertAdmin();
+        $this->assertAbierto();
+        abort_unless(MilestoneCatalog::porClave($clave)?->activo ?? false, 404);
+
+        $tenia = BookingMilestones::de($this->bookingId)[$clave] ?? null;
+
+        BookingMilestones::guarda(
+            $this->bookingId,
+            $clave,
+            $tenia === null ? now()->toDateString() : null,
+            auth()->id(),
+        );
+
+        $this->hitoEditando = null;
+    }
+
+    public function editaHito(string $clave): void
+    {
+        $this->assertAdmin();
+        $this->assertAbierto();
+        abort_unless(MilestoneCatalog::porClave($clave)?->activo ?? false, 404);
+
+        $this->hitoEditando = $clave;
+        $this->hitoFecha = substr((string) (BookingMilestones::de($this->bookingId)[$clave] ?? now()->toDateString()), 0, 10);
+        $this->resetErrorBag();
+    }
+
+    public function guardaHito(): void
+    {
+        $this->assertAdmin();
+        $this->assertAbierto();
+
+        $clave = (string) $this->hitoEditando;
+        abort_unless(MilestoneCatalog::porClave($clave)?->activo ?? false, 404);
+
+        $this->validate(
+            ['hitoFecha' => ['nullable', 'date']],
+            attributes: ['hitoFecha' => mb_strtolower(MilestoneCatalog::porClave($clave)->etiqueta)],
+        );
+
+        BookingMilestones::guarda($this->bookingId, $clave, $this->hitoFecha ?: null, auth()->id());
+
+        $this->hitoEditando = null;
+    }
+
+    public function cancelaHito(): void
+    {
+        $this->hitoEditando = null;
+    }
+
+    // ---------------------------------------------------- Contenedores
 
     /** Un booking cerrado ya no recibe movimientos de carga. */
     private function assertEditable(): void
     {
         abort_unless(auth()->user()?->isAdmin() ?? false, 403);
-        abort_if((bool) $this->header()->locked, 403, 'Este booking está cerrado.');
+        abort_if((bool) $this->header()->locked, 403, __('Este booking está cerrado.'));
     }
 
     public function addContainer(): void
@@ -263,12 +344,12 @@ class BookingDetail extends Component
             'containerCommodity' => ['nullable', 'string', 'max:25'],
             'containerPickup' => ['nullable', 'date'],
         ], attributes: [
-            'containerNumber' => 'número',
+            'containerNumber' => __('número'),
             'containerSeal' => 'sello',
             'containerType' => 'tipo',
             'containerQuantity' => 'cantidad',
-            'containerCommodity' => 'mercancía',
-            'containerPickup' => 'fecha de recolección',
+            'containerCommodity' => __('mercancía'),
+            'containerPickup' => __('fecha de recolección'),
         ]);
 
         $valores = [
@@ -289,6 +370,128 @@ class BookingDetail extends Component
         }
 
         $this->resetContainerForm();
+    }
+
+    private function assertAdmin(): void
+    {
+        abort_unless(auth()->user()?->isAdmin() ?? false, 403);
+    }
+
+    /** Un viaje cerrado no recibe gastos: su facturación ya quedó fija. */
+    private function assertAbierto(): void
+    {
+        abort_if((bool) $this->header()->locked, 403, __('Este booking está cerrado.'));
+    }
+
+    /**
+     * Gastos de carretera del viaje: combustible, casetas y lo demás.
+     *
+     * Solo con flota propia: quien subcontrata el transporte no paga diésel, lo
+     * paga su proveedor y le llega en la factura.
+     */
+    public function gastos(): Collection
+    {
+        return TripExpenses::delViaje($this->bookingId);
+    }
+
+    /** @return array{combustible: float, caseta: float, otro: float, total: float} */
+    public function totalesGastos(): array
+    {
+        return TripExpenses::totales($this->bookingId);
+    }
+
+    public function editGasto(?int $gasto): void
+    {
+        $this->assertAdmin();
+        $this->resetGasto();
+
+        if ($gasto === null) {
+            $this->gastoFecha = now()->toDateString();
+
+            return;
+        }
+
+        $fila = DB::table('gasto_viaje')->where('gasto_id', $gasto)->where('booking', $this->bookingId)->first();
+        abort_if($fila === null, 404);
+
+        $this->gastoId = (int) $fila->gasto_id;
+        $this->gastoTipo = (string) $fila->tipo;
+        $this->gastoFecha = (string) $fila->fecha;
+        $this->gastoDescripcion = (string) ($fila->descripcion ?? '');
+        $this->gastoImporte = (string) $fila->importe;
+        $this->gastoLitros = (string) ($fila->litros ?? '');
+        $this->gastoOdometro = (string) ($fila->odometro ?? '');
+        $this->gastoFolio = (string) ($fila->folio ?? '');
+    }
+
+    public function saveGasto(): void
+    {
+        $this->assertAdmin();
+        $this->assertAbierto();
+
+        $datos = $this->validate([
+            'gastoTipo' => ['required', 'in:combustible,caseta,otro'],
+            'gastoFecha' => ['required', 'date'],
+            'gastoDescripcion' => ['nullable', 'string', 'max:120'],
+            'gastoImporte' => ['required', 'numeric', 'min:0'],
+            // Los litros y el odómetro solo tienen sentido en una carga: pedirlos
+            // en una caseta sería ruido, y guardarlos, basura.
+            'gastoLitros' => ['nullable', 'numeric', 'min:0', 'required_if:gastoTipo,combustible'],
+            'gastoOdometro' => ['nullable', 'integer', 'min:0'],
+            'gastoFolio' => ['nullable', 'string', 'max:40'],
+        ], attributes: [
+            'gastoTipo' => __('tipo de gasto'),
+            'gastoFecha' => __('fecha'),
+            'gastoImporte' => __('importe'),
+            'gastoLitros' => __('litros'),
+            'gastoOdometro' => __('odómetro'),
+        ]);
+
+        $esCombustible = $datos['gastoTipo'] === 'combustible';
+        $litros = $esCombustible && $datos['gastoLitros'] !== '' ? (float) $datos['gastoLitros'] : null;
+        $importe = (float) $datos['gastoImporte'];
+
+        $valores = [
+            'booking' => $this->bookingId,
+            'tipo' => $datos['gastoTipo'],
+            'fecha' => $datos['gastoFecha'],
+            'descripcion' => $datos['gastoDescripcion'] ?: null,
+            'importe' => $importe,
+            'litros' => $litros,
+            // El precio por litro se calcula y no se captura: pedirlo por
+            // separado invita a que no cuadre con el importe.
+            'precio_litro' => $litros > 0 ? round($importe / $litros, 4) : null,
+            'odometro' => $esCombustible && $datos['gastoOdometro'] !== '' ? (int) $datos['gastoOdometro'] : null,
+            'folio' => $datos['gastoFolio'] ?: null,
+            // Se heredan del viaje: quien carga es quien lo trae asignado.
+            'unidad_id' => $this->header()->unidad_id ?? null,
+            'operador_id' => $this->header()->operador_id ?? null,
+        ];
+
+        if ($this->gastoId === null) {
+            DB::table('gasto_viaje')->insert($valores + ['created_by' => auth()->id(), 'created_at' => now()]);
+        } else {
+            DB::table('gasto_viaje')->where('gasto_id', $this->gastoId)->update($valores);
+        }
+
+        $this->resetGasto();
+        session()->flash('status', __('Gasto guardado.'));
+    }
+
+    public function deleteGasto(int $gasto): void
+    {
+        $this->assertAdmin();
+        $this->assertAbierto();
+
+        DB::table('gasto_viaje')->where('gasto_id', $gasto)->where('booking', $this->bookingId)->delete();
+    }
+
+    public function resetGasto(): void
+    {
+        $this->reset(['gastoId', 'gastoTipo', 'gastoDescripcion', 'gastoImporte',
+            'gastoLitros', 'gastoOdometro', 'gastoFolio']);
+        $this->gastoTipo = 'combustible';
+        $this->resetErrorBag();
     }
 
     public function deleteContainer(int $container): void
@@ -344,8 +547,8 @@ class BookingDetail extends Component
         $avisados = $enviar->handle(Booking::findOrFail($this->bookingId));
 
         session()->flash('status', $avisados === []
-            ? 'No se mandó: el cliente no tiene correos de notificación.'
-            : 'Confirmación enviada a '.implode(', ', $avisados).'.');
+            ? __('No se mandó: el cliente no tiene correos de notificación.')
+            : __('Confirmación enviada a ').implode(', ', $avisados).'.');
     }
 
     /**
@@ -454,7 +657,7 @@ class BookingDetail extends Component
             'booking' => $fila,
             'contenedores' => $this->containers(),
             'transacciones' => $this->transactions(),
-            'checklist' => $this->checklist(),
+            'hitos' => $this->hitos(),
             'tiposContenedor' => DB::table('container_types')->orderBy('container_name')->pluck('container_name', 'contType_id')->all(),
             'documentos' => app(BookingFiles::class)->fieldsFor(
                 $this->bookingId,

@@ -3,13 +3,13 @@
 namespace Tests\Feature\Transactions;
 
 use App\Livewire\Transactions\TransactionForm;
-use App\Models\Frego\Transaction;
+use App\Models\Core\Transaction;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
-use Tests\Support\FregoSchema;
+use Tests\Support\CoreSchema;
 use Tests\TestCase;
 
 /**
@@ -25,7 +25,7 @@ class TransactionFormTest extends TestCase
     {
         parent::setUp();
 
-        FregoSchema::create();
+        CoreSchema::create();
         $this->seedFixture();
 
         // Guardar consulta el tipo de cambio del DOF; en pruebas no se sale a red.

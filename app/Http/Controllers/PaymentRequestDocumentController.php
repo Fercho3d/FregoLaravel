@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Frego\PaymentRequest;
+use App\Models\Core\PaymentRequest;
 use App\Support\Pdf\PaymentRequestDocument;
 use Illuminate\Http\Response;
 

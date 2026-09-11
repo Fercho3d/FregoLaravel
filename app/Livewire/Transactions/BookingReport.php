@@ -49,12 +49,12 @@ class BookingReport extends Component
 
     public function paginationView(): string
     {
-        return 'vendor.pagination.frego';
+        return 'vendor.pagination.app';
     }
 
     public function paginationSimpleView(): string
     {
-        return 'vendor.pagination.frego';
+        return 'vendor.pagination.app';
     }
 
     public function updated(string $property): void
@@ -93,6 +93,19 @@ class BookingReport extends Component
         return TransactionQuery::make($filtros);
     }
 
+    /** Descarga con el mismo filtro que se está viendo. */
+    public function exportUrl(): string
+    {
+        $parametros = array_filter([
+            'bk' => $this->bookingNumber,
+            'num' => $this->tranNumber,
+            'f' => $this->dates,
+            'pago' => $this->paid,
+        ], fn ($valor) => $valor !== null && $valor !== '');
+
+        return route('transactions.export', ['screen' => 'report'] + $parametros);
+    }
+
     public function render()
     {
         $inicio = microtime(true);
@@ -101,6 +114,6 @@ class BookingReport extends Component
 
         return view('livewire.transactions.booking-report', [
             'rows' => $rows,
-        ])->layout('components.app-layout', ['title' => 'Reporte por booking']);
+        ])->layout('components.app-layout', ['title' => __('Reporte por booking')]);
     }
 }

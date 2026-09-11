@@ -6,7 +6,7 @@ use App\Livewire\Operations\BookingHistory;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
-use Tests\Support\FregoSchema;
+use Tests\Support\CoreSchema;
 use Tests\TestCase;
 
 /**
@@ -19,8 +19,8 @@ class BookingHistoryTest extends TestCase
     {
         parent::setUp();
 
-        FregoSchema::create();
-        FregoSchema::createUsers();
+        CoreSchema::create();
+        CoreSchema::createUsers();
 
         DB::table('client')->insert([
             ['client_id' => 1, 'fullName' => 'Frialsa'],

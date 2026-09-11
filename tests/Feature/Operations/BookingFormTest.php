@@ -3,12 +3,12 @@
 namespace Tests\Feature\Operations;
 
 use App\Livewire\Operations\BookingForm;
-use App\Models\Frego\Booking;
+use App\Models\Core\Booking;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
-use Tests\Support\FregoSchema;
+use Tests\Support\CoreSchema;
 use Tests\TestCase;
 
 /**
@@ -22,8 +22,8 @@ class BookingFormTest extends TestCase
     {
         parent::setUp();
 
-        FregoSchema::create();
-        FregoSchema::createUsers();
+        CoreSchema::create();
+        CoreSchema::createUsers();
         $this->seedFixture();
     }
 

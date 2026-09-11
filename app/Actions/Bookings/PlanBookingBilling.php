@@ -2,7 +2,7 @@
 
 namespace App\Actions\Bookings;
 
-use App\Models\Frego\Booking;
+use App\Models\Core\Booking;
 use App\Support\Billing\BillingBlock;
 use App\Support\Billing\BillingPlan;
 use App\Support\Billing\PlannedDocument;

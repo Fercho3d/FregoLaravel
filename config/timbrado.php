@@ -30,7 +30,29 @@ return [
      *
      * Históricamente la cuenta es una y el emisor del XML otro, y así funciona.
      */
+    /**
+     * ¿Esta instalación factura con CFDI?
+     *
+     * El timbrado es una obligación **mexicana**, y hasta aquí era el único
+     * camino a la facturación: el sistema no se podía instalar en un negocio
+     * que no factura al SAT sin que le sobraran botones y campos.
+     *
+     * En falso desaparecen el timbrado, la cancelación, el aviso de «facturas
+     * sin timbrar» y los campos fiscales del cliente. Las facturas se siguen
+     * emitiendo, imprimiendo y cobrando igual.
+     *
+     * Los catálogos del SAT se ocultan aparte, con `MARCA_CATALOGOS`.
+     */
+    'habilitado' => env('TIMBRADO_HABILITADO', true),
+
     'rfc_cuenta' => env('TIMBRADO_RFC'),
+
+    /**
+     * Nombre del emisor cuando la transacción no trae compañía (facturas
+     * anteriores al catálogo de compañías). Estaba escrito dentro del código,
+     * con la razón social del primer cliente.
+     */
+    'emisor_nombre' => env('TIMBRADO_EMISOR_NOMBRE', ''),
     'usuario' => env('TIMBRADO_USER'),
     'password' => env('TIMBRADO_PASSWORD'),
 

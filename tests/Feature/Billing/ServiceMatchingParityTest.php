@@ -2,13 +2,13 @@
 
 namespace Tests\Feature\Billing;
 
-use App\Models\Frego\Booking;
+use App\Models\Core\Booking;
 use App\Support\Billing\BillingBlock;
 use App\Support\Billing\ServiceMatcher;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Group;
-use Tests\FregoDatabaseTestCase;
+use Tests\LegacyDatabaseTestCase;
 
 /**
  * Paridad del emparejamiento contra el sistema original, con datos reales.
@@ -29,7 +29,7 @@ use Tests\FregoDatabaseTestCase;
  *   vendor/bin/phpunit --group parity
  */
 #[Group('parity')]
-class ServiceMatchingParityTest extends FregoDatabaseTestCase
+class ServiceMatchingParityTest extends LegacyDatabaseTestCase
 {
     /** Bookings recientes a comparar. */
     private const MUESTRA = 200;

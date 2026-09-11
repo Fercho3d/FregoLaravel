@@ -2,7 +2,7 @@
 
 namespace App\Queries;
 
-use App\Models\Frego\Transaction;
+use App\Models\Core\Transaction;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 

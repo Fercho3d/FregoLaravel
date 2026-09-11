@@ -25,6 +25,12 @@ use Illuminate\Support\Facades\DB;
  * el proceso web al pintar el panel, nunca un comando de consola, que es lo que
  * dejó archivos con otro dueño. Cinco minutos bastan: son cifras de un panel, no
  * un estado de cuenta.
+ *
+ * **Sobre los pendientes**: los dos contadores de la tarjeta «Pendientes» llevan
+ * a `/transacciones` y `/pagos/solicitudes`, que están detrás de
+ * `EnsureUserIsAdmin`. Por eso solo se calculan para administradores —y por eso
+ * la llave de la caché distingue quién la escribió: si no, el primero en entrar
+ * le dejaría su foto al siguiente.
  */
 class DashboardMetrics
 {
@@ -34,20 +40,23 @@ class DashboardMetrics
     /** Meses que se dibujan en la gráfica. */
     private const MESES = 6;
 
-    /** @return array<string, mixed> */
-    public function all(): array
+    /**
+     * @param  bool  $esAdmin  Si se incluyen los pendientes, que son solo para administradores.
+     * @return array<string, mixed>
+     */
+    public function all(bool $esAdmin): array
     {
         $mes = now()->startOfMonth();
 
         return Cache::remember(
-            'panel:'.$mes->format('Y-m').':'.now()->format('Y-m-d-H').':'.intdiv((int) now()->format('i'), self::MINUTOS),
+            'panel:'.($esAdmin ? 'admin' : 'basico').':'.$mes->format('Y-m').':'.now()->format('Y-m-d-H').':'.intdiv((int) now()->format('i'), self::MINUTOS),
             now()->addMinutes(self::MINUTOS),
-            fn () => $this->compute($mes),
+            fn () => $this->compute($mes, $esAdmin),
         );
     }
 
     /** @return array<string, mixed> */
-    private function compute(Carbon $mes): array
+    private function compute(Carbon $mes, bool $esAdmin): array
     {
         $rango = $mes->format('d/m/Y').' - '.$mes->copy()->endOfMonth()->format('d/m/Y');
         $desde = $mes->toDateString();
@@ -59,7 +68,7 @@ class DashboardMetrics
 
         $utilidad = (new ProfitByBooking(TransactionFilters::make(['dates' => $rango])))->summary()['totals'];
 
-        return [
+        $panel = [
             // Sin formatear: lo que se guarda no debe depender del idioma de
             // quien haya pintado el panel primero.
             'mes' => $mes->toDateString(),
@@ -68,12 +77,17 @@ class DashboardMetrics
             'embarques' => $this->bookingsDelMes($desde, $hasta),
             'contenedores' => $this->contenedoresDelMes($desde, $hasta),
             'serie' => $this->serie(),
-            'pendientes' => [
-                'timbrar' => $this->sinTimbrar(),
-                'solicitudes' => (int) DB::table('payment_request')->where('opened', 1)->where('paid', 0)->count(),
-            ],
             'proximos' => $this->proximos(),
         ];
+
+        if ($esAdmin) {
+            $panel['pendientes'] = [
+                'timbrar' => config('timbrado.habilitado') ? $this->sinTimbrar() : 0,
+                'solicitudes' => (int) DB::table('payment_request')->where('opened', 1)->where('paid', 0)->count(),
+            ];
+        }
+
+        return $panel;
     }
 
     private function bookingsDelMes(string $desde, string $hasta): int

@@ -15,18 +15,18 @@
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
 
-    /* Marca FregoCargo — negros y grises con acento rojo (logo Frego). */
-    --color-frego-50: #f7f7f8;
-    --color-frego-100: #ededf0;
-    --color-frego-200: #d6d7dc;
-    --color-frego-300: #b0b2bb;
-    --color-frego-400: #83868f;
-    --color-frego-500: #63656e;
-    --color-frego-600: #4b4d55;
-    --color-frego-700: #3a3b41;
-    --color-frego-800: #26272b;
-    --color-frego-900: #18191c;
-    --color-frego-950: #0c0d0f;
+    /* Rampa de grises neutros. El acento lo pone `config/marca.php` en caliente. */
+    --color-neutral-50: #f7f7f8;
+    --color-neutral-100: #ededf0;
+    --color-neutral-200: #d6d7dc;
+    --color-neutral-300: #b0b2bb;
+    --color-neutral-400: #83868f;
+    --color-neutral-500: #63656e;
+    --color-neutral-600: #4b4d55;
+    --color-neutral-700: #3a3b41;
+    --color-neutral-800: #26272b;
+    --color-neutral-900: #18191c;
+    --color-neutral-950: #0c0d0f;
 
     --color-accent-400: #f04452;
     --color-accent-500: #e11d2a;
@@ -76,6 +76,10 @@
     --danger-bg: #fee2e2;
     --danger-ink: #b91c1c;
 
+    /* Renglón marcado en los listados con casilla. */
+    --pick-bg: #dbeafe;
+    --pick-line: #93c5fd;
+
     --ring-shadow: 0 1px 2px 0 rgb(16 17 20 / 0.06), 0 1px 3px 0 rgb(16 17 20 / 0.08);
     --livewire-progress-bar-color: #e11d2a;
 }
@@ -101,6 +105,9 @@
     --warn-ink: #fcd34d;
     --danger-bg: rgb(127 29 29 / 0.45);
     --danger-ink: #fca5a5;
+
+    --pick-bg: rgb(30 58 138 / 0.45);
+    --pick-line: #3b82f6;
 
     --ring-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.4), 0 1px 3px 0 rgb(0 0 0 / 0.5);
 }
@@ -194,6 +201,43 @@
         @apply rounded-lg px-4 py-3 text-sm;
         background-color: var(--danger-bg);
         color: var(--danger-ink);
+    }
+
+    /*
+     * Entrada de pantalla: un desvanecido corto al navegar con `wire:navigate`,
+     * para que el cambio no se sienta un corte seco.
+     *
+     * Solo anima `opacity` y `transform`, que el navegador resuelve en la GPU
+     * sin recalcular la maqueta: no retrasa nada de lo que se está pintando.
+     * A quien pidió menos movimiento en su sistema no se le anima.
+     */
+    .page-enter {
+        animation: page-enter 180ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+    }
+
+    @keyframes page-enter {
+        from {
+            opacity: 0;
+            transform: translateY(6px);
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .page-enter {
+            animation: none;
+        }
+    }
+
+    /* Renglón recién creado: verde, y solo mientras dura «el momento». */
+    .row-new {
+        background-color: var(--ok-bg);
+        box-shadow: inset 3px 0 0 0 var(--ok-ink);
+    }
+
+    /* Renglón marcado: azul claro y una guía a la izquierda. */
+    .row-picked {
+        background-color: var(--pick-bg);
+        box-shadow: inset 3px 0 0 0 var(--pick-line);
     }
 
     /* Bloque gris animado para los estados de carga. */

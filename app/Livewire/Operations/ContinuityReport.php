@@ -3,6 +3,8 @@
 namespace App\Livewire\Operations;
 
 use App\Queries\TransactionFilters;
+use App\Support\Milestones\BookingMilestones;
+use App\Support\Milestones\MilestoneCatalog;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -21,22 +23,17 @@ class ContinuityReport extends Component
     use WithPagination;
 
     /** Los hitos, en el orden en que ocurren. */
-    public const HITOS = [
-        'pickup_date' => 'Recolección',
-        'doc_cut_of' => 'Corte documental',
-        'SI_date' => 'Instrucciones',
-        'draf_client' => 'Draft cliente',
-        'corrected_draft' => 'Draft corregido',
-        'vgm' => 'VGM',
-        'gated_IN' => 'Gate in',
-        'cleared' => 'Despacho',
-        'departure' => 'Zarpe',
-        'bl_payment' => 'Pago del BL',
-        'swb' => 'SWB',
-        'delivered' => 'Entregado',
-        'gated_out' => 'Gate out',
-        'insurance' => 'Seguro',
-    ];
+    /**
+     * Los hitos ya no son una constante: salen del catálogo `hito`, así que un
+     * negocio distinto captura los suyos desde `/catalogos/hitos` sin tocar una
+     * línea de código. Antes eran catorce columnas de `booking_continuity`.
+     *
+     * @return array<string, string> clave => etiqueta traducida
+     */
+    public static function hitos(): array
+    {
+        return MilestoneCatalog::etiquetas();
+    }
 
     #[Url(as: 'bk', except: '')]
     public string $bookingNumber = '';
@@ -55,7 +52,7 @@ class ContinuityReport extends Component
 
     public function paginationView(): string
     {
-        return 'vendor.pagination.frego';
+        return 'vendor.pagination.app';
     }
 
     public function updated(string $property): void
@@ -75,7 +72,7 @@ class ContinuityReport extends Component
     public function editMilestone(int $bookingId, string $hito, ?string $actual = null): void
     {
         $this->assertAdmin();
-        abort_unless(array_key_exists($hito, self::HITOS), 404);
+        abort_unless(MilestoneCatalog::porClave($hito)?->activo ?? false, 404);
 
         $this->editing = $bookingId.'|'.$hito;
         $this->value = $actual ? substr($actual, 0, 10) : now()->toDateString();
@@ -88,22 +85,14 @@ class ContinuityReport extends Component
 
         [$bookingId, $hito] = explode('|', (string) $this->editing);
 
-        abort_unless(array_key_exists($hito, self::HITOS), 404);
+        abort_unless(MilestoneCatalog::porClave($hito)?->activo ?? false, 404);
 
         $this->validate(
             ['value' => ['nullable', 'date']],
-            attributes: ['value' => mb_strtolower(self::HITOS[$hito])],
+            attributes: ['value' => mb_strtolower(self::hitos()[$hito])],
         );
 
-        $fila = DB::table('booking_continuity')->where('booking', (int) $bookingId)->first();
-
-        $valores = [$hito => $this->value ?: null, 'modified_by' => auth()->id(), 'modified_at' => now()];
-
-        // La continuidad se crea al vuelo: hay bookings viejos que nunca la
-        // tuvieron y no por eso deben quedarse sin captura.
-        $fila === null
-            ? DB::table('booking_continuity')->insert($valores + ['booking' => (int) $bookingId])
-            : DB::table('booking_continuity')->where('cont_id', $fila->cont_id)->update($valores);
+        BookingMilestones::guarda((int) $bookingId, $hito, $this->value ?: null, auth()->id());
 
         $this->cancel();
     }
@@ -121,8 +110,6 @@ class ContinuityReport extends Component
 
     public function render()
     {
-        $columnas = array_map(fn (string $hito) => "bc.{$hito}", array_keys(self::HITOS));
-
         $filas = DB::table('booking as b')
             ->leftJoin('booking_continuity as bc', 'bc.booking', '=', 'b.booking_id')
             ->leftJoin('client as c', 'c.client_id', '=', 'b.client')
@@ -136,12 +123,17 @@ class ContinuityReport extends Component
                 fn ($q) => $q->whereBetween(DB::raw('DATE(bc.pickup_date)'), $rango)
             )
             ->orderByDesc('b.booking_id')
-            ->paginate(25, array_merge([
+            ->paginate(25, [
                 'b.booking_id', 'b.booking_number', 'c.fullName as client_name', 'v.vessel_name',
-            ], $columnas), 'page', $this->getPage());
+            ], 'page', $this->getPage());
+
+        // Las fechas de los 25 renglones en UNA consulta: la rejilla no puede
+        // preguntar expediente por expediente.
+        $fechas = BookingMilestones::deVarios($filas->pluck('booking_id')->map(intval(...))->all());
 
         return view('livewire.operations.continuity-report', [
             'filas' => $filas,
-        ])->layout('components.app-layout', ['title' => 'Continuidad']);
+            'fechas' => $fechas,
+        ])->layout('components.app-layout', ['title' => __('Continuidad')]);
     }
 }

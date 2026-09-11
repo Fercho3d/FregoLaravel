@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Support\Dashboard\DashboardMetrics;
+use App\Support\Dashboard\RouteMap;
 use Livewire\Component;
 
 /**
@@ -17,7 +18,11 @@ class Dashboard extends Component
     public function render()
     {
         return view('livewire.dashboard', [
-            'panel' => app(DashboardMetrics::class)->all(),
+            'panel' => app(DashboardMetrics::class)->all(auth()->user()?->isAdmin() ?? false),
+            // Las rutas se piden aparte y sin caché: son doce filas y cambian
+            // con cada captura de fecha; cachearlas dejaría el mapa desfasado
+            // justo cuando alguien acaba de actualizar un embarque.
+            'rutas' => RouteMap::rutas(),
         ])->layout('components.app-layout', ['title' => __('Panel')]);
     }
 }

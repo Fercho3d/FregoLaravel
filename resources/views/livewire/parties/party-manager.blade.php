@@ -9,7 +9,7 @@
 <div class="space-y-4">
 
     <nav class="flex flex-wrap gap-1.5">
-        @foreach (['client' => 'Clientes', 'provider' => 'Proveedores'] as $modo => $etiqueta)
+        @foreach (['client' => __('Clientes'), 'provider' => __('Proveedores')] as $modo => $etiqueta)
             <a href="{{ route($modo === 'client' ? 'parties.clients' : 'parties.providers') }}" wire:navigate
                class="rounded-lg px-3 py-1.5 text-xs font-medium transition
                       {{ $mode === $modo ? 'bg-accent-500 text-white' : 'border border-line text-ink-muted hover:bg-raised hover:text-ink' }}">
@@ -23,8 +23,8 @@
             <h2 class="text-lg font-semibold text-ink">{{ $this->title() }}</h2>
             <p class="text-sm text-ink-muted">
                 {{ $this->isClient()
-                    ? 'Los datos fiscales de aquí son los que viajan al CFDI.'
-                    : 'El tipo decide en qué selector del booking aparece cada proveedor.' }}
+                    ? __('Los datos fiscales de aquí son los que viajan al CFDI.')
+                    : __('El tipo decide en qué selector del booking aparece cada proveedor.') }}
             </p>
         </div>
 
@@ -41,7 +41,7 @@
     @if ($editing !== null)
         <form wire:submit="save" class="card space-y-4 p-5">
             <p class="text-sm font-medium text-ink">
-                {{ $editing === 0 ? 'Nuevo registro' : 'Editar registro' }}
+                {{ $editing === 0 ? __('Nuevo registro') : __('Editar registro') }}
             </p>
 
             @include('partials.validation-errors')
@@ -141,7 +141,7 @@
                     @empty
                         <tr>
                             <td colspan="{{ count($enLista) + 1 }}" class="px-4 py-12 text-center text-ink-faint">
-                                {{ $search === '' ? 'No hay registros.' : 'Nada coincide con la búsqueda.' }}
+                                {{ $search === '' ? __('No hay registros.') : __('Nada coincide con la búsqueda.') }}
                             </td>
                         </tr>
                     @endforelse

@@ -2,13 +2,13 @@
 
 namespace Tests\Feature\Transactions;
 
-use App\Models\Frego\Account;
-use App\Models\Frego\Company;
+use App\Models\Core\Account;
+use App\Models\Core\Company;
 use App\Queries\TransactionFilters;
 use App\Queries\TransactionQuery;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
-use Tests\Support\FregoSchema;
+use Tests\Support\CoreSchema;
 use Tests\TestCase;
 
 /**
@@ -43,7 +43,7 @@ class CatalogCacheTest extends TestCase
             'cache.stores.file.path' => $this->cachePath,
         ]);
 
-        FregoSchema::create();
+        CoreSchema::create();
 
         DB::table('account')->insert([
             ['account_id' => 1, 'account_name' => 'Pesos', 'default' => 1, 'prefix' => 'MXN'],

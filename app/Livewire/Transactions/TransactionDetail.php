@@ -5,10 +5,10 @@ namespace App\Livewire\Transactions;
 use App\Actions\Transactions\CancelStamp;
 use App\Actions\Transactions\SendInvoice;
 use App\Actions\Transactions\StampTransaction;
-use App\Models\Frego\Charge;
-use App\Models\Frego\ChargeType;
-use App\Models\Frego\Service;
-use App\Models\Frego\Transaction;
+use App\Models\Core\Charge;
+use App\Models\Core\ChargeType;
+use App\Models\Core\Service;
+use App\Models\Core\Transaction;
 use App\Queries\TransactionFilters;
 use App\Queries\TransactionQuery;
 use App\Support\Cfdi\CfdiException;
@@ -89,7 +89,7 @@ class TransactionDetail extends Component
             }
         }
 
-        throw new NotFoundHttpException('No existe la transacción '.$this->transactionId);
+        throw new NotFoundHttpException(__('No existe la transacción ').$this->transactionId);
     }
 
     private function transaction(): Transaction
@@ -136,7 +136,7 @@ class TransactionDetail extends Component
     private function assertEditable(): void
     {
         abort_unless(auth()->user()?->isAdmin() ?? false, 403);
-        abort_if($this->lock()->locked, 403, 'La transacción está bloqueada.');
+        abort_if($this->lock()->locked, 403, __('La transacción está bloqueada.'));
     }
 
     public function addCharge(): void
@@ -195,7 +195,7 @@ class TransactionDetail extends Component
             'quantity' => ['required', 'numeric', 'min:0'],
             'price' => ['required', 'numeric', 'min:0'],
         ], attributes: [
-            'chargeType' => 'tipo de cargo',
+            'chargeType' => __('tipo de cargo'),
             'serviceId' => 'servicio',
             'quantity' => 'cantidad',
             'price' => 'precio',
@@ -248,7 +248,7 @@ class TransactionDetail extends Component
                 auth()->user(),
             ),
             403,
-            'Esta transacción no se puede borrar.',
+            __('Esta transacción no se puede borrar.'),
         );
 
         $transaccion->delete();
@@ -282,7 +282,8 @@ class TransactionDetail extends Component
     {
         $transaccion = $this->transaction();
 
-        return (auth()->user()?->isAdmin() ?? false)
+        return config('timbrado.habilitado')
+            && (auth()->user()?->isAdmin() ?? false)
             && (int) $transaccion->tran_type === Transaction::TYPE_INVOICE
             && (int) $transaccion->invoice_type !== Transaction::INVOICE_TYPE_HISTORY
             && blank($transaccion->seal)
@@ -294,6 +295,9 @@ class TransactionDetail extends Component
     {
         $transaccion = $this->transaction();
 
+        // La cancelación sí se permite con el timbrado apagado si hay sello:
+        // una instalación que dejó de facturar al SAT todavía puede tener que
+        // cancelar lo que timbró antes.
         return (auth()->user()?->isAdmin() ?? false)
             && filled($transaccion->seal)
             && ! $transaccion->cancelled;
@@ -339,10 +343,10 @@ class TransactionDetail extends Component
     private function mailNote(?string $estado): string
     {
         return match ($estado) {
-            SendInvoice::ENVIADA => 'La factura se le mandó al cliente.',
-            SendInvoice::SIN_DOCUMENTOS => 'No se mandó por correo: la factura todavía no tiene documentos.',
-            SendInvoice::SIN_DESTINATARIOS => 'No se mandó por correo: el cliente no tiene correos de notificación.',
-            SendInvoice::ERROR => 'No se pudo mandar por correo; quedó anotado en la bitácora.',
+            SendInvoice::ENVIADA => __('La factura se le mandó al cliente.'),
+            SendInvoice::SIN_DOCUMENTOS => __('No se mandó por correo: la factura todavía no tiene documentos.'),
+            SendInvoice::SIN_DESTINATARIOS => __('No se mandó por correo: el cliente no tiene correos de notificación.'),
+            SendInvoice::ERROR => __('No se pudo mandar por correo; quedó anotado en la bitácora.'),
             default => '',
         };
     }
@@ -399,7 +403,7 @@ class TransactionDetail extends Component
                 ? collect()
                 : Service::optionsFor((int) $this->chargeType, $contraparte, $tipoServicio),
         ])->layout('components.app-layout', [
-            'title' => trim((string) $transaccion->tran_number) ?: 'Transacción '.$this->transactionId,
+            'title' => trim((string) $transaccion->tran_number) ?: __('Transacción ').$this->transactionId,
         ]);
     }
 }

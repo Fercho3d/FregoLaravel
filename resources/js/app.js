@@ -17,7 +17,7 @@ function aplicarTema(tema) {
 
     // El servidor no puede saber qué tema tiene el sistema operativo. Se lo
     // dejamos aquí para que pinte el <html> ya correcto en la siguiente carga.
-    document.cookie = `frego_theme_resolved=${oscuro ? 'dark' : 'light'};path=/;max-age=31536000;samesite=lax`;
+    document.cookie = `app_theme_resolved=${oscuro ? 'dark' : 'light'};path=/;max-age=31536000;samesite=lax`;
 }
 
 /*
@@ -118,4 +118,105 @@ document.addEventListener('alpine:init', () => {
                 .catch(() => window.location.reload());
         },
     }));
+});
+
+/**
+ * Ancho de columnas ajustable a mano.
+ *
+ * Los anchos NO se escriben en cada `<th>`: Livewire vuelve a pintar la tabla en
+ * cada filtro y se perderían. Se escriben como reglas CSS en un `<style>` con
+ * `wire:ignore` —que el morph no toca— y se guardan en este navegador, así que
+ * cada quien deja el listado como le acomoda sin tocar la base de datos.
+ *
+ * Arrastrar el borde derecho de la cabecera cambia el ancho; doble clic lo
+ * devuelve a como estaba.
+ */
+document.addEventListener('alpine:init', () => {
+    window.Alpine.data('columnResizer', (llave) => ({
+        anchos: {},
+        minimo: 56,
+
+        init() {
+            try {
+                this.anchos = JSON.parse(localStorage.getItem(llave) || '{}');
+            } catch {
+                this.anchos = {};
+            }
+
+            this.pintar();
+        },
+
+        pintar() {
+            const id = this.$el.id;
+
+            this.$refs.reglas.textContent = Object.entries(this.anchos)
+                .map(
+                    ([columna, ancho]) =>
+                        `#${id} th:nth-child(${columna}),#${id} td:nth-child(${columna})` +
+                        `{width:${ancho}px;max-width:${ancho}px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}`,
+                )
+                .join('');
+        },
+
+        guardar() {
+            Object.keys(this.anchos).length
+                ? localStorage.setItem(llave, JSON.stringify(this.anchos))
+                : localStorage.removeItem(llave);
+        },
+
+        arrastrar(evento, columna) {
+            evento.preventDefault();
+
+            const celda = evento.target.closest('th');
+            const desdeX = evento.clientX;
+            const desdeAncho = celda.offsetWidth;
+
+            const mover = (e) => {
+                this.anchos[columna] = Math.max(this.minimo, Math.round(desdeAncho + e.clientX - desdeX));
+                this.pintar();
+            };
+
+            const soltar = () => {
+                document.removeEventListener('mousemove', mover);
+                document.removeEventListener('mouseup', soltar);
+                document.body.classList.remove('select-none');
+                this.guardar();
+            };
+
+            // Sin esto, arrastrar selecciona el texto de la tabla.
+            document.body.classList.add('select-none');
+            document.addEventListener('mousemove', mover);
+            document.addEventListener('mouseup', soltar);
+        },
+
+        restablecer(columna) {
+            delete this.anchos[columna];
+            this.guardar();
+            this.pintar();
+        },
+    }));
+});
+
+/**
+ * Entrada de pantalla.
+ *
+ * `wire:navigate` cambia el contenido sin recargar, y el salto se sentía seco.
+ * El `<main>` ya trae la clase puesta por el servidor (así también se anima la
+ * primera carga); aquí solo hay que volver a dispararla en cada navegación.
+ *
+ * No se anima en los cambios normales de Livewire —filtrar, paginar, marcar una
+ * casilla—: eso sería un parpadeo constante y molesto.
+ */
+document.addEventListener('livewire:navigated', () => {
+    const pantalla = document.querySelector('[data-pantalla]');
+
+    if (!pantalla) {
+        return;
+    }
+
+    pantalla.classList.remove('page-enter');
+    // Leer una medida obliga al navegador a rehacer el cálculo: sin esto, quitar
+    // y poner la clase en el mismo cuadro no reinicia la animación.
+    void pantalla.offsetWidth;
+    pantalla.classList.add('page-enter');
 });

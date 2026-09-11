@@ -6,7 +6,7 @@ use App\Support\Catalogs\CatalogDefinition;
 use App\Support\Catalogs\CatalogRegistry;
 use Illuminate\Support\Facades\Schema;
 use PHPUnit\Framework\Attributes\Group;
-use Tests\FregoDatabaseTestCase;
+use Tests\LegacyDatabaseTestCase;
 
 /**
  * Que el registro de catálogos describa la base de verdad.
@@ -18,7 +18,7 @@ use Tests\FregoDatabaseTestCase;
  * esquema real. Es una prueba de solo lectura.
  */
 #[Group('parity')]
-class CatalogRegistryTest extends FregoDatabaseTestCase
+class CatalogRegistryTest extends LegacyDatabaseTestCase
 {
     public function test_cada_catalogo_apunta_a_una_tabla_que_existe(): void
     {

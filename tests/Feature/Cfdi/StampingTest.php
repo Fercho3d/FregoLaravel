@@ -3,7 +3,7 @@
 namespace Tests\Feature\Cfdi;
 
 use App\Livewire\Transactions\TransactionDetail;
-use App\Models\Frego\Transaction;
+use App\Models\Core\Transaction;
 use App\Models\User;
 use App\Support\Cfdi\PacClient;
 use Illuminate\Support\Facades\DB;
@@ -11,8 +11,8 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
+use Tests\Support\CoreSchema;
 use Tests\Support\FakePacClient;
-use Tests\Support\FregoSchema;
 use Tests\TestCase;
 
 /**
@@ -30,8 +30,8 @@ class StampingTest extends TestCase
     {
         parent::setUp();
 
-        FregoSchema::create();
-        Storage::fake('frego');
+        CoreSchema::create();
+        Storage::fake('documentos');
         Http::preventStrayRequests();
 
         $this->pac = new FakePacClient;
@@ -46,8 +46,8 @@ class StampingTest extends TestCase
         DB::table('exchange')->insert([['exchange_id' => 1, 'exchange_value' => 1, 'date_exchange' => '2026-01-15', 'account' => 1]]);
         DB::table('booking')->insert([['booking_id' => 1, 'booking_number' => 'BK-1', 'client' => 1, 'mode' => 10]]);
         DB::table('company')->insert([[
-            'company_id' => 1, 'name' => 'FTM', 'business_name' => 'FREGO TRANSPORTACIONES MARITIMAS',
-            'rfc' => 'FTM1507038V6', 'regimen_fiscal' => '601', 'postal_code' => '44648', 'active' => 1,
+            'company_id' => 1, 'name' => 'FTM', 'business_name' => 'EMPRESA DEMO SA DE CV',
+            'rfc' => 'XAXX010101000', 'regimen_fiscal' => '601', 'postal_code' => '44100', 'active' => 1,
         ]]);
         DB::table('client')->insert([[
             'client_id' => 1, 'fullName' => 'Cliente Uno', 'rfc' => 'AAA010101AAA',
@@ -95,8 +95,8 @@ class StampingTest extends TestCase
         $this->assertSame($this->pac->uuid.'.pdf', $transaccion->pdf_attach);
 
         // En la MISMA carpeta que lee el sistema viejo.
-        Storage::disk('frego')->assertExists("transactions/1/pdf/{$this->pac->uuid}.xml");
-        Storage::disk('frego')->assertExists("transactions/1/pdf/{$this->pac->uuid}.pdf");
+        Storage::disk('documentos')->assertExists("transactions/1/pdf/{$this->pac->uuid}.xml");
+        Storage::disk('documentos')->assertExists("transactions/1/pdf/{$this->pac->uuid}.pdf");
     }
 
     /** El layout que viaja al PAC es el que arma el generador, con sus totales. */
@@ -109,7 +109,7 @@ class StampingTest extends TestCase
         // 2 × 1 000 = 2 000 de subtotal, 16 % = 320, total 2 320.
         $this->assertStringContainsString("SubTotal=2000.00\n", $layout);
         $this->assertStringContainsString("Total=2320.00\n", $layout);
-        $this->assertStringContainsString('Rfc= FTM1507038V6', $layout, 'El emisor debe ser la compañía de la transacción.');
+        $this->assertStringContainsString('Rfc= XAXX010101000', $layout, 'El emisor debe ser la compañía de la transacción.');
         $this->assertStringContainsString('Rfc=AAA010101AAA', $layout, 'El receptor debe ser el cliente.');
     }
 
@@ -141,7 +141,7 @@ class StampingTest extends TestCase
 
         $this->assertNull($transaccion->seal);
         $this->assertSame('', $transaccion->pdf_attach);
-        Storage::disk('frego')->assertDirectoryEmpty('transactions');
+        Storage::disk('documentos')->assertDirectoryEmpty('transactions');
     }
 
     public function test_quien_no_es_administrador_no_timbra(): void
@@ -164,7 +164,7 @@ class StampingTest extends TestCase
         $this->assertNotNull($cancelacion, 'No se pidió la cancelación al PAC.');
         $this->assertSame($this->pac->uuid, $cancelacion['uuid']);
         // Sale del XML guardado, no de la configuración ni de la cuenta del PAC.
-        $this->assertSame('FTM1507038V6', $cancelacion['rfcEmisor']);
+        $this->assertSame('XAXX010101000', $cancelacion['rfcEmisor']);
 
         $this->assertSame(1, (int) Transaction::find(1)->cancelled);
     }

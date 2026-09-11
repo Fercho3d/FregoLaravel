@@ -67,7 +67,7 @@ class BookingList extends Component
 
     public function paginationView(): string
     {
-        return 'vendor.pagination.frego';
+        return 'vendor.pagination.app';
     }
 
     private function filters(): BookingFilters

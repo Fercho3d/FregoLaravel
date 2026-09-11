@@ -2,14 +2,14 @@
 
 namespace Tests\Feature\Cfdi;
 
-use App\Models\Frego\Charge;
-use App\Models\Frego\Transaction;
+use App\Models\Core\Charge;
+use App\Models\Core\Transaction;
 use App\Queries\TransactionFilters;
 use App\Queries\TransactionQuery;
 use App\Support\Cfdi\CfdiLayout;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
-use Tests\FregoDatabaseTestCase;
+use Tests\LegacyDatabaseTestCase;
 
 /**
  * Paridad del layout CFDI contra el sistema original, línea por línea.
@@ -22,8 +22,21 @@ use Tests\FregoDatabaseTestCase;
  * Se ignora la línea `Fecha=`, que es el momento de la generación.
  */
 #[Group('parity')]
-class CfdiLayoutParityTest extends FregoDatabaseTestCase
+class CfdiLayoutParityTest extends LegacyDatabaseTestCase
 {
+    /**
+     * El nombre del emisor por omisión ya no está escrito en el código sino en
+     * `config/timbrado.php`, y por omisión viene vacío. La paridad se compara
+     * contra los documentos de la instalación anterior, así que aquí se fija el
+     * suyo: es el que usan las facturas previas al catálogo de compañías.
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config(['timbrado.emisor_nombre' => 'FREGO TRADING & LOGISTICS DE MEXICO']);
+    }
+
     public static function facturas(): array
     {
         $path = dirname(__DIR__, 2).'/Fixtures/legacy-cfdi-layout.json';
@@ -72,6 +85,7 @@ class CfdiLayoutParityTest extends FregoDatabaseTestCase
             emisor: $transaccion->company,
             receptor: $transaccion->client,
             conceptos: Charge::with('chargeType')->where('transaction', $transactionId)->orderBy('charge_id')->get(),
+            nombrePorOmision: (string) config('timbrado.emisor_nombre'),
             rfcPorOmision: (string) config('timbrado.demo.rfc_cuenta'),
             lugarPorOmision: (string) config('timbrado.lugar_expedicion_por_omision'),
             tipoCambio: $fila->exchange_value === null ? null : (float) $fila->exchange_value,

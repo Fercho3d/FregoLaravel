@@ -26,7 +26,7 @@ class BookingFiles
 
     public function __construct()
     {
-        $this->disk = Storage::disk('frego');
+        $this->disk = Storage::disk('documentos');
     }
 
     public function directory(int $bookingId): string

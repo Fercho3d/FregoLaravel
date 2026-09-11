@@ -3,15 +3,15 @@
 
 @php
     $roles = [
-        User::ROLE_USER => 'Usuario',
+        User::ROLE_USER => __('Usuario'),
         User::ROLE_ADMIN => 'Administrador',
         User::ROLE_SUPER_ADMIN => 'Super administrador',
     ];
 
     $accesos = [
         UserManager::ACCESS_INTERNAL => 'Interno',
-        UserManager::ACCESS_CLIENT => 'Portal de cliente',
-        UserManager::ACCESS_PROVIDER => 'Portal de proveedor',
+        UserManager::ACCESS_CLIENT => __('Portal de cliente'),
+        UserManager::ACCESS_PROVIDER => __('Portal de proveedor'),
     ];
 @endphp
 
@@ -37,7 +37,7 @@
             </select>
 
             <select wire:model.live="status" class="field-input !w-auto py-1.5 text-sm">
-                @foreach (['' => 'Todos', '1' => 'Activos', '0' => 'De baja'] as $valor => $etiqueta)
+                @foreach (['' => __('Todos'), '1' => __('Activos'), '0' => __('De baja')] as $valor => $etiqueta)
                     <option value="{{ $valor }}" @selected((string) $valor === $status)>{{ $etiqueta }}</option>
                 @endforeach
             </select>
@@ -49,7 +49,7 @@
     {{-- Formulario de alta y edición --}}
     @if ($editing !== null)
         <form wire:submit="save" class="card space-y-4 p-5">
-            <p class="text-sm font-medium text-ink">{{ $editing === 0 ? 'Nuevo usuario' : 'Editar usuario' }}</p>
+            <p class="text-sm font-medium text-ink">{{ $editing === 0 ? __('Nuevo usuario') : __('Editar usuario') }}</p>
 
             @include('partials.validation-errors')
 
@@ -91,7 +91,7 @@
 
                 @if ($this->needsParty())
                     <label class="block">
-                        <span class="field-label">{{ $access === (string) UserManager::ACCESS_CLIENT ? 'Cliente' : 'Proveedor' }}</span>
+                        <span class="field-label">{{ $access === (string) UserManager::ACCESS_CLIENT ? __('Cliente') : __('Proveedor') }}</span>
                         <select wire:model="partyId" class="field-input mt-1.5" required>
                             <option value="">{{ __('Selecciona') }}</option>
                             @foreach (($access === (string) UserManager::ACCESS_CLIENT ? $clientes : $proveedores) as $id => $nombre)
@@ -103,14 +103,14 @@
                 @endif
 
                 <label class="block">
-                    <span class="field-label">Contraseña {{ $editing === 0 ? '' : '(dejar vacía para no cambiarla)' }}</span>
-                    <input type="password" wire:model="password" class="field-input mt-1.5" autocomplete="new-password">
+                    <span class="field-label">Contraseña {{ $editing === 0 ? '' : __('(dejar vacía para no cambiarla)') }}</span>
+                    <x-password-input wire:model="password" wrapper="mt-1.5" autocomplete="new-password" />
                     @error('password') <span class="mt-1 block text-xs text-brand">{{ $message }}</span> @enderror
                 </label>
 
                 <label class="block">
                     <span class="field-label">{{ __('Repetir contraseña') }}</span>
-                    <input type="password" wire:model="passwordConfirmation" class="field-input mt-1.5" autocomplete="new-password">
+                    <x-password-input wire:model="passwordConfirmation" wrapper="mt-1.5" autocomplete="new-password" />
                 </label>
 
                 <label class="flex items-end gap-2 pb-2.5 text-sm text-ink-soft">
@@ -138,12 +138,12 @@
             <div class="grid gap-4 sm:grid-cols-2">
                 <label class="block">
                     <span class="field-label">{{ __('Contraseña nueva') }}</span>
-                    <input type="password" wire:model="password" class="field-input mt-1.5" autocomplete="new-password" required>
+                    <x-password-input wire:model="password" wrapper="mt-1.5" autocomplete="new-password" required />
                     @error('password') <span class="mt-1 block text-xs text-brand">{{ $message }}</span> @enderror
                 </label>
                 <label class="block">
                     <span class="field-label">{{ __('Repetir contraseña') }}</span>
-                    <input type="password" wire:model="passwordConfirmation" class="field-input mt-1.5" autocomplete="new-password" required>
+                    <x-password-input wire:model="passwordConfirmation" wrapper="mt-1.5" autocomplete="new-password" required />
                 </label>
             </div>
 
@@ -182,10 +182,10 @@
                             <td class="max-w-[18rem] truncate px-4 py-2 text-ink" title="{{ $usuario->username }}">{{ $usuario->username ?: '—' }}</td>
                             <td class="max-w-[14rem] truncate px-4 py-2 text-ink-muted">{{ $usuario->name ?: '—' }}</td>
                             <td class="whitespace-nowrap px-4 py-2 text-ink-muted">{{ $roles[(int) $usuario->role] ?? '—' }}</td>
-                            <td class="whitespace-nowrap px-4 py-2 text-ink-muted">{{ $accesos[(int) $usuario->access] ?? 'Interno' }}</td>
+                            <td class="whitespace-nowrap px-4 py-2 text-ink-muted">{{ $accesos[(int) $usuario->access] ?? __('Interno') }}</td>
                             <td class="whitespace-nowrap px-4 py-2">
                                 <span class="badge {{ $usuario->status ? 'badge-ok' : 'badge-neutral' }}">
-                                    {{ $usuario->status ? 'Activo' : 'De baja' }}
+                                    {{ $usuario->status ? __('Activo') : __('De baja') }}
                                 </span>
                             </td>
                             <td class="whitespace-nowrap px-4 py-2 text-ink-muted">
@@ -199,7 +199,7 @@
                                         <button type="button" wire:click="toggleActive({{ $usuario->usr_id }})"
                                                 wire:confirm="{{ $usuario->status ? '¿Dar de baja a este usuario?' : '¿Reactivar a este usuario?' }}"
                                                 class="text-ink-muted transition hover:text-brand">
-                                            {{ $usuario->status ? 'Baja' : 'Reactivar' }}
+                                            {{ $usuario->status ? __('Baja') : __('Reactivar') }}
                                         </button>
                                     @endif
                                 </div>

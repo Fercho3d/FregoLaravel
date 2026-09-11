@@ -2,8 +2,8 @@
 
 namespace App\Actions\Transactions;
 
-use App\Models\Frego\Charge;
-use App\Models\Frego\Transaction;
+use App\Models\Core\Charge;
+use App\Models\Core\Transaction;
 use App\Queries\TransactionFilters;
 use App\Queries\TransactionQuery;
 use App\Support\Cfdi\CfdiException;
@@ -34,8 +34,17 @@ class StampTransaction
      */
     public ?string $mailStatus = null;
 
+    /**
+     * ⚠️ La comprobación va también aquí y no solo en la pantalla: es la única
+     * que protege si alguien llama la acción desde una consola, un trabajo en
+     * cola o una pantalla futura que se olvide de preguntar.
+     */
     public function handle(Transaction $transaccion): string
     {
+        if (! config('timbrado.habilitado')) {
+            throw new CfdiException(__('Esta instalación no factura con CFDI.'));
+        }
+
         $this->assertStampable($transaccion);
 
         $comprobante = $this->pac->stamp($this->layoutFor($transaccion));
@@ -43,7 +52,7 @@ class StampTransaction
         // Los archivos se nombran con el folio fiscal, igual que el original, y
         // van a la misma carpeta que ya lee el sistema viejo.
         $carpeta = $this->archivos->directory($transaccion->transc_id);
-        $disco = Storage::disk('frego');
+        $disco = Storage::disk('documentos');
 
         $disco->put("{$carpeta}/{$comprobante->uuid}.xml", $comprobante->xml);
 
@@ -110,6 +119,7 @@ class StampTransaction
                 ->where('transaction', $transaccion->transc_id)
                 ->orderBy('charge_id')
                 ->get(),
+            nombrePorOmision: (string) config('timbrado.emisor_nombre'),
             rfcPorOmision: (string) (config('timbrado.produccion')
                 ? config('timbrado.rfc_cuenta')
                 : config('timbrado.demo.rfc_cuenta')),

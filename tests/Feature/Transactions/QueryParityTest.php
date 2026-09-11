@@ -7,7 +7,7 @@ use App\Queries\TransactionQuery;
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
-use Tests\FregoDatabaseTestCase;
+use Tests\LegacyDatabaseTestCase;
 
 /**
  * Paridad exacta contra el sistema original.
@@ -24,7 +24,7 @@ use Tests\FregoDatabaseTestCase;
  *   php tools/export_legacy_sql.php
  */
 #[Group('parity')]
-class QueryParityTest extends FregoDatabaseTestCase
+class QueryParityTest extends LegacyDatabaseTestCase
 {
     /**
      * Columnas de dinero deterministas: son `SUM(CASE …)` evaluados fila por fila,

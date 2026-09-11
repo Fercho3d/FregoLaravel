@@ -14,14 +14,14 @@ use Illuminate\Console\Command;
  * que diera con la dirección disparaba los correos. Aquí es un comando, así que
  * solo se puede lanzar desde el servidor.
  *
- *   php artisan frego:avisos-continuidad aviso     # aún no llega la fecha
- *   php artisan frego:avisos-continuidad vencido   # ya se pasó
+ *   php artisan operacion:avisos-continuidad aviso     # aún no llega la fecha
+ *   php artisan operacion:avisos-continuidad vencido   # ya se pasó
  *
  * Con `--simular` no manda nada y solo enseña qué saldría.
  */
 class SendContinuityAlerts extends Command
 {
-    protected $signature = 'frego:avisos-continuidad
+    protected $signature = 'operacion:avisos-continuidad
                             {nivel=aviso : «aviso» (antes de la fecha) o «vencido» (ya pasada)}
                             {--simular : Enseña los avisos sin mandar correo}';
 

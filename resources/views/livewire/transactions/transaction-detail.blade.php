@@ -1,5 +1,5 @@
 @use('App\Support\PaymentStatus')
-@use('App\Models\Frego\Transaction')
+@use('App\Models\Core\Transaction')
 
 @php
     $money = fn ($v) => $v === null ? '—' : number_format((float) $v, 2);
@@ -13,7 +13,7 @@
         ['Subtotal 0 %', $fila->sub_0_mxn],
         ['Subtotal 16 %', $fila->sub_16_mxn],
         ['IVA 16 %', $fila->tax_16_mxn],
-        ['Retención IVA', $fila->tax_ret_mxn],
+        [__('Retención IVA'), $fila->tax_ret_mxn],
     ];
 @endphp
 
@@ -23,7 +23,7 @@
     <a href="{{ route($esFactura ? 'transactions.invoice' : 'transactions.bill') }}" wire:navigate
        class="inline-flex items-center gap-1.5 text-sm text-ink-muted transition hover:text-ink">
         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
-        Volver a {{ $esFactura ? 'Facturas' : 'Costos' }}
+        Volver a {{ $esFactura ? __('Facturas') : __('Costos') }}
     </a>
 
     {{-- Encabezado --}}
@@ -34,7 +34,7 @@
                     {{ Transaction::typeText($fila->invoice_type, $fila->tran_type) }}
                 </p>
                 <h2 class="mt-0.5 truncate text-2xl font-semibold text-ink">
-                    {{ $fila->tran_number ?: 'Sin número' }}
+                    {{ $fila->tran_number ?: __('Sin número') }}
                 </h2>
                 <p class="mt-1 truncate text-sm text-ink-muted">{{ $contraparte ?: '—' }}</p>
             </div>
@@ -205,7 +205,7 @@
         @if ($editingCharge)
             <form wire:submit="saveCharge" class="space-y-4 border-b border-line bg-raised/60 p-5">
                 <p class="text-sm font-medium text-ink">
-                    {{ $chargeId ? 'Editar concepto' : 'Nuevo concepto' }}
+                    {{ $chargeId ? __('Editar concepto') : __('Nuevo concepto') }}
                 </p>
 
                 @if ($tiposDeCargo === [])
@@ -233,11 +233,11 @@
                         <select wire:model.live="serviceId" class="field-input mt-1.5"
                                 @disabled($chargeType === '') required>
                             <option value="">
-                                {{ $chargeType === '' ? 'Elige primero el tipo de cargo' : 'Selecciona el servicio' }}
+                                {{ $chargeType === '' ? __('Elige primero el tipo de cargo') : __('Selecciona el servicio') }}
                             </option>
                             @foreach ($servicios as $servicio)
                                 <option value="{{ $servicio->service_id }}" @selected((string) $servicio->service_id === $serviceId)>
-                                    {{ $servicio->description ?: 'Sin descripción' }} — {{ $money($servicio->price) }}
+                                    {{ $servicio->description ?: __('Sin descripción') }} — {{ $money($servicio->price) }}
                                 </option>
                             @endforeach
                         </select>

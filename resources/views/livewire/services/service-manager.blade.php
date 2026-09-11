@@ -25,14 +25,14 @@
             <label class="block">
                 <span class="field-label text-xs">{{ __('Tipo') }}</span>
                 <select wire:model.live="type" class="field-input mt-1 py-1.5 text-sm">
-                    @foreach (['1' => 'De venta (cliente)', '2' => 'De compra (proveedor)'] as $valor => $etiqueta)
+                    @foreach (['1' => __('De venta (cliente)'), '2' => __('De compra (proveedor)')] as $valor => $etiqueta)
                         <option value="{{ $valor }}" @selected((string) $valor === $type)>{{ $etiqueta }}</option>
                     @endforeach
                 </select>
             </label>
 
             <label class="block">
-                <span class="field-label text-xs">{{ $esVenta ? 'Cliente' : 'Proveedor' }}</span>
+                <span class="field-label text-xs">{{ $esVenta ? __('Cliente') : __('Proveedor') }}</span>
                 <select wire:model.live="partyId" class="field-input mt-1 py-1.5 text-sm">
                     <option value="">{{ __('Todos') }}</option>
                     @foreach ($terceros as $id => $nombre)
@@ -52,7 +52,7 @@
     {{-- Formulario --}}
     @if ($editing !== null)
         <form wire:submit="save" class="card space-y-4 p-5">
-            <p class="text-sm font-medium text-ink">{{ $editing === 0 ? 'Nuevo servicio' : 'Editar servicio' }}</p>
+            <p class="text-sm font-medium text-ink">{{ $editing === 0 ? __('Nuevo servicio') : __('Editar servicio') }}</p>
 
             @include('partials.validation-errors')
 
@@ -64,7 +64,7 @@
                 </label>
 
                 <label class="block">
-                    <span class="field-label">{{ $esVenta ? 'Cliente' : 'Proveedor' }}</span>
+                    <span class="field-label">{{ $esVenta ? __('Cliente') : __('Proveedor') }}</span>
                     <select wire:model="form.party_id" class="field-input mt-1.5" required>
                         <option value="">{{ __('Selecciona') }}</option>
                         @foreach ($terceros as $id => $nombre)
@@ -105,7 +105,7 @@
                     @error('form.account_id') <span class="mt-1 block text-xs text-brand">{{ $message }}</span> @enderror
                 </label>
 
-                @foreach ([['min', 'Precio mínimo'], ['max', 'Precio máximo']] as [$campo, $etiqueta])
+                @foreach ([['min', __('Precio mínimo')], ['max', __('Precio máximo')]] as [$campo, $etiqueta])
                     <label class="block">
                         <span class="field-label">
                             {{ $etiqueta }} <span class="font-normal text-ink-faint">(referencia)</span>
@@ -149,11 +149,11 @@
                     </label>
 
                     @foreach ([
-                        ['loading_port_id', 'Puerto de carga', $puertosCarga],
-                        ['dicharge_port_id', 'Puerto de descarga', $puertosDescarga],
-                        ['pickup_place_id', 'Lugar de recolección', $lugares],
+                        ['loading_port_id', __('Puerto de carga'), $puertosCarga],
+                        ['dicharge_port_id', __('Puerto de descarga'), $puertosDescarga],
+                        ['pickup_place_id', __('Lugar de recolección'), $lugares],
                         ['final_destination_id', 'Destino final', $destinos],
-                        ['container_type_id', 'Tipo de contenedor', $tiposContenedor],
+                        ['container_type_id', __('Tipo de contenedor'), $tiposContenedor],
                     ] as [$campo, $etiqueta, $opciones])
                         <label class="block">
                             <span class="field-label">{{ $etiqueta }}</span>
@@ -167,7 +167,7 @@
                         </label>
                     @endforeach
 
-                    @foreach ([['start_date', 'Vigente desde'], ['end_date', 'Vigente hasta']] as [$campo, $etiqueta])
+                    @foreach ([['start_date', __('Vigente desde')], ['end_date', __('Vigente hasta')]] as [$campo, $etiqueta])
                         <label class="block">
                             <span class="field-label">{{ $etiqueta }}</span>
                             <input type="date" wire:model="form.{{ $campo }}" value="{{ $form[$campo] ?? '' }}" class="field-input mt-1.5">
@@ -200,7 +200,7 @@
                 <thead class="border-b border-line text-xs uppercase tracking-wide text-ink-muted">
                     <tr>
                         <th class="px-4 py-2.5 text-left font-semibold">{{ __('Descripción') }}</th>
-                        <th class="px-4 py-2.5 text-left font-semibold">{{ $esVenta ? 'Cliente' : 'Proveedor' }}</th>
+                        <th class="px-4 py-2.5 text-left font-semibold">{{ $esVenta ? __('Cliente') : __('Proveedor') }}</th>
                         <th class="px-4 py-2.5 text-left font-semibold">{{ __('Tipo de cargo') }}</th>
                         <th class="px-4 py-2.5 text-right font-semibold">{{ __('Precio') }}</th>
                         <th class="px-4 py-2.5 text-left font-semibold">{{ __('Estado') }}</th>
@@ -238,7 +238,7 @@
                             </td>
                             <td class="whitespace-nowrap px-4 py-2">
                                 <span class="badge {{ $servicio->active ? 'badge-ok' : 'badge-neutral' }}">
-                                    {{ $servicio->active ? 'Activo' : 'Inactivo' }}
+                                    {{ $servicio->active ? __('Activo') : __('Inactivo') }}
                                 </span>
                             </td>
                             @if ($esAdmin)

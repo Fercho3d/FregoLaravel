@@ -8,7 +8,7 @@ use App\Queries\TransactionFilters;
 use App\Queries\TransactionQuery;
 use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\Group;
-use Tests\FregoDatabaseTestCase;
+use Tests\LegacyDatabaseTestCase;
 
 /**
  * Reporte por booking.
@@ -18,7 +18,7 @@ use Tests\FregoDatabaseTestCase;
  * algo que solo se ve con volumen.
  */
 #[Group('parity')]
-class BookingReportTest extends FregoDatabaseTestCase
+class BookingReportTest extends LegacyDatabaseTestCase
 {
     private const RANGO = '01/12/2022 - 31/12/2022';
 
@@ -55,7 +55,7 @@ class BookingReportTest extends FregoDatabaseTestCase
         $this->actingAs($this->admin())
             ->get(route('transactions.report.booking'))
             ->assertOk()
-            ->assertSee('Reporte por booking');
+            ->assertSee(__('Reporte por booking'));
     }
 
     public function test_hay_una_sola_fila_por_booking(): void

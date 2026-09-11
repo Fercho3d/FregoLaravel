@@ -15,7 +15,7 @@ enum Theme: string
     case System = 'system';
 
     /** Nombre de la cookie que recuerda el tema de visitantes sin sesión. */
-    public const COOKIE = 'frego_theme';
+    public const COOKIE = 'app_theme';
 
     /**
      * Cookie que escribe el navegador con el tema ya resuelto (claro u oscuro).
@@ -23,7 +23,7 @@ enum Theme: string
      * qué tiene configurado el sistema operativo, y sin este dato tendría que
      * pintar la página en claro y dejar que el script la corrigiera.
      */
-    public const RESOLVED_COOKIE = 'frego_theme_resolved';
+    public const RESOLVED_COOKIE = 'app_theme_resolved';
 
     /** Duración de la cookie en minutos (un año). */
     public const COOKIE_MINUTES = 525_600;

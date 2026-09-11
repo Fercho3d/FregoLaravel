@@ -40,7 +40,7 @@
     {{-- Formulario --}}
     @if ($editing !== null)
         <form wire:submit="save" class="card space-y-4 p-5">
-            <p class="text-sm font-medium text-ink">{{ $editing === 0 ? 'Capturar tipo de cambio' : 'Editar tipo de cambio' }}</p>
+            <p class="text-sm font-medium text-ink">{{ $editing === 0 ? __('Capturar tipo de cambio') : __('Editar tipo de cambio') }}</p>
 
             <div class="grid gap-4 sm:grid-cols-3">
                 <label class="block">

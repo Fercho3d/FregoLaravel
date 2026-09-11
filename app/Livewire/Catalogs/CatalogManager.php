@@ -53,7 +53,7 @@ class CatalogManager extends Component
 
     public function paginationView(): string
     {
-        return 'vendor.pagination.frego';
+        return 'vendor.pagination.app';
     }
 
     // ------------------------------------------------------------ Edición
@@ -164,9 +164,9 @@ class CatalogManager extends Component
                 ? DB::table($definicion->table)->where($definicion->key, $id)->update([$definicion->softDelete => 1])
                 : DB::table($definicion->table)->where($definicion->key, $id)->delete();
 
-            session()->flash('status', $definicion->singular.' dado de baja.');
+            session()->flash('status', $definicion->singular.__(' dado de baja.'));
         } catch (QueryException $e) {
-            $this->addError('delete', 'No se puede borrar: hay registros que lo usan.');
+            $this->addError('delete', __('No se puede borrar: hay registros que lo usan.'));
         }
     }
 
@@ -199,7 +199,7 @@ class CatalogManager extends Component
         return view('livewire.catalogs.catalog-manager', [
             'definicion' => $definicion,
             'filas' => $consulta->paginate(25, ['*'], 'page', $this->getPage()),
-            'catalogos' => CatalogRegistry::all(),
+            'catalogos' => CatalogRegistry::visibles(),
         ])->layout('components.app-layout', ['title' => $definicion->plural]);
     }
 }

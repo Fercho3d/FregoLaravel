@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
-use Tests\Support\FregoSchema;
+use Tests\Support\CoreSchema;
 use Tests\TestCase;
 
 /**
@@ -26,9 +26,9 @@ class BookingFilesTest extends TestCase
     {
         parent::setUp();
 
-        FregoSchema::create();
-        FregoSchema::createUsers();
-        Storage::fake('frego');
+        CoreSchema::create();
+        CoreSchema::createUsers();
+        Storage::fake('documentos');
 
         DB::table('client')->insert([['client_id' => 1, 'fullName' => 'Cliente Uno']]);
         DB::table('booking')->insert([[
@@ -70,7 +70,7 @@ class BookingFilesTest extends TestCase
             ->set('upload', UploadedFile::fake()->create('swb.pdf', 10, 'application/pdf'))
             ->assertHasNoErrors();
 
-        Storage::disk('frego')->assertExists('bookings/1/docs/swb.pdf');
+        Storage::disk('documentos')->assertExists('bookings/1/docs/swb.pdf');
 
         $this->assertSame('swb.pdf', DB::table('files_by_booking')->value('value'));
     }
@@ -105,7 +105,7 @@ class BookingFilesTest extends TestCase
         DB::table('files_by_booking')->insert([
             'booking_file_id' => 1, 'booking_id' => 1, 'field_id' => 1, 'value' => 'uno.pdf',
         ]);
-        Storage::disk('frego')->put('bookings/1/docs/uno.pdf', 'contenido');
+        Storage::disk('documentos')->put('bookings/1/docs/uno.pdf', 'contenido');
 
         $this->actingAs($this->usuario());
 

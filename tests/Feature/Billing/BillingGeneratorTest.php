@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
-use Tests\Support\FregoSchema;
+use Tests\Support\CoreSchema;
 use Tests\TestCase;
 
 /**
@@ -22,8 +22,8 @@ class BillingGeneratorTest extends TestCase
     {
         parent::setUp();
 
-        FregoSchema::create();
-        FregoSchema::createUsers();
+        CoreSchema::create();
+        CoreSchema::createUsers();
 
         // El alta de una transacción registra el tipo de cambio del día; en las
         // pruebas nunca se sale a la red.

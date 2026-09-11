@@ -3,13 +3,13 @@
 namespace Tests\Feature\Exchange;
 
 use App\Livewire\Exchange\ExchangeManager;
-use App\Models\Frego\Exchange;
+use App\Models\Core\Exchange;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
-use Tests\Support\FregoSchema;
+use Tests\Support\CoreSchema;
 use Tests\TestCase;
 
 /**
@@ -24,8 +24,8 @@ class ExchangeManagerTest extends TestCase
     {
         parent::setUp();
 
-        FregoSchema::create();
-        FregoSchema::createUsers();
+        CoreSchema::create();
+        CoreSchema::createUsers();
 
         Http::preventStrayRequests();
 

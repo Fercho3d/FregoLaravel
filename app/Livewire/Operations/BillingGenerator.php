@@ -4,11 +4,11 @@ namespace App\Livewire\Operations;
 
 use App\Actions\Bookings\GenerateBookingBilling;
 use App\Actions\Bookings\PlanBookingBilling;
-use App\Models\Frego\Account;
-use App\Models\Frego\Booking;
-use App\Models\Frego\Client;
-use App\Models\Frego\Provider;
-use App\Models\Frego\Transaction;
+use App\Models\Core\Account;
+use App\Models\Core\Booking;
+use App\Models\Core\Client;
+use App\Models\Core\Provider;
+use App\Models\Core\Transaction;
 use App\Support\Billing\BillingBlock;
 use App\Support\Billing\BillingPlan;
 use App\Support\Billing\ServiceCandidate;
@@ -50,7 +50,7 @@ class BillingGenerator extends Component
         abort_unless(auth()->user()?->isAdmin() ?? false, 403);
 
         $modelo = Booking::findOrFail($booking);
-        abort_if((bool) $modelo->locked, 422, 'Este booking está cerrado: su facturación quedó fija.');
+        abort_if((bool) $modelo->locked, 422, __('Este booking está cerrado: su facturación quedó fija.'));
 
         $this->bookingId = $modelo->booking_id;
         $this->model = $modelo;
@@ -140,7 +140,7 @@ class BillingGenerator extends Component
         $creadas = $generar->handle($this->booking(), $this->plan(), auth()->user());
 
         session()->flash('status', trans_choice(
-            '{1}Se creó :count documento.|[2,*]Se crearon :count documentos.',
+            __('{1}Se creó :count documento.|[2,*]Se crearon :count documentos.'),
             count($creadas),
             ['count' => count($creadas)],
         ));
@@ -164,6 +164,6 @@ class BillingGenerator extends Component
                 BillingBlock::Transport->value => Provider::find($booking->transport_id)?->fullName,
                 BillingBlock::Broker->value => Provider::find($booking->custom_brocker_id)?->fullName,
             ],
-        ])->layout('components.app-layout', ['title' => 'Generar factura y costos']);
+        ])->layout('components.app-layout', ['title' => __('Generar factura y costos')]);
     }
 }

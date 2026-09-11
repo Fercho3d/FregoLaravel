@@ -39,13 +39,18 @@ return [
         ],
 
         /*
-         * Adjuntos del sistema Frego (Yii2). Apunta a la MISMA carpeta que lee
+         * Adjuntos del sistema anterior (Yii2). Apunta a la MISMA carpeta que lee
          * el sistema original, para que un PDF subido desde aquí lo siga viendo
          * allá y al revés. La ruta cambia por entorno, así que va en el .env.
          */
-        'frego' => [
+        /**
+         * Carpeta de archivos subidos (facturas en PDF/XML y documentos del
+         * booking). Es la MISMA que lee el sistema original, para que los dos
+         * vean los mismos archivos mientras conviven.
+         */
+        'documentos' => [
             'driver' => 'local',
-            'root' => env('FREGO_UPLOADS_PATH', base_path('../frego/web/uploads')),
+            'root' => env('DOCUMENTOS_PATH', env('FREGO_UPLOADS_PATH', storage_path('app/documentos'))),
             'throw' => false,
         ],
 

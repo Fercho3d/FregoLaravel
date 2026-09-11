@@ -4,17 +4,14 @@
     Yii2, con los mismos textos en inglés.
 --}}
 <div class="paycheck">
-    <div class="company-name">Freight Global Operator</div>
+    <div class="company-name">{{ \App\Support\Marca::empresa() }}</div>
     <div class="number">{{ $solicitud->number }}</div>
     <div class="address">
-        Av Mariano Otero 2347-112 <br />
-        Col. Verde Valle<br />
-        RFC:FTM1507038V6<br />
-        Guadalajara, JALISCO 44550.<br />
+        @include('pdf.membrete')
     </div>
     <div class="date">{{ $fecha }}</div>
     <div class="pay">
-        <div class="label">PAY</div>
+        <div class="label">{{ __('impresos.pay') }}</div>
         <div class="vendor-name">{{ $beneficiario }}</div>
         <div class="amount">$ {{ $importe }}</div>
     </div>
@@ -22,9 +19,9 @@
         <span>{{ $importeEnLetra }}</span>
         <span>{{ $centavos }}/100{{ $divisa }}</span>
     </div>
-    <div class="to-the"><span>To the order</span> {{ $beneficiario }}</div>
+    <div class="to-the"><span>{{ __('impresos.to_the_order') }}</span> {{ $beneficiario }}</div>
     <div class="memo">
-        <div class="label">Memo</div>
+        <div class="label">{{ __('impresos.memo') }}</div>
         <div class="col-1">&nbsp;</div>
         <div class="col-2">&nbsp;</div>
     </div>
@@ -33,15 +30,15 @@
 
 <table class="bills">
     <tr>
-        <th>Number</th>
+        <th>{{ __('impresos.number') }}</th>
         <th>Booking</th>
-        <th>Amount</th>
+        <th>{{ __('impresos.amount') }}</th>
         <th>Subtotal %0</th>
         <th>Subtotal %16</th>
         <th>VAT 16%</th>
-        <th>Ret VAT</th>
-        <th>Non Deduc</th>
-        <th>Amount</th>
+        <th>{{ __('impresos.ret_vat') }}</th>
+        <th>{{ __('impresos.non_deductible') }}</th>
+        <th>{{ __('impresos.amount') }}</th>
     </tr>
     @foreach ($transacciones as $transaccion)
         <tr>
@@ -57,7 +54,7 @@
         </tr>
     @endforeach
     <tr>
-        <td colspan="8" class="total">Total</td>
+        <td colspan="8" class="total">{{ __('impresos.total') }}</td>
         <td class="total"><strong>$ {{ number_format($total, 2) }}</strong></td>
     </tr>
 </table>

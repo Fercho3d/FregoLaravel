@@ -26,3 +26,10 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 /.claude
+
+# Fixtures de paridad con datos REALES del sistema anterior (facturas, RFC,
+# clientes, sellos de contenedor). Viven solo en el repo de la migración; en el
+# repo del producto no entran. Las pruebas que los usan se saltan solas si no
+# están. Se regeneran con tools/export_legacy_*.php.
+/tests/Fixtures/legacy-cfdi-layout.json
+/tests/Fixtures/legacy-booking-confirmation.json

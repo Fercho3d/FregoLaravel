@@ -1,4 +1,4 @@
-@use('App\Models\Frego\Transaction')
+@use('App\Models\Core\Transaction')
 
 @php
     $bloqueada = $this->isLocked();
@@ -35,7 +35,7 @@
                 </svg>
                 <span>
                     {{ $lockReason }}
-                    Solo puedes cambiar la compañía emisora{{ $dateIsEditable ? ' y la fecha' : '' }}.
+                    Solo puedes cambiar la compañía emisora{{ $dateIsEditable ? __(' y la fecha') : '' }}.
                 </span>
             </p>
         @endif
@@ -78,9 +78,9 @@
                     <span class="field-label">{{ __('Tipo de factura') }}</span>
                     <select wire:model.live="invoiceType" @disabled($bloqueada) class="field-input mt-1.5">
                         @foreach ([
-                            Transaction::INVOICE_TYPE_NORMAL => 'Normal',
-                            Transaction::INVOICE_TYPE_HISTORY => 'Histórica',
-                            Transaction::INVOICE_TYPE_CREDIT => 'Nota de crédito',
+                            Transaction::INVOICE_TYPE_NORMAL => __('Normal'),
+                            Transaction::INVOICE_TYPE_HISTORY => __('Histórica'),
+                            Transaction::INVOICE_TYPE_CREDIT => __('Nota de crédito'),
                         ] as $valor => $etiqueta)
                             <option value="{{ $valor }}" @selected((string) $valor === $invoiceType)>{{ $etiqueta }}</option>
                         @endforeach
@@ -91,10 +91,10 @@
         </div>
 
         <label class="block">
-            <span class="field-label">{{ $esFactura ? 'Cliente' : 'Proveedor' }}</span>
+            <span class="field-label">{{ $esFactura ? __('Cliente') : __('Proveedor') }}</span>
             <select wire:model="{{ $esFactura ? 'customerId' : 'vendorId' }}" @disabled($bloqueada)
                     class="field-input mt-1.5" required>
-                <option value="">Selecciona {{ $esFactura ? 'el cliente' : 'el proveedor' }}</option>
+                <option value="">Selecciona {{ $esFactura ? __('el cliente') : __('el proveedor') }}</option>
                 @php $seleccionado = $esFactura ? $customerId : $vendorId; @endphp
                 @foreach ($esFactura ? $clients : $providers as $id => $nombre)
                     <option value="{{ $id }}" @selected((string) $id === $seleccionado)>{{ $nombre }}</option>
@@ -174,7 +174,7 @@
 
             <button type="submit" wire:loading.attr="disabled" wire:target="save" class="btn-accent">
                 <x-spinner wire:loading wire:target="save" class="h-4 w-4" />
-                <span wire:loading.remove wire:target="save">{{ $transactionId ? 'Guardar cambios' : 'Crear transacción' }}</span>
+                <span wire:loading.remove wire:target="save">{{ $transactionId ? 'Guardar cambios' : __('Crear transacción') }}</span>
                 <span wire:loading wire:target="save">{{ __('Guardando…') }}</span>
             </button>
         </footer>

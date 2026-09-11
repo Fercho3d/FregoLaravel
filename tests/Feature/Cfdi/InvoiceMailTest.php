@@ -5,17 +5,18 @@ namespace Tests\Feature\Cfdi;
 use App\Actions\Transactions\SendInvoice;
 use App\Livewire\Transactions\TransactionDetail;
 use App\Mail\InvoiceMail;
-use App\Models\Frego\Transaction;
+use App\Models\Core\Transaction;
 use App\Models\User;
 use App\Support\Cfdi\PacClient;
+use App\Support\Documentos;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
+use Tests\Support\CoreSchema;
 use Tests\Support\FakePacClient;
-use Tests\Support\FregoSchema;
 use Tests\TestCase;
 
 /**
@@ -33,8 +34,8 @@ class InvoiceMailTest extends TestCase
     {
         parent::setUp();
 
-        FregoSchema::create();
-        Storage::fake('frego');
+        CoreSchema::create();
+        Storage::fake('documentos');
         Http::preventStrayRequests();
         Mail::fake();
 
@@ -42,7 +43,7 @@ class InvoiceMailTest extends TestCase
         $this->app->instance(PacClient::class, $this->pac);
 
         config([
-            'frego.copia_facturas' => ['copia@frego.com.mx'],
+            'marca.correo.copia_facturas' => ['copia@ejemplo.test'],
             'timbrado.produccion' => false,
         ]);
 
@@ -50,8 +51,8 @@ class InvoiceMailTest extends TestCase
         DB::table('exchange')->insert([['exchange_id' => 1, 'exchange_value' => 1, 'date_exchange' => '2026-01-15', 'account' => 1]]);
         DB::table('booking')->insert([['booking_id' => 1, 'booking_number' => 'BK-1', 'client' => 1, 'mode' => 10]]);
         DB::table('company')->insert([[
-            'company_id' => 1, 'name' => 'FTM', 'business_name' => 'FREGO TRANSPORTACIONES MARITIMAS',
-            'rfc' => 'FTM1507038V6', 'regimen_fiscal' => '601', 'postal_code' => '44648', 'active' => 1,
+            'company_id' => 1, 'name' => 'FTM', 'business_name' => 'EMPRESA DEMO SA DE CV',
+            'rfc' => 'XAXX010101000', 'regimen_fiscal' => '601', 'postal_code' => '44100', 'active' => 1,
         ]]);
         DB::table('client')->insert([[
             'client_id' => 1, 'fullName' => 'Cliente Uno', 'rfc' => 'AAA010101AAA',
@@ -92,8 +93,8 @@ class InvoiceMailTest extends TestCase
     /** Deja la factura como si ya estuviera timbrada, con sus dos archivos. */
     private function timbrada(): void
     {
-        Storage::disk('frego')->put('transactions/1/pdf/UUID-1.pdf', '%PDF-falso');
-        Storage::disk('frego')->put('transactions/1/pdf/UUID-1.xml', '<cfdi/>');
+        Storage::disk('documentos')->put('transactions/1/pdf/UUID-1.pdf', '%PDF-falso');
+        Storage::disk('documentos')->put('transactions/1/pdf/UUID-1.xml', '<cfdi/>');
 
         Transaction::find(1)->forceFill([
             'seal' => 'UUID-1', 'pdf_attach' => 'UUID-1.pdf', 'xml_attach' => 'UUID-1.xml',
@@ -104,8 +105,17 @@ class InvoiceMailTest extends TestCase
     {
         $this->detalle()->call('stamp')->assertHasNoErrors();
 
-        Mail::assertSent(InvoiceMail::class, fn ($correo) => $correo->envelope()->subject === 'Invoice Booking [BK-1] '
-            && count($correo->attachments()) === 2);
+        // ⚠️ El asunto ya depende del idioma de los DOCUMENTOS, no del de la
+        // aplicación: `envelope()` a secas lo devuelve en el idioma en curso —en
+        // pruebas, español— y la comparación fallaría aunque el correo sí se
+        // haya mandado. Se pregunta en el idioma que el Mailable declara.
+        Mail::assertSent(InvoiceMail::class, function ($correo) {
+            $asunto = Documentos::conIdioma(fn () => $correo->envelope()->subject);
+
+            return $asunto === 'Invoice Booking [BK-1] ' && count($correo->attachments()) === 2;
+        });
+
+        Mail::assertSent(InvoiceMail::class, fn ($correo) => $correo->locale === config('marca.idioma_documentos'));
     }
 
     /**
@@ -116,7 +126,7 @@ class InvoiceMailTest extends TestCase
     {
         $this->detalle()->call('stamp');
 
-        Mail::assertSent(InvoiceMail::class, fn ($correo) => $correo->hasTo('copia@frego.com.mx')
+        Mail::assertSent(InvoiceMail::class, fn ($correo) => $correo->hasTo('copia@ejemplo.test')
             && ! $correo->hasTo('facturas@cliente.mx'));
     }
 
@@ -127,7 +137,7 @@ class InvoiceMailTest extends TestCase
         $this->detalle()->call('stamp');
 
         Mail::assertSent(InvoiceMail::class, fn ($correo) => $correo->hasTo('facturas@cliente.mx')
-            && $correo->hasBcc('copia@frego.com.mx'));
+            && $correo->hasBcc('copia@ejemplo.test'));
     }
 
     public function test_se_puede_volver_a_mandar_desde_el_detalle(): void

@@ -2,7 +2,7 @@
 
 namespace App\Actions\Transactions;
 
-use App\Models\Frego\Transaction;
+use App\Models\Core\Transaction;
 use App\Models\User;
 use App\Support\ExchangeRates;
 use Illuminate\Support\Carbon;

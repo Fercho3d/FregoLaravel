@@ -162,5 +162,5 @@ La hora de los avisos es la de la operación (`America/Mexico_City`), aunque el
 servidor corra en UTC. Para probar sin mandar correo:
 
 ```bash
-php8.4 artisan frego:avisos-continuidad vencido --simular
+php8.4 artisan operacion:avisos-continuidad vencido --simular
 ```

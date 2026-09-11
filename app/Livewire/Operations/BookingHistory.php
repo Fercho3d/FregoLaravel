@@ -2,7 +2,7 @@
 
 namespace App\Livewire\Operations;
 
-use App\Models\Frego\Booking;
+use App\Models\Core\Booking;
 use App\Support\History\BookingTimeline;
 use Illuminate\Support\Collection;
 use Livewire\Component;
@@ -49,9 +49,9 @@ class BookingHistory extends Component
             'booking' => Booking::findOrFail($this->bookingId),
             'eventos' => $filtrada->values(),
             'total' => $historia->count(),
-            'origenes' => $historia->map(fn (array $evento) => str_starts_with($evento['origen'], 'Contenedor')
-                ? 'Contenedor'
+            'origenes' => $historia->map(fn (array $evento) => str_starts_with($evento['origen'], __('Contenedor'))
+                ? __('Contenedor')
                 : $evento['origen'])->unique()->sort()->values(),
-        ])->layout('components.app-layout', ['title' => 'Historial del booking']);
+        ])->layout('components.app-layout', ['title' => __('Historial del booking')]);
     }
 }

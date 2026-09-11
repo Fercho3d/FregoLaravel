@@ -3,8 +3,11 @@
 @php
     $money = fn ($v) => $v === null ? '—' : number_format((float) $v, 2);
     $fecha = fn ($v) => $v ? \Illuminate\Support\Carbon::parse($v)->format('d/m/Y') : '—';
-    $avance = (float) $booking->total_completed;
-    $marcadas = collect($checklist)->filter()->count();
+    // El avance y la cuenta salen de los MISMOS hitos que se listan abajo: con
+    // el porcentaje heredado por un lado y la lista por otro, la pantalla se
+    // contradecía a sí misma.
+    $marcadas = collect($hitos)->whereNotNull('fecha')->count();
+    $avance = $hitos === [] ? 0.0 : round($marcadas / count($hitos) * 100, 0);
 @endphp
 
 <div class="mx-auto max-w-6xl space-y-4">
@@ -25,7 +28,7 @@
             <div class="min-w-0">
                 <p class="text-xs font-semibold uppercase tracking-wide text-ink-faint">{{ __('Booking') }}</p>
                 <h2 class="mt-0.5 truncate text-2xl font-semibold text-ink">
-                    {{ trim((string) $booking->booking_number) ?: 'Sin número' }}
+                    {{ trim((string) $booking->booking_number) ?: __('Sin número') }}
                 </h2>
                 <p class="mt-1 truncate text-sm text-ink-muted">{{ $booking->client_name ?: '—' }}</p>
             </div>
@@ -84,7 +87,7 @@
                 <span class="text-ink-muted">{{ __('Avance de la lista de verificación') }}</span>
                 <span class="font-semibold tabular-nums text-ink">
                     {{ number_format($avance, 0) }}%
-                    <span class="font-normal text-ink-faint">({{ __(':marcadas de :total', ['marcadas' => $marcadas, 'total' => count($checklist)]) }})</span>
+                    <span class="font-normal text-ink-faint">({{ __(':marcadas de :total', ['marcadas' => $marcadas, 'total' => count($hitos)]) }})</span>
                 </span>
             </div>
             <div class="mt-2 h-2 overflow-hidden rounded-full bg-raised">
@@ -94,20 +97,37 @@
         </div>
 
         <dl class="mt-5 grid grid-cols-2 gap-x-6 gap-y-4 border-t border-line pt-5 text-sm sm:grid-cols-3 lg:grid-cols-4">
-            @foreach ([
-                [__('Buque'), $booking->vessel_name],
-                [__('Puerto de carga'), trim((string) $booking->port_name)],
-                [__('Puerto de descarga'), $booking->discharge_name],
-                [__('Lugar de recolección'), $booking->pickup_name],
-                [__('Recolección'), $fecha($booking->pickup_date)],
-                [__('Instrucciones (SI)'), $fecha($booking->SI_date)],
-                [__('Carga estimada'), $fecha($booking->loading_EDT)],
-                [__('Arribo estimado'), $fecha($booking->dicharge_ETA)],
-                [__('Mercancía'), $booking->commodity],
-                [__('Temperatura'), $booking->set_point],
-                [__('Referencia del cliente'), $booking->customer_reference],
-                [__('Creado por'), $booking->creator],
-            ] as [$etiqueta, $valor])
+            @php
+                // El tercer elemento es la propiedad del formulario; los campos
+                // que esta instalación apagó tampoco se enseñan aquí. Sin él,
+                // apagar un campo lo quitaba del alta pero seguía saliendo en
+                // el detalle, vacío y sin que nadie pudiera llenarlo.
+                $datos = array_filter([
+                    [__('Buque'), $booking->vessel_name, 'vesselId'],
+                    [__('Puerto de carga'), trim((string) $booking->port_name), 'loadingPort'],
+                    [__('Puerto de descarga'), $booking->discharge_name, 'dischargePort'],
+                    [__('Lugar de recolección'), $booking->pickup_name, 'pickupPlace'],
+                    [__('Recolección'), $fecha($booking->pickup_date), null],
+                    // El corte de instrucciones es del embarque marítimo.
+                    [__('Instrucciones (SI)'), $fecha($booking->SI_date), 'vesselId'],
+                    [__('Carga estimada'), $fecha($booking->loading_EDT), 'loadingDate'],
+                    [__('Arribo estimado'), $fecha($booking->dicharge_ETA), 'arrivalDate'],
+                    [__('Mercancía'), $booking->commodity, 'commodity'],
+                    [__('Temperatura'), $booking->set_point, 'setPoint'],
+                    [__('Referencia del cliente'), $booking->customer_reference, 'customerReference'],
+                    [__('Creado por'), $booking->creator, null],
+                ], fn (array $campo) => $campo[2] === null || \App\Support\Expediente::visible($campo[2]));
+
+                // Y los campos propios de esta instalación, detrás de los de
+                // siempre. Se leen de una vez para no consultar uno por uno.
+                $valoresPropios = \App\Support\Expediente::valores($booking->booking_id);
+
+                foreach (\App\Support\Expediente::propios() as $campo) {
+                    $datos[] = [$campo->etiqueta, $valoresPropios[$campo->clave] ?? null, null];
+                }
+            @endphp
+
+            @foreach ($datos as [$etiqueta, $valor, $propiedad])
                 <div class="min-w-0">
                     <dt class="text-xs uppercase tracking-wide text-ink-faint">{{ $etiqueta }}</dt>
                     <dd class="mt-0.5 truncate text-ink" title="{{ $valor }}">{{ $valor ?: '—' }}</dd>
@@ -117,6 +137,110 @@
     </section>
 
     {{-- Contenedores --}}
+    {{-- Gastos de carretera. Solo con flota propia: quien subcontrata el
+         transporte no paga diésel — lo paga su proveedor y le llega facturado. --}}
+    @if (\App\Support\Expediente::visible('unidadId'))
+        @php
+            $gastos = $this->gastos();
+            $totalesGastos = $this->totalesGastos();
+            $pesos = fn ($v) => '$'.number_format((float) $v, 2);
+        @endphp
+
+        <section class="rounded-2xl border border-line bg-panel p-4 sm:p-5">
+            <header class="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+                <div>
+                    <h2 class="text-sm font-semibold text-ink">{{ __('Gastos del viaje') }}</h2>
+                    <p class="mt-0.5 text-xs text-ink-faint">
+                        {{ __('Combustible') }} {{ $pesos($totalesGastos['combustible']) }} ·
+                        {{ __('Casetas') }} {{ $pesos($totalesGastos['caseta']) }} ·
+                        {{ __('Otros') }} {{ $pesos($totalesGastos['otro']) }}
+                    </p>
+                </div>
+                <span class="text-base font-semibold tabular-nums text-ink">{{ $pesos($totalesGastos['total']) }}</span>
+            </header>
+
+            @if (! $booking->locked && (auth()->user()?->isAdmin() ?? false))
+                <div class="mb-3 grid gap-2 sm:grid-cols-6">
+                    <select wire:model.live="gastoTipo" class="field-input">
+                        @foreach (['combustible' => __('Combustible'), 'caseta' => __('Caseta'), 'otro' => __('Otro')] as $v => $etq)
+                            <option value="{{ $v }}" @selected($gastoTipo === $v)>{{ $etq }}</option>
+                        @endforeach
+                    </select>
+                    <input type="date" wire:model="gastoFecha" value="{{ $gastoFecha }}" class="field-input">
+                    <input type="text" wire:model="gastoDescripcion" value="{{ $gastoDescripcion }}"
+                           class="field-input" placeholder="{{ __('Descripción') }}">
+                    @if ($gastoTipo === 'combustible')
+                        <input type="number" step="0.01" wire:model="gastoLitros" value="{{ $gastoLitros }}"
+                               class="field-input" placeholder="{{ __('Litros') }}">
+                        <input type="number" wire:model="gastoOdometro" value="{{ $gastoOdometro }}"
+                               class="field-input" placeholder="{{ __('Odómetro') }}">
+                    @else
+                        <input type="text" wire:model="gastoFolio" value="{{ $gastoFolio }}"
+                               class="field-input sm:col-span-2" placeholder="{{ __('Folio') }}">
+                    @endif
+                    <div class="flex gap-2">
+                        <input type="number" step="0.01" wire:model="gastoImporte" value="{{ $gastoImporte }}"
+                               class="field-input" placeholder="{{ __('Importe') }}">
+                        <button wire:click="saveGasto"
+                                class="shrink-0 rounded-lg border border-line px-3 text-sm text-ink-soft transition hover:bg-raised">
+                            {{ $gastoId ? __('Guardar') : __('Agregar') }}
+                        </button>
+                    </div>
+                </div>
+            @endif
+
+            @if ($gastos->isEmpty())
+                <p class="py-6 text-center text-sm text-ink-faint">{{ __('Sin gastos capturados.') }}</p>
+            @else
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-[38rem] text-sm">
+                        <thead class="border-b border-line text-xs uppercase tracking-wide text-ink-muted">
+                            <tr>
+                                @foreach ([__('Fecha'), __('Tipo'), __('Descripción'), __('Rendimiento'), __('Importe'), ''] as $th)
+                                    <th class="px-2 py-2 text-left font-semibold">{{ $th }}</th>
+                                @endforeach
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-line">
+                            @foreach ($gastos as $g)
+                                @php $km = \App\Support\Fleet\TripExpenses::rendimiento($g); @endphp
+                                <tr>
+                                    <td class="whitespace-nowrap px-2 py-1.5 text-ink-muted">
+                                        {{ \Illuminate\Support\Carbon::parse($g->fecha)->format('d/m/Y') }}
+                                    </td>
+                                    <td class="px-2 py-1.5 text-ink-muted">
+                                        {{ ['combustible' => __('Combustible'), 'caseta' => __('Caseta')][$g->tipo] ?? __('Otro') }}
+                                    </td>
+                                    <td class="px-2 py-1.5 text-ink">
+                                        {{ $g->descripcion ?: '—' }}
+                                        @if ($g->litros)
+                                            <span class="text-xs text-ink-faint">
+                                                · {{ number_format((float) $g->litros, 2) }} L
+                                                @if ($g->precio_litro) · {{ $pesos($g->precio_litro) }}/L @endif
+                                            </span>
+                                        @endif
+                                    </td>
+                                    <td class="whitespace-nowrap px-2 py-1.5 text-ink-muted">
+                                        {{ $km !== null ? number_format($km, 2).' km/L' : '—' }}
+                                    </td>
+                                    <td class="whitespace-nowrap px-2 py-1.5 text-right tabular-nums text-ink">{{ $pesos($g->importe) }}</td>
+                                    <td class="whitespace-nowrap px-2 py-1.5 text-right">
+                                        @if (! $booking->locked && (auth()->user()?->isAdmin() ?? false))
+                                            <button wire:click="editGasto({{ $g->gasto_id }})" class="text-xs text-ink-faint hover:text-brand">{{ __('Editar') }}</button>
+                                            <button wire:click="deleteGasto({{ $g->gasto_id }})"
+                                                    wire:confirm="{{ __('¿Quitar este gasto?') }}"
+                                                    class="ml-2 text-xs text-ink-faint hover:text-brand">×</button>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
+        </section>
+    @endif
+
     <section class="card overflow-hidden">
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-3">
             <h3 class="text-sm font-semibold text-ink">{{ __('Contenedores') }}</h3>
@@ -130,7 +254,7 @@
 
         @if ($editingContainer)
             <form wire:submit="saveContainer" class="space-y-4 border-b border-line bg-raised/60 p-5">
-                <p class="text-sm font-medium text-ink">{{ $containerId ? 'Editar contenedor' : 'Nuevo contenedor' }}</p>
+                <p class="text-sm font-medium text-ink">{{ $containerId ? __('Editar contenedor') : __('Nuevo contenedor') }}</p>
 
                 <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     @foreach ([
@@ -217,80 +341,84 @@
         </div>
     </section>
 
-    {{-- Instrucciones de embarque --}}
-    <section class="card overflow-hidden">
-        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-3">
-            <div>
-                <h3 class="text-sm font-semibold text-ink">{{ __('Instrucciones de embarque') }}</h3>
-                <p class="text-xs text-ink-faint">{{ __('Cómo viene cada parte en el documento y cómo debería decir.') }}</p>
-            </div>
+    {{-- Instrucciones de embarque. Shipper, consignee y notify party son del
+         conocimiento de embarque MARÍTIMO: en un viaje por carretera no
+         existen, y dejarlas ahí serían ocho campos que nadie llena. --}}
+    @if (\App\Support\Expediente::usa('maritimo'))
+        <section class="card overflow-hidden">
+            <header class="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-3">
+                <div>
+                    <h3 class="text-sm font-semibold text-ink">{{ __('Instrucciones de embarque') }}</h3>
+                    <p class="text-xs text-ink-faint">{{ __('Cómo viene cada parte en el documento y cómo debería decir.') }}</p>
+                </div>
 
-            @if (auth()->user()?->isAdmin() && ! $booking->locked && ! $editingInstructions)
-                <button type="button" wire:click="editInstructions" class="btn-ghost !px-3 !py-1.5 text-xs">{{ __('Editar') }}</button>
-            @endif
-        </header>
+                @if (auth()->user()?->isAdmin() && ! $booking->locked && ! $editingInstructions)
+                    <button type="button" wire:click="editInstructions" class="btn-ghost !px-3 !py-1.5 text-xs">{{ __('Editar') }}</button>
+                @endif
+            </header>
 
-        <div class="p-5">
-            @if ($editingInstructions)
-                <form wire:submit="saveInstructions" class="space-y-4">
-                    @foreach ($this->instructionParts() as $parte => $etiqueta)
-                        <div class="grid gap-4 sm:grid-cols-2">
-                            @foreach ([['is', __('como viene')], ['should', __('como debe decir')]] as [$lado, $pie])
-                                <label class="block">
-                                    <span class="field-label">
-                                        {{ $etiqueta }}
-                                        <span class="font-normal text-ink-faint">({{ $pie }})</span>
-                                    </span>
-                                    <textarea wire:model="instructions.{{ $parte }}_{{ $lado }}" rows="3"
-                                              class="field-input mt-1.5">{{ $instructions[$parte.'_'.$lado] ?? '' }}</textarea>
-                                    @error('instructions.'.$parte.'_'.$lado)
-                                        <span class="mt-1 block text-xs text-brand">{{ $message }}</span>
-                                    @enderror
-                                </label>
-                            @endforeach
-                        </div>
-                    @endforeach
-
-                    <div class="flex flex-wrap justify-end gap-3 border-t border-line pt-4">
-                        <button type="button" wire:click="cancelInstructions" class="btn-ghost !px-3 !py-1.5 text-xs">{{ __('Cancelar') }}</button>
-                        <button type="submit" wire:loading.attr="disabled" wire:target="saveInstructions" class="btn-accent !px-3 !py-1.5 text-xs">
-                            <x-spinner wire:loading wire:target="saveInstructions" class="h-3.5 w-3.5" />
-                            {{ __('Guardar') }}
-                        </button>
-                    </div>
-                </form>
-            @else
-                @php $capturadas = collect($instructions)->filter()->isNotEmpty(); @endphp
-
-                @if (! $capturadas)
-                    <p class="py-6 text-center text-sm text-ink-faint">{{ __('Este booking no tiene instrucciones capturadas.') }}</p>
-                @else
-                    <dl class="space-y-4 text-sm">
+            <div class="p-5">
+                @if ($editingInstructions)
+                    <form wire:submit="saveInstructions" class="space-y-4">
                         @foreach ($this->instructionParts() as $parte => $etiqueta)
-                            @continue (blank($instructions[$parte.'_is']) && blank($instructions[$parte.'_should']))
-                            <div>
-                                <dt class="text-xs font-semibold uppercase tracking-wide text-ink-faint">{{ $etiqueta }}</dt>
-                                <dd class="mt-1 grid gap-3 sm:grid-cols-2">
-                                    @foreach ([['is', __('Como viene')], ['should', __('Como debe decir')]] as [$lado, $pie])
-                                        <div class="rounded-lg border border-line px-3 py-2">
-                                            <p class="text-xs text-ink-faint">{{ $pie }}</p>
-                                            <p class="mt-0.5 whitespace-pre-line text-ink">{{ $instructions[$parte.'_'.$lado] ?: '—' }}</p>
-                                        </div>
-                                    @endforeach
-                                </dd>
+                            <div class="grid gap-4 sm:grid-cols-2">
+                                @foreach ([['is', __('como viene')], ['should', __('como debe decir')]] as [$lado, $pie])
+                                    <label class="block">
+                                        <span class="field-label">
+                                            {{ $etiqueta }}
+                                            <span class="font-normal text-ink-faint">({{ $pie }})</span>
+                                        </span>
+                                        <textarea wire:model="instructions.{{ $parte }}_{{ $lado }}" rows="3"
+                                                  class="field-input mt-1.5">{{ $instructions[$parte.'_'.$lado] ?? '' }}</textarea>
+                                        @error('instructions.'.$parte.'_'.$lado)
+                                            <span class="mt-1 block text-xs text-brand">{{ $message }}</span>
+                                        @enderror
+                                    </label>
+                                @endforeach
                             </div>
                         @endforeach
-                    </dl>
+
+                        <div class="flex flex-wrap justify-end gap-3 border-t border-line pt-4">
+                            <button type="button" wire:click="cancelInstructions" class="btn-ghost !px-3 !py-1.5 text-xs">{{ __('Cancelar') }}</button>
+                            <button type="submit" wire:loading.attr="disabled" wire:target="saveInstructions" class="btn-accent !px-3 !py-1.5 text-xs">
+                                <x-spinner wire:loading wire:target="saveInstructions" class="h-3.5 w-3.5" />
+                                {{ __('Guardar') }}
+                            </button>
+                        </div>
+                    </form>
+                @else
+                    @php $capturadas = collect($instructions)->filter()->isNotEmpty(); @endphp
+
+                    @if (! $capturadas)
+                        <p class="py-6 text-center text-sm text-ink-faint">{{ __('Este booking no tiene instrucciones capturadas.') }}</p>
+                    @else
+                        <dl class="space-y-4 text-sm">
+                            @foreach ($this->instructionParts() as $parte => $etiqueta)
+                                @continue (blank($instructions[$parte.'_is']) && blank($instructions[$parte.'_should']))
+                                <div>
+                                    <dt class="text-xs font-semibold uppercase tracking-wide text-ink-faint">{{ $etiqueta }}</dt>
+                                    <dd class="mt-1 grid gap-3 sm:grid-cols-2">
+                                        @foreach ([['is', __('Como viene')], ['should', __('Como debe decir')]] as [$lado, $pie])
+                                            <div class="rounded-lg border border-line px-3 py-2">
+                                                <p class="text-xs text-ink-faint">{{ $pie }}</p>
+                                                <p class="mt-0.5 whitespace-pre-line text-ink">{{ $instructions[$parte.'_'.$lado] ?: '—' }}</p>
+                                            </div>
+                                        @endforeach
+                                    </dd>
+                                </div>
+                            @endforeach
+                        </dl>
+                    @endif
                 @endif
-            @endif
-        </div>
-    </section>
+            </div>
+        </section>
+    @endif
 
     {{-- Facturación --}}
     <section class="card overflow-hidden">
         <header class="flex items-center justify-between gap-3 border-b border-line px-5 py-3">
             <h3 class="text-sm font-semibold text-ink">{{ __('Facturación') }}</h3>
-            <span class="text-xs text-ink-faint">{{ trans_choice('{1}:count transacción|[2,*]:count transacciones', $transacciones->count(), ['count' => $transacciones->count()]) }}</span>
+            <span class="text-xs text-ink-faint">{{ trans_choice(__('{1}:count transacción|[2,*]:count transacciones'), $transacciones->count(), ['count' => $transacciones->count()]) }}</span>
         </header>
 
         <div class="overflow-x-auto">
@@ -310,7 +438,7 @@
                         <tr class="transition hover:bg-raised {{ $t->cancelled ? 'opacity-50' : '' }}">
                             <td class="whitespace-nowrap px-4 py-2">
                                 <a href="{{ route('transactions.show', $t->transc_id) }}" wire:navigate
-                                   class="text-brand hover:underline">{{ $t->tran_number ?: 'Ver' }}</a>
+                                   class="text-brand hover:underline">{{ $t->tran_number ?: __('Ver') }}</a>
                             </td>
                             <td class="max-w-[16rem] truncate px-4 py-2 text-ink-muted">{{ $t->customerName ?: ($t->vendorName ?: '—') }}</td>
                             <td class="whitespace-nowrap px-4 py-2 text-ink-muted">{{ $fecha($t->tran_date) }}</td>
@@ -339,7 +467,7 @@
 
             <p class="border-b border-line px-5 py-2 text-xs text-ink-faint">
                 {{ __('Cada cliente pide los suyos: esta lista sale de los campos configurados para') }}
-                {{ $booking->client_name ?: 'este cliente' }}.
+                {{ $booking->client_name ?: __('este cliente') }}.
             </p>
 
             @error('upload') <p class="alert-danger m-5">{{ $message }}</p> @enderror
@@ -391,16 +519,25 @@
         </section>
     @endif
 
-    {{-- Lista de verificación --}}
-    @if ($checklist !== [])
-        <section class="card p-5 sm:p-6">
-            <h3 class="text-sm font-semibold text-ink">{{ __('Lista de verificación') }}</h3>
+    {{-- Hitos del expediente --}}
+    @if ($hitos !== [])
+        @php $puedeMarcar = (auth()->user()?->isAdmin() ?? false) && ! $booking->locked; @endphp
 
-            <ul class="mt-4 grid gap-x-6 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
-                @foreach ($checklist as $etiqueta => $marcada)
+        <section class="card p-5 sm:p-6">
+            <div class="flex flex-wrap items-baseline justify-between gap-2">
+                <h3 class="text-sm font-semibold text-ink">{{ __('Lista de verificación') }}</h3>
+                @if ($puedeMarcar)
+                    <p class="text-xs text-ink-faint">{{ __('Toca un paso para marcarlo con la fecha de hoy; toca la fecha para cambiarla.') }}</p>
+                @endif
+            </div>
+
+            <ul class="mt-4 grid gap-x-6 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
+                @foreach ($hitos as $hito)
                     <li class="flex items-center justify-between gap-3 border-b border-line/60 py-1.5 text-sm">
-                        <span class="flex min-w-0 items-center gap-2">
-                            @if ($marcada)
+                        <button type="button"
+                                @if ($puedeMarcar) wire:click="marcaHito('{{ $hito['clave'] }}')" @else disabled @endif
+                                class="flex min-w-0 items-center gap-2 text-left {{ $puedeMarcar ? 'transition hover:text-brand' : 'cursor-default' }}">
+                            @if ($hito['fecha'])
                                 <svg class="h-4 w-4 shrink-0 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
                                 </svg>
@@ -409,12 +546,31 @@
                                     <circle cx="12" cy="12" r="8"/>
                                 </svg>
                             @endif
-                            <span class="truncate {{ $marcada ? 'text-ink' : 'text-ink-faint' }}">{{ $etiqueta }}</span>
-                        </span>
-                        <span class="shrink-0 text-xs text-ink-faint">{{ $marcada ? $fecha($marcada) : '' }}</span>
+                            <span class="truncate {{ $hito['fecha'] ? 'text-ink' : 'text-ink-faint' }}">{{ $hito['etiqueta'] }}</span>
+                        </button>
+
+                        @if ($hitoEditando === $hito['clave'])
+                            <span class="flex shrink-0 items-center gap-1">
+                                <input type="date" wire:model="hitoFecha" value="{{ $hitoFecha }}"
+                                       wire:keydown.enter="guardaHito" wire:keydown.escape="cancelaHito"
+                                       class="field-input !w-36 !py-1 text-xs">
+                                <button type="button" wire:click="guardaHito" class="text-xs text-brand hover:underline">{{ __('Guardar') }}</button>
+                                <button type="button" wire:click="cancelaHito" class="text-xs text-ink-faint hover:underline">{{ __('Cancelar') }}</button>
+                            </span>
+                        @else
+                            <button type="button"
+                                    @if ($puedeMarcar) wire:click="editaHito('{{ $hito['clave'] }}')" @else disabled @endif
+                                    class="shrink-0 text-xs text-ink-faint {{ $puedeMarcar ? 'transition hover:text-brand' : 'cursor-default' }}">
+                                {{ $hito['fecha'] ? $fecha($hito['fecha']) : ($puedeMarcar ? '—' : '') }}
+                            </button>
+                        @endif
                     </li>
                 @endforeach
             </ul>
+
+            @error('hitoFecha')
+                <p class="mt-2 text-xs text-brand">{{ $message }}</p>
+            @enderror
         </section>
     @endif
 </div>

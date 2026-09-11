@@ -7,7 +7,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
-use Tests\Support\FregoSchema;
+use Tests\Support\CoreSchema;
 use Tests\TestCase;
 
 /** Contenedores de un booking: alta, edición y baja desde el detalle. */
@@ -17,8 +17,8 @@ class BookingContainersTest extends TestCase
     {
         parent::setUp();
 
-        FregoSchema::create();
-        FregoSchema::createUsers();
+        CoreSchema::create();
+        CoreSchema::createUsers();
 
         DB::table('client')->insert([['client_id' => 1, 'fullName' => 'Cliente Uno']]);
         DB::table('container_types')->insert([['contType_id' => 1, 'container_name' => '40 HC']]);

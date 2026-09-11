@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Frego\Transaction;
+use App\Models\Core\Transaction;
 use App\Support\TransactionFiles;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;

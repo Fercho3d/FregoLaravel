@@ -3,12 +3,12 @@
 namespace Tests\Feature\Operations;
 
 use App\Livewire\Operations\BookingDetail;
-use App\Models\Frego\Booking;
+use App\Models\Core\Booking;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
-use Tests\Support\FregoSchema;
+use Tests\Support\CoreSchema;
 use Tests\TestCase;
 
 /** Borrar un booking: es físico y no se puede deshacer, así que se cuida. */
@@ -18,8 +18,8 @@ class BookingDeleteTest extends TestCase
     {
         parent::setUp();
 
-        FregoSchema::create();
-        FregoSchema::createUsers();
+        CoreSchema::create();
+        CoreSchema::createUsers();
 
         DB::table('client')->insert([['client_id' => 1, 'fullName' => 'Cliente Uno']]);
         DB::table('account')->insert([['account_id' => 1, 'account_name' => 'Pesos', 'prefix' => 'MXN', 'default' => 1]]);

@@ -3,9 +3,9 @@
 namespace App\Actions\Bookings;
 
 use App\Actions\Transactions\SaveTransaction;
-use App\Models\Frego\Booking;
-use App\Models\Frego\Charge;
-use App\Models\Frego\Transaction;
+use App\Models\Core\Booking;
+use App\Models\Core\Charge;
+use App\Models\Core\Transaction;
 use App\Models\User;
 use App\Support\Billing\BillingPlan;
 use App\Support\Billing\PlannedDocument;

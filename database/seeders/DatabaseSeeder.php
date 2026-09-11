@@ -7,40 +7,70 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
 
+/**
+ * Siembra inicial de una instalación nueva: solo los roles del sistema.
+ *
+ * La cuenta de administrador **no se crea sola**. Antes venía con usuario y
+ * contraseña escritos aquí y un «TODO: eliminar antes de producción»; en un
+ * sistema que se instala en casa de otros eso es un superusuario con
+ * contraseña pública esperando a que alguien corra `db:seed` en el servidor.
+ *
+ * Para crear la primera cuenta:
+ *   DEV_ADMIN_USER=admin DEV_ADMIN_PASSWORD='...' php artisan db:seed
+ *
+ * y se niega a hacerlo con `APP_ENV=production`.
+ */
 class DatabaseSeeder extends Seeder
 {
-    /**
-     * Seed inicial: roles del sistema y un usuario administrador de desarrollo.
-     */
     public function run(): void
     {
-        $roles = [
+        foreach ([
             'super-admin',   // acceso total
             'admin',         // administración interna
-            'operaciones',   // bookings / contenedores
-            'facturacion',   // CFDI / timbrado
-            'pagos',         // bancos / conciliación
-            'cliente',       // portal cliente
-            'proveedor',     // portal proveedor
-        ];
-
-        foreach ($roles as $role) {
-            Role::findOrCreate($role, 'web');
+            'operaciones',   // expedientes y unidades
+            'facturacion',   // facturación y timbrado
+            'pagos',         // bancos y conciliación
+            'cliente',       // portal de cliente
+            'proveedor',     // portal de proveedor
+        ] as $rol) {
+            Role::findOrCreate($rol, 'web');
         }
 
-        // Usuario administrador SOLO para desarrollo local.
-        // TODO: eliminar/rotar antes de producción.
-        $admin = User::updateOrCreate(
-            ['username' => 'dev.admin'],
-            [
-                'name' => 'Administrador Dev',
-                'email' => 'dev.admin@frego.local',
-                'password' => Hash::make('Frego2026$dev'),
-                'status' => 1,
-                'role' => 1,
-            ]
-        );
+        $this->primeraCuenta();
+    }
 
-        $admin->syncRoles(['super-admin']);
+    private function primeraCuenta(): void
+    {
+        $usuario = trim((string) config('demo.admin.usuario'));
+        $clave = (string) config('demo.admin.password');
+
+        if ($usuario === '' || $clave === '') {
+            $this->command?->info('Sin cuenta inicial: define DEV_ADMIN_USER y DEV_ADMIN_PASSWORD si la necesitas.');
+
+            return;
+        }
+
+        if (app()->environment('production')) {
+            $this->command?->warn('En producción la cuenta inicial se crea a mano, no con el seeder.');
+
+            return;
+        }
+
+        // Rol 20 = super administrador del esquema heredado. Antes decía 1, que
+        // no es ninguno de los tres roles válidos (9, 10, 20), así que la cuenta
+        // «de administrador» ni siquiera entraba a facturación.
+        User::updateOrCreate(
+            ['username' => $usuario],
+            [
+                'name' => 'Administrador',
+                'email' => $usuario.'@'.parse_url((string) config('app.url'), PHP_URL_HOST),
+                'password' => Hash::make($clave),
+                'status' => 1,
+                'role' => User::ROLE_SUPER_ADMIN,
+                'access' => User::ACCESS_INTERNAL,
+            ]
+        )->syncRoles(['super-admin']);
+
+        $this->command?->info("Cuenta inicial `{$usuario}` lista.");
     }
 }

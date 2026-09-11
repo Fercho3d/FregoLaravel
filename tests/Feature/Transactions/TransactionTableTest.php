@@ -7,7 +7,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\Group;
-use Tests\FregoDatabaseTestCase;
+use Tests\LegacyDatabaseTestCase;
 
 /**
  * La pantalla: que dibuje, que filtre, que ordene y que pagine sin recargar.
@@ -16,7 +16,7 @@ use Tests\FregoDatabaseTestCase;
  * de verdad; por eso va en el grupo `parity`.
  */
 #[Group('parity')]
-class TransactionTableTest extends FregoDatabaseTestCase
+class TransactionTableTest extends LegacyDatabaseTestCase
 {
     private function actAsUser(): void
     {
@@ -86,12 +86,12 @@ class TransactionTableTest extends FregoDatabaseTestCase
 
         // El `screen` viaja como valor por omisión de la ruta hasta el mount()
         // del componente; si eso se rompiera, las tres rutas mostrarían lo mismo.
-        $this->get(route('transactions.invoice'))->assertOk()->assertSee('Facturas');
-        $this->get(route('transactions.bill'))->assertOk()->assertSee('<title>Costos', false);
-        $this->get(route('transactions.all'))->assertOk()->assertSee('<title>Todas las transacciones', false);
+        $this->get(route('transactions.invoice'))->assertOk()->assertSee(__('Facturas'));
+        $this->get(route('transactions.bill'))->assertOk()->assertSee('<title>'.__('Costos'), false);
+        $this->get(route('transactions.all'))->assertOk()->assertSee('<title>'.__('Todas las transacciones'), false);
         $this->get(route('transactions.booking', $booking))
             ->assertOk()
-            ->assertSee('<title>Transacciones del booking', false);
+            ->assertSee('<title>'.__('Transacciones del booking'), false);
     }
 
     public function test_el_listado_de_facturas_solo_trae_facturas(): void
@@ -183,7 +183,7 @@ class TransactionTableTest extends FregoDatabaseTestCase
 
         $componente->assertSee('x-data="{ abierto: window.innerWidth >= 1024 }"', false)
             ->assertSee('x-on:click="abierto = !abierto"', false)
-            ->assertSee('Filtros');
+            ->assertSee(__('Filtros'));
 
         // Sin filtros no hay contador; con dos, aparece el 2.
         $componente->assertDontSeeHtml('text-accent-400">1<')
@@ -232,7 +232,7 @@ class TransactionTableTest extends FregoDatabaseTestCase
 
         $this->get(route('transactions.invoice'))
             ->assertOk()
-            ->assertSee('Página 1 de')
+            ->assertSee(__('Página 1 de'))
             ->assertDontSee('dusk="nextPage.before"', false);
     }
 
@@ -259,7 +259,7 @@ class TransactionTableTest extends FregoDatabaseTestCase
             ->assertSee('value="F-14793"', false)
             ->assertSee('value="01/12/2022 - 31/12/2022"', false)
             ->assertSee('<option value="'.$compania.'" selected>', false)
-            ->assertSee('<option value="1" selected>Pagadas</option>', false)
+            ->assertSee('<option value="1" selected>'.__('Pagadas').'</option>', false)
             ->assertSee('<option value="100" selected>100</option>', false);
     }
 }

@@ -85,6 +85,20 @@ class TransactionQuery
      * @param  string[]  $columns
      * @return array<string, float>
      */
+    /**
+     * Cuántas transacciones caen en el filtro, sin traerlas.
+     *
+     * Reusa el mismo par de caminos que `paginate()`: la cuenta barata cuando
+     * el filtro se resuelve en la fase 1, y la de la consulta agregada cuando
+     * hay condiciones sobre importes.
+     */
+    public function count(): int
+    {
+        return $this->canUseTwoPhase()
+            ? $this->countIds()
+            : $this->countAggregated($this->aggregateQuery());
+    }
+
     public function totals(array $columns = ['total_amount', 'left_to_pay', 'amount_original_mxn']): array
     {
         $select = implode(', ', array_map(
@@ -124,7 +138,7 @@ class TransactionQuery
 
         $this->applyRowFilters($query);
 
-        return $query->orderBy('t.'.$this->sortColumn(), $this->sortDirection());
+        return $query->orderByRaw($this->sortExpression(aggregated: false));
     }
 
     private function countIds(): int
@@ -195,7 +209,7 @@ class TransactionQuery
         $this->applyAggregateFilters($query, $e);
 
         if ($ids === null) {
-            $query->orderBy('t.'.$this->sortColumn(), $this->sortDirection());
+            $query->orderByRaw($this->sortExpression(aggregated: true));
         }
 
         return $query;
@@ -455,7 +469,9 @@ class TransactionQuery
 
     private function canUseTwoPhase(): bool
     {
-        return $this->filters->groupedByTransaction() && ! $this->filters->needsAggregateFilter();
+        return $this->filters->groupedByTransaction()
+            && ! $this->filters->needsAggregateFilter()
+            && $this->sortFitsIdQuery();
     }
 
     private function groupByColumn(): string
@@ -468,11 +484,65 @@ class TransactionQuery
         };
     }
 
-    private function sortColumn(): string
-    {
-        $allowed = ['transc_id', 'tran_date', 'tran_number', 'booking', 'tran_type', 'seal', 'cancelled'];
+    /**
+     * Columnas por las que se puede ordenar.
+     *
+     * `row` es la expresión tal como se puede usar en la FASE 1 —la consulta
+     * barata que solo elige los IDs de la página—; `agg` es la de la consulta
+     * con agregados. Las que traen `row => null` son importes calculados: no
+     * existen todavía en la fase 1, así que ordenar por ellas obliga a la
+     * consulta completa (más lenta, pero es la única que conoce el número).
+     *
+     * @var array<string, array{row: ?string, agg: string}>
+     */
+    private const SORTABLE = [
+        'transc_id' => ['row' => 't.transc_id', 'agg' => 't.transc_id'],
+        'booking' => ['row' => 't.booking', 'agg' => 't.booking'],
+        'tran_date' => ['row' => 't.tran_date', 'agg' => 't.tran_date'],
+        'tran_number' => ['row' => 't.tran_number', 'agg' => 't.tran_number'],
+        'tran_type' => ['row' => 't.tran_type', 'agg' => 't.tran_type'],
+        'seal' => ['row' => 't.seal', 'agg' => 't.seal'],
+        'cancelled' => ['row' => 't.cancelled', 'agg' => 't.cancelled'],
+        // La columna «Aplicado a» enseña el cliente o, si no hay, el proveedor.
+        // Las dos tablas ya vienen unidas en la fase 1, así que sale barato.
+        'applied_to' => [
+            'row' => 'COALESCE(customer.fullName, vendor.fullName)',
+            'agg' => 'COALESCE(customer.fullName, vendor.fullName)',
+        ],
+        // Compañía y divisa se unen solo en la consulta con agregados; no se
+        // suman a la fase 1 para no encarecer TODAS las consultas por una
+        // ordenación que casi no se usa.
+        'company' => ['row' => null, 'agg' => 'companyName'],
+        'currency' => ['row' => null, 'agg' => 'currency'],
+        'amount_original' => ['row' => null, 'agg' => 'amount_original'],
+        'exchange_value' => ['row' => null, 'agg' => 'exchange_value'],
+        'sub_0_mxn' => ['row' => null, 'agg' => 'sub_0_mxn'],
+        'sub_16_mxn' => ['row' => null, 'agg' => 'sub_16_mxn'],
+        'tax_16_mxn' => ['row' => null, 'agg' => 'tax_16_mxn'],
+        'tax_ret_mxn' => ['row' => null, 'agg' => 'tax_ret_mxn'],
+        'total_amount' => ['row' => null, 'agg' => 'total_amount'],
+        'tran_paid_amount' => ['row' => null, 'agg' => 'tran_paid_amount'],
+        // El «Estado» del renglón se deriva del saldo, así que se ordena por él.
+        'left_to_pay' => ['row' => null, 'agg' => 'left_to_pay'],
+    ];
 
-        return in_array($this->filters->sort, $allowed, true) ? $this->filters->sort : 'transc_id';
+    /** @return array{row: ?string, agg: string} */
+    private function sortDefinition(): array
+    {
+        return self::SORTABLE[$this->filters->sort] ?? self::SORTABLE['transc_id'];
+    }
+
+    /** ¿La ordenación pedida se puede resolver en la fase barata? */
+    public function sortFitsIdQuery(): bool
+    {
+        return $this->sortDefinition()['row'] !== null;
+    }
+
+    private function sortExpression(bool $aggregated): string
+    {
+        $definicion = $this->sortDefinition();
+
+        return ($aggregated ? $definicion['agg'] : $definicion['row']).' '.$this->sortDirection();
     }
 
     private function sortDirection(): string

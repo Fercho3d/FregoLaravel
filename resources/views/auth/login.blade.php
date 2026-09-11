@@ -1,4 +1,4 @@
-<x-guest-layout :title="'Iniciar sesión'">
+<x-guest-layout :title="__('Iniciar sesión')">
     <div class="mb-6">
         <h1 class="text-lg font-semibold text-ink">{{ __('Iniciar sesión') }}</h1>
         <p class="mt-1 text-sm text-ink-muted">{{ __('Accede con tu usuario o correo.') }}</p>
@@ -7,6 +7,10 @@
     @include('partials.session-status')
     @include('partials.validation-errors')
 
+    @if (session('status'))
+        <div class="alert-ok mb-4 rounded-lg px-3 py-2 text-sm">{{ session('status') }}</div>
+    @endif
+
     <form method="POST" action="{{ route('login') }}" class="space-y-5">
         @csrf
 
@@ -14,7 +18,7 @@
             <label for="login" class="field-label">{{ __('Usuario o correo') }}</label>
             <input id="login" name="login" type="text" value="{{ old('login') }}"
                    required autofocus autocomplete="username"
-                   class="field-input mt-1.5" placeholder="usuario o correo@frego.com">
+                   class="field-input mt-1.5" placeholder="{{ __('usuario o correo') }}">
         </div>
 
         <div>
@@ -26,8 +30,8 @@
                     </a>
                 @endif
             </div>
-            <input id="password" name="password" type="password" required autocomplete="current-password"
-                   class="field-input mt-1.5" placeholder="••••••••">
+            <x-password-input id="password" name="password" required autocomplete="current-password"
+                              wrapper="mt-1.5" placeholder="••••••••" />
         </div>
 
         <label for="remember" class="flex items-center gap-2 text-sm text-ink-muted select-none">

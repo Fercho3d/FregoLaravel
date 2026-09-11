@@ -21,11 +21,17 @@
 
     {{-- Filtros --}}
     <div class="card p-4">
-        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <label class="block">
+                <span class="field-label text-xs">{{ __('Número') }}</span>
+                <input type="text" wire:model.live.debounce.400ms="number" value="{{ $number }}"
+                       class="field-input mt-1 py-1.5 text-sm" placeholder="{{ __('exacto') }}">
+            </label>
+
             <label class="block">
                 <span class="field-label text-xs">{{ __('Tipo') }}</span>
                 <select wire:model.live="type" class="field-input mt-1 py-1.5 text-sm">
-                    @foreach (['' => 'Todos', '1' => 'Cobros a clientes', '2' => 'Pagos a proveedores'] as $valor => $etiqueta)
+                    @foreach (['' => __('Todos'), '1' => __('Cobros a clientes'), '2' => __('Pagos a proveedores')] as $valor => $etiqueta)
                         <option value="{{ $valor }}" @selected((string) $valor === $type)>{{ $etiqueta }}</option>
                     @endforeach
                 </select>
@@ -34,7 +40,7 @@
             <label class="block">
                 <span class="field-label text-xs">{{ __('Estado') }}</span>
                 <select wire:model.live="paid" class="field-input mt-1 py-1.5 text-sm">
-                    @foreach (['' => 'Todas', '0' => 'Pendientes', '1' => 'Pagadas'] as $valor => $etiqueta)
+                    @foreach (['' => __('Todas'), '0' => __('Pendientes'), '1' => __('Pagadas')] as $valor => $etiqueta)
                         <option value="{{ $valor }}" @selected((string) $valor === $paid)>{{ $etiqueta }}</option>
                     @endforeach
                 </select>
@@ -82,16 +88,16 @@
         {{-- Tarjetas en móvil --}}
         <ul class="divide-y divide-line md:hidden">
             @forelse ($filas as $fila)
-                <li class="space-y-2 p-4">
+                <li class="space-y-2 p-4 {{ (int) $fila->request_id === $highlight ? 'row-new' : '' }}">
                     <div class="flex items-start justify-between gap-3">
                         <div class="min-w-0">
                             <p class="font-semibold text-ink">{{ $this->folio($fila->request_id) }}</p>
                             <p class="truncate text-sm text-ink-muted">
-                                {{ (int) $fila->type === 1 ? ($fila->clientName ?: 'Sin cliente') : ($fila->providerName ?: 'Sin proveedor') }}
+                                {{ (int) $fila->type === 1 ? ($fila->clientName ?: __('Sin cliente')) : ($fila->providerName ?: __('Sin proveedor')) }}
                             </p>
                         </div>
                         <span class="badge shrink-0 {{ $fila->paid ? 'badge-ok' : 'badge-warn' }}">
-                            {{ $fila->paid ? 'Pagada' : 'Pendiente' }}
+                            {{ $fila->paid ? __('Pagada') : __('Pendiente') }}
                         </span>
                     </div>
                     <dl class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
@@ -134,7 +140,9 @@
 
                 <tbody class="divide-y divide-line">
                     @forelse ($filas as $fila)
-                        <tr class="cursor-pointer transition hover:bg-raised" wire:click="toggle({{ $fila->request_id }})">
+                        @php $recienCreada = (int) $fila->request_id === $highlight; @endphp
+                        <tr class="cursor-pointer transition {{ $recienCreada ? 'row-new' : 'hover:bg-raised' }}"
+                            wire:click="toggle({{ $fila->request_id }})">
                             <td class="whitespace-nowrap px-3 py-2">
                                 <span class="inline-flex items-center gap-2">
                                     <svg class="h-3.5 w-3.5 shrink-0 text-ink-faint transition {{ $expanded === (int) $fila->request_id ? 'rotate-90' : '' }}"
@@ -163,7 +171,7 @@
                             </td>
                             <td class="whitespace-nowrap px-3 py-2">
                                 <span class="badge {{ $fila->paid ? 'badge-ok' : 'badge-warn' }}">
-                                    {{ $fila->paid ? 'Pagada' : 'Pendiente' }}
+                                    {{ $fila->paid ? __('Pagada') : __('Pendiente') }}
                                 </span>
                             </td>
                             @if ($esAdmin)

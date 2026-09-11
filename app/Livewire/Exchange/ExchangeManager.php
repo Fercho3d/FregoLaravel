@@ -2,8 +2,8 @@
 
 namespace App\Livewire\Exchange;
 
-use App\Models\Frego\Account;
-use App\Models\Frego\Exchange;
+use App\Models\Core\Account;
+use App\Models\Core\Exchange;
 use App\Support\ExchangeRates;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
@@ -46,7 +46,7 @@ class ExchangeManager extends Component
 
     public function paginationView(): string
     {
-        return 'vendor.pagination.frego';
+        return 'vendor.pagination.app';
     }
 
     public function updatedAccountId(): void
@@ -88,7 +88,7 @@ class ExchangeManager extends Component
             'date' => ['required', 'date'],
             'value' => ['required', 'numeric', 'gt:0'],
             'account' => ['required', Rule::exists('account', 'account_id')],
-        ], attributes: ['date' => 'fecha', 'value' => 'tipo de cambio', 'account' => 'moneda']);
+        ], attributes: ['date' => 'fecha', 'value' => __('tipo de cambio'), 'account' => 'moneda']);
 
         // El índice único de la tabla es (fecha, moneda): no puede haber dos.
         $repetido = Exchange::whereDate('date_exchange', $this->date)
@@ -97,7 +97,7 @@ class ExchangeManager extends Component
             ->exists();
 
         if ($repetido) {
-            $this->addError('date', 'Ya hay un tipo de cambio para esa moneda en esa fecha.');
+            $this->addError('date', __('Ya hay un tipo de cambio para esa moneda en esa fecha.'));
 
             return;
         }
@@ -124,7 +124,7 @@ class ExchangeManager extends Component
 
         $tipos->ensureFor(Carbon::today())
             ? session()->flash('status', __('Tipo de cambio del día registrado.'))
-            : $this->addError('fetch', 'El DOF no devolvió un tipo de cambio para hoy. Captúralo a mano si ya lo publicaron.');
+            : $this->addError('fetch', __('El DOF no devolvió un tipo de cambio para hoy. Captúralo a mano si ya lo publicaron.'));
     }
 
     public function render()
@@ -138,6 +138,6 @@ class ExchangeManager extends Component
         return view('livewire.exchange.exchange-manager', [
             'tipos' => $tipos,
             'monedas' => Account::options(),
-        ])->layout('components.app-layout', ['title' => 'Tipos de cambio']);
+        ])->layout('components.app-layout', ['title' => __('Tipos de cambio')]);
     }
 }

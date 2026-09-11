@@ -5,7 +5,7 @@ namespace Tests\Feature\Operations;
 use App\Mail\ContinuityAlertMail;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
-use Tests\Support\FregoSchema;
+use Tests\Support\CoreSchema;
 use Tests\TestCase;
 
 /**
@@ -18,10 +18,10 @@ class ContinuityAlertsTest extends TestCase
     {
         parent::setUp();
 
-        FregoSchema::create();
+        CoreSchema::create();
         Mail::fake();
 
-        config(['frego.avisos_operacion' => ['soporte@juancker.com']]);
+        config(['marca.correo.avisos_operacion' => ['avisos@ejemplo.test']]);
 
         DB::table('booking')->insert([[
             'booking_id' => 1, 'booking_number' => 'BK-1', 'client' => 1, 'mode' => 10,
@@ -46,9 +46,9 @@ class ContinuityAlertsTest extends TestCase
         $this->continuidad('SI_date', now()->addDays(3)->toDateTimeString());
         $this->checklist();
 
-        $this->artisan('frego:avisos-continuidad', ['nivel' => 'aviso'])->assertSuccessful();
+        $this->artisan('operacion:avisos-continuidad', ['nivel' => 'aviso'])->assertSuccessful();
 
-        Mail::assertSent(ContinuityAlertMail::class, fn ($correo) => $correo->hasTo('soporte@juancker.com')
+        Mail::assertSent(ContinuityAlertMail::class, fn ($correo) => $correo->hasTo('avisos@ejemplo.test')
             && $correo->envelope()->subject === 'SI task is not completed booking[BK-1]');
     }
 
@@ -57,7 +57,7 @@ class ContinuityAlertsTest extends TestCase
         $this->continuidad('SI_date', now()->subDay()->toDateTimeString());
         $this->checklist();
 
-        $this->artisan('frego:avisos-continuidad', ['nivel' => 'vencido'])->assertSuccessful();
+        $this->artisan('operacion:avisos-continuidad', ['nivel' => 'vencido'])->assertSuccessful();
 
         Mail::assertSent(ContinuityAlertMail::class, fn ($correo) => $correo->envelope()->subject === 'SI task deadline! booking[BK-1]');
     }
@@ -67,7 +67,7 @@ class ContinuityAlertsTest extends TestCase
         $this->continuidad('SI_date', now()->addDays(3)->toDateTimeString());
         $this->checklist();
 
-        $this->artisan('frego:avisos-continuidad', ['nivel' => 'vencido'])->assertSuccessful();
+        $this->artisan('operacion:avisos-continuidad', ['nivel' => 'vencido'])->assertSuccessful();
 
         Mail::assertNothingSent();
     }
@@ -77,7 +77,7 @@ class ContinuityAlertsTest extends TestCase
         $this->continuidad('SI_date', now()->addDays(3)->toDateTimeString());
         $this->checklist(['SI_date_chk_date' => now()->toDateTimeString()]);
 
-        $this->artisan('frego:avisos-continuidad', ['nivel' => 'aviso'])->assertSuccessful();
+        $this->artisan('operacion:avisos-continuidad', ['nivel' => 'aviso'])->assertSuccessful();
 
         Mail::assertNothingSent();
     }
@@ -87,7 +87,7 @@ class ContinuityAlertsTest extends TestCase
         $this->continuidad('SI_date', '');
         $this->checklist();
 
-        $this->artisan('frego:avisos-continuidad', ['nivel' => 'aviso'])->assertSuccessful();
+        $this->artisan('operacion:avisos-continuidad', ['nivel' => 'aviso'])->assertSuccessful();
 
         Mail::assertNothingSent();
     }
@@ -97,7 +97,7 @@ class ContinuityAlertsTest extends TestCase
     {
         $this->continuidad('vacuum_maneuver', now()->addDay()->toDateTimeString());
 
-        $this->artisan('frego:avisos-continuidad', ['nivel' => 'aviso'])->assertSuccessful();
+        $this->artisan('operacion:avisos-continuidad', ['nivel' => 'aviso'])->assertSuccessful();
 
         Mail::assertSent(ContinuityAlertMail::class, fn ($correo) => $correo->envelope()->subject === 'Empty Pass task is not completed booking[BK-1]');
         Mail::assertSentCount(1);
@@ -112,7 +112,7 @@ class ContinuityAlertsTest extends TestCase
         $this->continuidad('gated_out', now()->addDay()->toDateTimeString());
         $this->checklist();
 
-        $this->artisan('frego:avisos-continuidad', ['nivel' => 'aviso'])->assertSuccessful();
+        $this->artisan('operacion:avisos-continuidad', ['nivel' => 'aviso'])->assertSuccessful();
 
         Mail::assertSentCount(2);
     }
@@ -122,14 +122,14 @@ class ContinuityAlertsTest extends TestCase
         $this->continuidad('SI_date', now()->addDays(3)->toDateTimeString());
         $this->checklist();
 
-        $this->artisan('frego:avisos-continuidad', ['nivel' => 'aviso', '--simular' => true])->assertSuccessful();
+        $this->artisan('operacion:avisos-continuidad', ['nivel' => 'aviso', '--simular' => true])->assertSuccessful();
 
         Mail::assertNothingSent();
     }
 
     public function test_un_nivel_desconocido_no_hace_nada(): void
     {
-        $this->artisan('frego:avisos-continuidad', ['nivel' => 'urgente'])->assertFailed();
+        $this->artisan('operacion:avisos-continuidad', ['nivel' => 'urgente'])->assertFailed();
 
         Mail::assertNothingSent();
     }

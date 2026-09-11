@@ -13,16 +13,18 @@
         </testsuite>
     </testsuites>
     <!--
-        Las pruebas de paridad y de rendimiento corren contra la base real `frego`
-        con datos de producción: tardan minutos. Quedan fuera de la corrida normal
-        y se lanzan a propósito con la opción de grupo de PHPUnit:
-            vendor/bin/phpunit (guion guion)group parity
-            vendor/bin/phpunit (guion guion)group performance
+        Tres grupos quedan fuera de la corrida normal y se lanzan a propósito:
+            vendor/bin/phpunit (guion guion)group parity        contra la base real del sistema viejo
+            vendor/bin/phpunit (guion guion)group performance   vigila los tiempos, tarda minutos
+            vendor/bin/phpunit (guion guion)group demo          contra la base de demostración sembrada
+        Los dos primeros necesitan la base `frego` con datos de producción; el
+        tercero, la base de demostración (`php artisan db:seed (guion guion)class=DemoSeeder`).
     -->
     <groups>
         <exclude>
             <group>parity</group>
             <group>performance</group>
+            <group>demo</group>
         </exclude>
     </groups>
     <source>

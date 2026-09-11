@@ -5,13 +5,13 @@ namespace Tests\Feature\Operations;
 use App\Livewire\Operations\BookingDetail;
 use App\Livewire\Operations\BookingForm;
 use App\Mail\BookingConfirmationMail;
-use App\Models\Frego\Booking;
+use App\Models\Core\Booking;
 use App\Models\User;
 use App\Support\Pdf\BookingConfirmation;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Livewire\Livewire;
-use Tests\Support\FregoSchema;
+use Tests\Support\CoreSchema;
 use Tests\TestCase;
 
 /**
@@ -24,8 +24,8 @@ class BookingConfirmationTest extends TestCase
     {
         parent::setUp();
 
-        FregoSchema::create();
-        FregoSchema::createUsers();
+        CoreSchema::create();
+        CoreSchema::createUsers();
         Mail::fake();
 
         DB::table('client')->insert([[

@@ -2,8 +2,8 @@
 
 namespace App\Livewire\Parties;
 
-use App\Models\Frego\Account;
-use App\Models\Frego\Provider;
+use App\Models\Core\Account;
+use App\Models\Core\Provider;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -57,7 +57,7 @@ class PartyManager extends Component
 
     public function title(): string
     {
-        return $this->isClient() ? 'Clientes' : 'Proveedores';
+        return $this->isClient() ? __('Clientes') : __('Proveedores');
     }
 
     /**
@@ -70,30 +70,35 @@ class PartyManager extends Component
         $texto = ['nullable', 'string', 'max:255'];
 
         $comunes = [
-            'fullName' => ['Nombre o razón social', 'text', ['required', 'string', 'max:255']],
-            'rfc' => ['RFC', 'text', ['nullable', 'string', 'max:20']],
-            'email' => ['Correo', 'text', ['nullable', 'email', 'max:255']],
-            'phone' => ['Teléfono', 'text', ['nullable', 'string', 'max:50']],
-            'address' => ['Dirección', 'text', $texto],
-            'city' => ['Ciudad', 'text', ['nullable', 'string', 'max:100']],
-            'state' => ['Estado', 'text', ['nullable', 'string', 'max:100']],
-            'postal_code' => ['Código postal', 'text', ['nullable', 'string', 'max:20']],
-            'account_id' => ['Divisa habitual', 'select', ['nullable', 'integer']],
+            'fullName' => [__('Nombre o razón social'), 'text', ['required', 'string', 'max:255']],
+            'rfc' => [__('RFC'), 'text', ['nullable', 'string', 'max:20']],
+            'email' => [__('Correo'), 'text', ['nullable', 'email', 'max:255']],
+            'phone' => [__('Teléfono'), 'text', ['nullable', 'string', 'max:50']],
+            'address' => [__('Dirección'), 'text', $texto],
+            'city' => [__('Ciudad'), 'text', ['nullable', 'string', 'max:100']],
+            'state' => [__('Estado o provincia'), 'text', ['nullable', 'string', 'max:100']],
+            'postal_code' => [__('Código postal'), 'text', ['nullable', 'string', 'max:20']],
+            'account_id' => [__('Divisa habitual'), 'select', ['nullable', 'integer']],
         ];
 
         if (! $this->isClient()) {
             return $comunes + [
-                'type_id' => ['Tipo de proveedor', 'select', ['nullable', 'integer']],
+                'type_id' => [__('Tipo de proveedor'), 'select', ['nullable', 'integer']],
             ];
         }
 
-        // Datos que solo tienen sentido en un cliente: son los que viajan al CFDI.
-        return $comunes + [
-            'regimen_fiscal_id' => ['Régimen fiscal (SAT)', 'text', ['nullable', 'string', 'max:10']],
-            'invoice_use' => ['Uso del CFDI', 'text', ['nullable', 'string', 'max:10']],
-            'pay_method' => ['Método de pago', 'text', ['nullable', 'string', 'max:10']],
-            'pay_form' => ['Forma de pago', 'text', ['nullable', 'string', 'max:10']],
-            'email_notification' => ['Correos para facturas', 'text', $texto],
+        // Los campos del CFDI solo salen donde se factura al SAT: en una
+        // instalación sin timbrado son cuatro casillas que nadie sabe llenar.
+        $fiscales = config('timbrado.habilitado') ? [
+            'regimen_fiscal_id' => [__('Régimen fiscal (SAT)'), 'text', ['nullable', 'string', 'max:10']],
+            'invoice_use' => [__('Uso del CFDI'), 'text', ['nullable', 'string', 'max:10']],
+            'pay_method' => [__('Método de pago'), 'text', ['nullable', 'string', 'max:10']],
+            'pay_form' => [__('Forma de pago'), 'text', ['nullable', 'string', 'max:10']],
+        ] : [];
+
+        // Datos que solo tienen sentido en un cliente.
+        return $comunes + $fiscales + [
+            'email_notification' => [__('Correos para facturas'), 'text', $texto],
         ];
     }
 
@@ -103,8 +108,8 @@ class PartyManager extends Component
         return match ($campo) {
             'account_id' => Account::options(),
             'type_id' => [
-                Provider::TYPE_CARRIER => 'Naviera',
-                Provider::TYPE_TRANSPORT => 'Transportista',
+                Provider::TYPE_CARRIER => __('Naviera'),
+                Provider::TYPE_TRANSPORT => __('Transportista'),
                 Provider::TYPE_BROKER => 'Agente aduanal',
             ],
             default => [],
@@ -118,7 +123,7 @@ class PartyManager extends Component
 
     public function paginationView(): string
     {
-        return 'vendor.pagination.frego';
+        return 'vendor.pagination.app';
     }
 
     // ------------------------------------------------------------ Edición

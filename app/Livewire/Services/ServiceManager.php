@@ -2,10 +2,10 @@
 
 namespace App\Livewire\Services;
 
-use App\Models\Frego\Account;
-use App\Models\Frego\Client;
-use App\Models\Frego\Provider;
-use App\Models\Frego\Service;
+use App\Models\Core\Account;
+use App\Models\Core\Client;
+use App\Models\Core\Provider;
+use App\Models\Core\Service;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Url;
@@ -49,7 +49,7 @@ class ServiceManager extends Component
 
     public function paginationView(): string
     {
-        return 'vendor.pagination.frego';
+        return 'vendor.pagination.app';
     }
 
     public function updated(string $property): void
@@ -160,14 +160,14 @@ class ServiceManager extends Component
     public function priceTypes(): array
     {
         $tipos = [
-            Service::PRICE_BY_CONTAINER => 'Por contenedor',
-            Service::PRICE_BY_BL => 'Por BL',
+            Service::PRICE_BY_CONTAINER => __('Por contenedor'),
+            Service::PRICE_BY_BL => __('Por BL'),
         ];
 
         return $this->isSale()
             ? $tipos + [
-                Service::PRICE_BY_BROKER_CONTAINER => 'Aduana, por contenedor',
-                Service::PRICE_BY_BROKER_BL => 'Aduana, por BL',
+                Service::PRICE_BY_BROKER_CONTAINER => __('Aduana, por contenedor'),
+                Service::PRICE_BY_BROKER_BL => __('Aduana, por BL'),
             ]
             : $tipos;
     }
@@ -177,15 +177,15 @@ class ServiceManager extends Component
         $this->assertAdmin();
 
         $datos = $this->validate($this->rules(), attributes: [
-            'form.description' => 'descripción',
+            'form.description' => __('descripción'),
             'form.price' => 'precio',
-            'form.charge_type_id' => 'tipo de cargo',
+            'form.charge_type_id' => __('tipo de cargo'),
             'form.account_id' => 'divisa',
-            'form.price_type' => 'tipo de precio',
-            'form.start_date' => 'inicio de vigencia',
-            'form.end_date' => 'fin de vigencia',
-            'form.min' => 'precio mínimo',
-            'form.max' => 'precio máximo',
+            'form.price_type' => __('tipo de precio'),
+            'form.start_date' => __('inicio de vigencia'),
+            'form.end_date' => __('fin de vigencia'),
+            'form.min' => __('precio mínimo'),
+            'form.max' => __('precio máximo'),
             'form.party_id' => $this->isSale() ? 'cliente' : 'proveedor',
         ])['form'];
 
@@ -306,6 +306,6 @@ class ServiceManager extends Component
             'lugares' => DB::table('pickup_place')->orderBy('name')->pluck('name', 'pick_id')->all(),
             'destinos' => DB::table('final_destination')->where('deleted', 0)->orderBy('name')->pluck('name', 'final_destination_id')->all(),
             'tiposContenedor' => DB::table('container_types')->orderBy('container_name')->pluck('container_name', 'contType_id')->all(),
-        ])->layout('components.app-layout', ['title' => 'Servicios y precios']);
+        ])->layout('components.app-layout', ['title' => __('Servicios y precios')]);
     }
 }

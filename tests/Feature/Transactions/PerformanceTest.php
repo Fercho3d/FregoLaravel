@@ -5,7 +5,7 @@ namespace Tests\Feature\Transactions;
 use App\Queries\TransactionFilters;
 use App\Queries\TransactionQuery;
 use PHPUnit\Framework\Attributes\Group;
-use Tests\FregoDatabaseTestCase;
+use Tests\LegacyDatabaseTestCase;
 
 /**
  * Presupuesto de tiempo de las pantallas del módulo.
@@ -17,7 +17,7 @@ use Tests\FregoDatabaseTestCase;
  * entre 9 y 31 SEGUNDOS.
  */
 #[Group('performance')]
-class PerformanceTest extends FregoDatabaseTestCase
+class PerformanceTest extends LegacyDatabaseTestCase
 {
     /** Milisegundos que tarda la mediana de tres corridas. */
     private function median(callable $fn): float

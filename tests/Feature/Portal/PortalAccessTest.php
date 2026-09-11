@@ -7,7 +7,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
-use Tests\Support\FregoSchema;
+use Tests\Support\CoreSchema;
 use Tests\TestCase;
 
 /**
@@ -23,9 +23,9 @@ class PortalAccessTest extends TestCase
     {
         parent::setUp();
 
-        FregoSchema::create();
-        FregoSchema::createUsers();
-        Storage::fake('frego');
+        CoreSchema::create();
+        CoreSchema::createUsers();
+        Storage::fake('documentos');
 
         $this->seedFixture();
     }
@@ -55,7 +55,7 @@ class PortalAccessTest extends TestCase
             DB::table('charge')->insert([
                 'charge_id' => $id, 'transaction' => $id, 'type' => 1, 'quantity' => 1, 'price' => 100,
             ]);
-            Storage::disk('frego')->put("transactions/{$id}/pdf/factura-{$id}.pdf", 'contenido');
+            Storage::disk('documentos')->put("transactions/{$id}/pdf/factura-{$id}.pdf", 'contenido');
         }
     }
 

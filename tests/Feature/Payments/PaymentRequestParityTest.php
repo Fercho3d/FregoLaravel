@@ -8,7 +8,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
-use Tests\FregoDatabaseTestCase;
+use Tests\LegacyDatabaseTestCase;
 
 /**
  * Paridad exacta del motor de solicitudes de pago contra el sistema original.
@@ -22,7 +22,7 @@ use Tests\FregoDatabaseTestCase;
  *   php tools/export_legacy_payment_sql.php
  */
 #[Group('parity')]
-class PaymentRequestParityTest extends FregoDatabaseTestCase
+class PaymentRequestParityTest extends LegacyDatabaseTestCase
 {
     /**
      * Columnas de dinero: son sumas evaluadas fila por fila, así que su valor no

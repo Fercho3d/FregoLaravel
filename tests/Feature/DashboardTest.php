@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Livewire\Livewire;
-use Tests\Support\FregoSchema;
+use Tests\Support\CoreSchema;
 use Tests\TestCase;
 
 /** El panel: las cifras del mes y lo que está esperando a alguien. */
@@ -19,8 +19,8 @@ class DashboardTest extends TestCase
     {
         parent::setUp();
 
-        FregoSchema::create();
-        FregoSchema::createUsers();
+        CoreSchema::create();
+        CoreSchema::createUsers();
 
         DB::table('account')->insert([['account_id' => 1, 'account_name' => 'Pesos', 'prefix' => 'MXN', 'default' => 1]]);
         DB::table('charge_type')->insert([['charge_type_id' => 1, 'charge_type_name' => 'Flete', 'tax_rate' => 0]]);
@@ -62,7 +62,7 @@ class DashboardTest extends TestCase
     {
         $this->mesConMovimiento();
 
-        $panel = app(DashboardMetrics::class)->all();
+        $panel = app(DashboardMetrics::class)->all(esAdmin: true);
 
         $this->assertSame(1000.0, $panel['facturado']);
         $this->assertSame(1, $panel['embarques']);
@@ -75,7 +75,7 @@ class DashboardTest extends TestCase
         DB::table('transaction')->where('transc_id', 1)->update(['tran_date' => now()->subMonth()->toDateString()]);
         DB::table('booking')->where('booking_id', 1)->update(['loading_EDT' => now()->subMonth()->toDateString()]);
 
-        $panel = app(DashboardMetrics::class)->all();
+        $panel = app(DashboardMetrics::class)->all(esAdmin: true);
 
         $this->assertSame(0.0, $panel['facturado']);
         $this->assertSame(0, $panel['embarques']);
@@ -85,12 +85,12 @@ class DashboardTest extends TestCase
     {
         $this->mesConMovimiento();
 
-        $this->assertSame(1, app(DashboardMetrics::class)->all()['pendientes']['timbrar']);
+        $this->assertSame(1, app(DashboardMetrics::class)->all(esAdmin: true)['pendientes']['timbrar']);
 
         DB::table('transaction')->where('transc_id', 1)->update(['seal' => 'UUID-1']);
         Cache::flush();
 
-        $this->assertSame(0, app(DashboardMetrics::class)->all()['pendientes']['timbrar']);
+        $this->assertSame(0, app(DashboardMetrics::class)->all(esAdmin: true)['pendientes']['timbrar']);
     }
 
     public function test_ensena_lo_que_viene(): void
@@ -106,7 +106,7 @@ class DashboardTest extends TestCase
 
     public function test_la_grafica_trae_un_punto_por_mes(): void
     {
-        $panel = app(DashboardMetrics::class)->all();
+        $panel = app(DashboardMetrics::class)->all(esAdmin: true);
 
         $this->assertCount(6, $panel['serie']);
         $this->assertArrayHasKey(now()->format('Y-m'), $panel['serie']);
@@ -125,13 +125,43 @@ class DashboardTest extends TestCase
 
         $this->mesConMovimiento();
 
-        $primera = app(DashboardMetrics::class)->all();
-        $segunda = app(DashboardMetrics::class)->all();
+        $primera = app(DashboardMetrics::class)->all(esAdmin: true);
+        $segunda = app(DashboardMetrics::class)->all(esAdmin: true);
 
         $this->assertEquals($primera, $segunda);
         $this->assertPlano($primera);
 
         File::deleteDirectory($ruta);
+    }
+
+    /**
+     * Los dos pendientes enlazan a facturación, que es solo de administradores.
+     * Si se calcularan para todos, el panel les pondría enlaces que responden
+     * 403 —y la caché de cinco minutos podría servirle a un rol la foto del otro.
+     */
+    public function test_los_pendientes_son_solo_para_administradores(): void
+    {
+        $this->mesConMovimiento();
+
+        $this->assertArrayHasKey('pendientes', app(DashboardMetrics::class)->all(esAdmin: true));
+        $this->assertArrayNotHasKey('pendientes', app(DashboardMetrics::class)->all(esAdmin: false));
+    }
+
+    public function test_el_panel_de_quien_no_es_admin_no_enlaza_a_facturacion(): void
+    {
+        $this->mesConMovimiento();
+
+        $operacion = User::create([
+            'username' => 'chofer', 'name' => 'Luis Mena',
+            'password' => 'secreto-de-prueba', 'role' => User::ROLE_USER, 'status' => 1,
+        ]);
+
+        $this->assertFalse($operacion->isAdmin());
+
+        Livewire::actingAs($operacion)
+            ->test(Dashboard::class)
+            ->assertDontSee(route('transactions.invoice'))
+            ->assertDontSee(route('payments.requests'));
     }
 
     /** @param  array<string, mixed>  $datos */

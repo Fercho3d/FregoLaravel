@@ -2,7 +2,7 @@
 
 namespace App\Support;
 
-use App\Models\Frego\Exchange;
+use App\Models\Core\Exchange;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -13,7 +13,7 @@ use Throwable;
  *
  * Fuente: el indicador 158 (dólar FIX) del DOF/SIDOF. Se pide una ventana de 30
  * días que termina el **día anterior** a la fecha del documento y se toma el
- * último valor publicado. Esa es la convención contable de Frego: la fila que
+ * último valor publicado. Esa es la convención contable del sistema: la fila que
  * "aplica el día X" contiene el tipo de cambio publicado antes de X. No hay que
  * tocarla — cambiarla movería números históricos.
  *

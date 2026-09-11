@@ -1,4 +1,4 @@
-<x-guest-layout :title="'Verificación en dos pasos'">
+<x-guest-layout :title="__('Verificación en dos pasos')">
     <div class="mb-6">
         <h1 class="text-lg font-semibold text-ink">{{ __('Verificación en dos pasos') }}</h1>
         <p class="mt-1 text-sm text-ink-muted" x-data x-show="true">

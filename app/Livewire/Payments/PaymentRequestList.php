@@ -2,9 +2,9 @@
 
 namespace App\Livewire\Payments;
 
-use App\Models\Frego\Bank;
-use App\Models\Frego\PaymentByTransaction;
-use App\Models\Frego\PaymentRequest;
+use App\Models\Core\Bank;
+use App\Models\Core\PaymentByTransaction;
+use App\Models\Core\PaymentRequest;
 use App\Queries\PaymentRequestFilters;
 use App\Queries\PaymentRequestQuery;
 use App\Queries\TransactionFilters;
@@ -39,13 +39,37 @@ class PaymentRequestList extends Component
     #[Url(as: 'f', except: '')]
     public string $dates = '';
 
+    /** Número de la solicitud. Coincidencia EXACTA, como el filtro del original. */
+    #[Url(as: 'num', except: '')]
+    public string $number = '';
+
     #[Url(as: 'n', except: 50)]
     public int $perPage = 50;
 
     /** Solicitud desplegada, para ver sus transacciones. */
     public ?int $expanded = null;
 
+    /**
+     * La solicitud que se acaba de crear, para señalarla en verde.
+     *
+     * No va en la dirección a propósito: es «la de este momento». Se recibe una
+     * sola vez al llegar del formulario y se apaga en cuanto el usuario toca
+     * cualquier cosa.
+     */
+    public ?int $highlight = null;
+
     public float $queryMs = 0;
+
+    /**
+     * Livewire solo inyecta en `mount()` los parámetros de la RUTA; los de la
+     * cadena de consulta hay que leerlos de la petición.
+     */
+    public function mount(): void
+    {
+        $nueva = request()->query('nueva');
+
+        $this->highlight = is_numeric($nueva) ? (int) $nueva : null;
+    }
 
     public function updated(string $property): void
     {
@@ -55,17 +79,19 @@ class PaymentRequestList extends Component
 
         $this->resetPage();
         $this->expanded = null;
+        $this->highlight = null;
     }
 
     public function clearFilters(): void
     {
-        $this->reset(['type', 'bankId', 'paid', 'dates', 'expanded']);
+        $this->reset(['type', 'bankId', 'paid', 'dates', 'number', 'expanded', 'highlight']);
         $this->resetPage();
     }
 
     public function toggle(int $requestId): void
     {
         $this->expanded = $this->expanded === $requestId ? null : $requestId;
+        $this->highlight = null;
     }
 
     // ------------------------------------------------------------ Acciones
@@ -86,16 +112,17 @@ class PaymentRequestList extends Component
 
         $solicitud = PaymentRequest::findOrFail($requestId);
 
-        abort_if((bool) $solicitud->paid, 422, 'La solicitud ya está pagada.');
+        abort_if((bool) $solicitud->paid, 422, __('La solicitud ya está pagada.'));
 
         abort_if(
             PaymentByTransaction::where('request_id', $requestId)->doesntExist(),
             422,
-            'La solicitud no tiene transacciones.',
+            __('La solicitud no tiene transacciones.'),
         );
 
         $solicitud->forceFill(['paid' => 1, 'opened' => 0])->save();
 
+        $this->highlight = null;
         session()->flash('status', __('Solicitud ').$this->folio($solicitud->request_id).' marcada como pagada.');
     }
 
@@ -106,6 +133,7 @@ class PaymentRequestList extends Component
 
         PaymentRequest::findOrFail($requestId)->forceFill(['paid' => 0, 'opened' => 1])->save();
 
+        $this->highlight = null;
         session()->flash('status', __('Solicitud ').$this->folio($requestId).' reabierta.');
     }
 
@@ -123,12 +151,13 @@ class PaymentRequestList extends Component
 
         $solicitud = PaymentRequest::findOrFail($requestId);
 
-        abort_if((bool) $solicitud->paid, 422, 'Una solicitud pagada no se borra: primero hay que reabrirla.');
+        abort_if((bool) $solicitud->paid, 422, __('Una solicitud pagada no se borra: primero hay que reabrirla.'));
 
         PaymentByTransaction::where('request_id', $requestId)->delete();
         $solicitud->delete();
 
         $this->expanded = null;
+        $this->highlight = null;
         session()->flash('status', __('Solicitud ').$this->folio($requestId).' borrada.');
     }
 
@@ -150,6 +179,7 @@ class PaymentRequestList extends Component
             'bank_id' => $this->bankId !== '' ? (int) $this->bankId : null,
             'type' => $this->type !== '' ? (int) $this->type : null,
             'dates' => $this->dates ?: null,
+            'number' => trim($this->number) ?: null,
         ]);
 
         if ($this->paid !== '') {
@@ -183,11 +213,11 @@ class PaymentRequestList extends Component
             'filas' => $filas,
             'transacciones' => $this->transactions(),
             'banks' => Bank::options(),
-        ])->layout('components.app-layout', ['title' => 'Solicitudes de pago']);
+        ])->layout('components.app-layout', ['title' => __('Solicitudes de pago')]);
     }
 
     public function paginationView(): string
     {
-        return 'vendor.pagination.frego';
+        return 'vendor.pagination.app';
     }
 }

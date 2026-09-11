@@ -2,12 +2,12 @@
 
 namespace Tests\Feature\Billing;
 
-use App\Models\Frego\Booking;
+use App\Models\Core\Booking;
 use App\Support\Billing\BillingBlock;
 use App\Support\Billing\ServiceCandidate;
 use App\Support\Billing\ServiceMatcher;
 use Illuminate\Support\Facades\DB;
-use Tests\Support\FregoSchema;
+use Tests\Support\CoreSchema;
 use Tests\TestCase;
 
 /**
@@ -37,7 +37,7 @@ class ServiceMatchingTest extends TestCase
     {
         parent::setUp();
 
-        FregoSchema::create();
+        CoreSchema::create();
 
         DB::table('account')->insert([
             ['account_id' => 1, 'account_name' => 'Pesos', 'prefix' => 'MXN', 'default' => 1],

@@ -2,7 +2,7 @@
 
 namespace App\Support\Billing;
 
-use App\Models\Frego\Provider;
+use App\Models\Core\Provider;
 
 /**
  * Los cuatro documentos que un booking puede generar solo: la factura al cliente

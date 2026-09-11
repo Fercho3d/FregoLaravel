@@ -6,7 +6,7 @@ use App\Livewire\Payments\PaymentsReport;
 use App\Models\User;
 use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\Group;
-use Tests\FregoDatabaseTestCase;
+use Tests\LegacyDatabaseTestCase;
 
 /**
  * Las tres pantallas de reportes de cobros y pagos.
@@ -16,7 +16,7 @@ use Tests\FregoDatabaseTestCase;
  * se ve con datos de verdad.
  */
 #[Group('parity')]
-class PaymentsReportTest extends FregoDatabaseTestCase
+class PaymentsReportTest extends LegacyDatabaseTestCase
 {
     private function admin(): User
     {
@@ -56,9 +56,9 @@ class PaymentsReportTest extends FregoDatabaseTestCase
 
         // El modo viaja como valor por omisión de la ruta hasta el `mount()`;
         // si eso se rompiera, las tres direcciones mostrarían lo mismo.
-        $this->get(route('payments.report.customer'))->assertOk()->assertSee('<title>Cobros por cliente', false);
-        $this->get(route('payments.report.vendor'))->assertOk()->assertSee('<title>Pagos por proveedor', false);
-        $this->get(route('payments.report.general'))->assertOk()->assertSee('<title>Cobros y pagos', false);
+        $this->get(route('payments.report.customer'))->assertOk()->assertSee('<title>'.__('Cobros por cliente'), false);
+        $this->get(route('payments.report.vendor'))->assertOk()->assertSee('<title>'.__('Pagos por proveedor'), false);
+        $this->get(route('payments.report.general'))->assertOk()->assertSee('<title>'.__('Cobros y pagos'), false);
     }
 
     public function test_el_reporte_general_separa_cobros_de_pagos(): void

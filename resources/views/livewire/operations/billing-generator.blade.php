@@ -18,7 +18,7 @@
         <h2 class="mt-0.5 text-2xl font-semibold text-ink">
             {{ trim((string) $booking->booking_number) ?: 'Booking '.$booking->booking_id }}
         </h2>
-        <p class="mt-1 text-sm text-ink-muted">{{ $cliente ?: 'Sin cliente' }}</p>
+        <p class="mt-1 text-sm text-ink-muted">{{ $cliente ?: __('Sin cliente') }}</p>
 
         <p class="mt-4 max-w-3xl text-sm text-ink-muted">
             {{ __('Estos son los servicios contratados que empatan con la ruta del booking y con los contenedores que lleva. Es la misma propuesta que armaba el sistema anterior, entera y marcada: confirmar sin tocar nada escribe lo mismo que él. Nada se guarda hasta que confirmes, y abajo verás') }}
@@ -28,7 +28,7 @@
         @if ($existentes->isNotEmpty())
             <div class="alert-warn mt-4">
                 Este booking ya tiene {{ $existentes->count() }}
-                {{ $existentes->count() === 1 ? 'transacción' : 'transacciones' }} sin cancelar
+                {{ $existentes->count() === 1 ? __('transacción') : __('transacciones') }} sin cancelar
                 ({{ $existentes->map(fn ($t) => $t->tran_number ?: '#'.$t->transc_id)->join(', ') }}).
                 {{ __('Generar otra vez las duplica.') }}
             </div>
@@ -47,7 +47,7 @@
             <header class="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-3">
                 <div class="min-w-0">
                     <h3 class="text-sm font-semibold text-ink">{{ $bloque->label() }}</h3>
-                    <p class="truncate text-xs text-ink-faint">{{ $tercero ?: 'Sin asignar en el booking' }}</p>
+                    <p class="truncate text-xs text-ink-faint">{{ $tercero ?: __('Sin asignar en el booking') }}</p>
                 </div>
 
                 @if ($renglones !== [])
@@ -92,11 +92,11 @@
                                         <p class="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-ink-faint">
                                             <span>{{ $divisa($renglon->accountId) }}</span>
                                             @if ($renglon->documents > 1)
-                                                <span class="badge badge-neutral">{{ trans_choice('{1}:count costo de este precio|[2,*]:count costos de este precio', $renglon->documents, ['count' => $renglon->documents]) }}</span>
+                                                <span class="badge badge-neutral">{{ trans_choice(__('{1}:count costo de este precio|[2,*]:count costos de este precio'), $renglon->documents, ['count' => $renglon->documents]) }}</span>
                                             @endif
                                             @if ($renglon->discarded > 0)
                                                 <span class="badge badge-warn">
-                                                    {{ trans_choice('{1}Otro precio empata con esta ruta|[2,*]Otros :count precios empatan con esta ruta', $renglon->discarded, ['count' => $renglon->discarded]) }}
+                                                    {{ trans_choice(__('{1}Otro precio empata con esta ruta|[2,*]Otros :count precios empatan con esta ruta'), $renglon->discarded, ['count' => $renglon->discarded]) }}
                                                 </span>
                                             @endif
                                             @unless ($renglon->active)
@@ -147,7 +147,7 @@
                     @else
                         @php $copias = array_sum(array_map(fn ($d) => $d->copies, $documentos)); @endphp
                         Quedará{{ $copias === 1 ? '' : 'n' }} <span class="font-semibold text-ink">{{ $copias }}</span>
-                        {{ $copias === 1 ? 'documento' : 'documentos' }}:
+                        {{ $copias === 1 ? __('documento') : __('documentos') }}:
                         @foreach ($plan->totalsByAccount($bloque) as $cuenta => $total)
                             <span class="ml-1 tabular-nums text-ink">{{ $divisa($cuenta) }} {{ $money($total) }}</span>
                         @endforeach
@@ -168,7 +168,7 @@
                 @else
                     <p class="text-ink">
                         <span class="font-semibold">{{ $plan->documentCount() }}</span>
-                        {{ $plan->documentCount() === 1 ? 'documento' : 'documentos' }} con
+                        {{ $plan->documentCount() === 1 ? __('documento') : __('documentos') }} con
                         <span class="font-semibold">{{ $plan->lineCount() }}</span>
                         {{ $plan->lineCount() === 1 ? 'concepto' : 'conceptos' }}.
                     </p>

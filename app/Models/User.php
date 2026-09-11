@@ -14,7 +14,7 @@ use Spatie\Permission\Traits\HasRoles;
 /**
  * Modelo de usuario mapeado sobre la tabla `users` heredada de Yii2.
  *
- * Convenciones especiales del esquema Frego:
+ * Convenciones especiales del esquema heredado:
  *  - Llave primaria: `usr_id` (no `id`).
  *  - Marca de actualización: `modified_at` (no `updated_at`).
  *  - Contraseñas bcrypt generadas por Yii2 → compatibles con Hash::check.
@@ -71,7 +71,7 @@ class User extends Authenticatable
      * proveedor y solo ven lo suyo.
      */
 
-    /** Personal de Frego. */
+    /** Personal de la empresa. */
     public const ACCESS_INTERNAL = 9;
 
     /** Portal del cliente. */
@@ -121,7 +121,7 @@ class User extends Authenticatable
         return in_array((int) $this->access, [self::ACCESS_CLIENT, self::ACCESS_PROVIDER], true);
     }
 
-    /** Personal de Frego. Las cuentas sin `access` se tratan como internas. */
+    /** Personal de la empresa. Las cuentas sin `access` se tratan como internas. */
     public function isInternal(): bool
     {
         return ! $this->isPortal();

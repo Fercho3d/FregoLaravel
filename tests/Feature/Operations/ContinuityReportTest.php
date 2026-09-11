@@ -7,7 +7,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
-use Tests\Support\FregoSchema;
+use Tests\Support\CoreSchema;
 use Tests\TestCase;
 
 /** Reporte de continuidad y captura de hitos. */
@@ -17,8 +17,8 @@ class ContinuityReportTest extends TestCase
     {
         parent::setUp();
 
-        FregoSchema::create();
-        FregoSchema::createUsers();
+        CoreSchema::create();
+        CoreSchema::createUsers();
 
         DB::table('client')->insert([['client_id' => 1, 'fullName' => 'Cliente Uno']]);
         DB::table('booking')->insert([[

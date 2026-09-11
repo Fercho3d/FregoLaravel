@@ -74,7 +74,7 @@ return [
         ],
 
         /*
-         * Base real de Frego para las pruebas de paridad y de rendimiento.
+         * Base real del sistema anterior para las pruebas de paridad y de rendimiento.
          *
          * La suite normal corre en SQLite en memoria; estas dos pruebas necesitan
          * los datos y el motor de verdad, porque justamente comparan contra el SQL

@@ -66,7 +66,7 @@ class ContinuityAlerts
 
         if ($enviar) {
             foreach ($avisos as $aviso) {
-                Mail::to(config('frego.avisos_operacion'))->send(new ContinuityAlertMail(
+                Mail::to(config('marca.correo.avisos_operacion'))->send(new ContinuityAlertMail(
                     $aviso['booking'],
                     $aviso['label'],
                     $aviso['date'],

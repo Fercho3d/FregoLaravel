@@ -1,3 +1,4 @@
+@php $verBuque = \App\Support\Expediente::visible('vesselId'); @endphp
 @php
     $fecha = fn ($v) => $v ? \Illuminate\Support\Carbon::parse($v)->format('d/m/Y') : '—';
 
@@ -13,7 +14,7 @@
 
     <header class="flex flex-wrap items-end justify-between gap-3">
         <div>
-            <h2 class="text-lg font-semibold text-ink">{{ $mode === '9' ? 'Cotizaciones' : 'Bookings' }}</h2>
+            <h2 class="text-lg font-semibold text-ink">{{ $mode === '9' ? __('Cotizaciones') : __('Bookings') }}</h2>
             <p class="text-sm text-ink-muted">
                 {{ __('Embarques y el avance de su lista de verificación.') }}
             </p>
@@ -45,17 +46,24 @@
                        class="field-input mt-1 py-1.5 text-sm" placeholder="{{ __('Nombre') }}">
             </label>
 
-            <label class="block">
-                <span class="field-label text-xs">{{ __('Buque') }}</span>
-                <input type="text" wire:model.live.debounce.400ms="vesselName" value="{{ $vesselName }}"
-                       class="field-input mt-1 py-1.5 text-sm" placeholder="{{ __('Nombre') }}">
-            </label>
+            @if ($verBuque)
+                <label class="block">
+                    <span class="field-label text-xs">{{ __('Buque') }}</span>
+                    <input type="text" wire:model.live.debounce.400ms="vesselName" value="{{ $vesselName }}"
+                           class="field-input mt-1 py-1.5 text-sm" placeholder="{{ __('Nombre') }}">
+                </label>
+            @endif
 
-            <label class="block">
-                <span class="field-label text-xs">{{ __('Mercancía') }}</span>
-                <input type="text" wire:model.live.debounce.400ms="commodity" value="{{ $commodity }}"
-                       class="field-input mt-1 py-1.5 text-sm" placeholder="{{ __('Descripción') }}">
-            </label>
+            {{-- El filtro solo existe si la instalación pide ese campo: buscar
+                 por algo que el alta no captura es un filtro que nunca encuentra
+                 nada, y el usuario no tiene manera de saber por qué. --}}
+            @if (\App\Support\Expediente::visible('commodity'))
+                <label class="block">
+                    <span class="field-label text-xs">{{ __('Mercancía') }}</span>
+                    <input type="text" wire:model.live.debounce.400ms="commodity" value="{{ $commodity }}"
+                           class="field-input mt-1 py-1.5 text-sm" placeholder="{{ __('Descripción') }}">
+                </label>
+            @endif
 
             <label class="block">
                 <span class="field-label text-xs">{{ __('Recolección') }} <span class="text-ink-faint">{{ __('(rango)') }}</span></span>
@@ -72,7 +80,7 @@
             <label class="block">
                 <span class="field-label text-xs">{{ __('Tipo') }}</span>
                 <select wire:model.live="mode" class="field-input mt-1 py-1.5 text-sm">
-                    @foreach (['10' => 'Bookings', '9' => 'Cotizaciones'] as $valor => $etiqueta)
+                    @foreach (['10' => __('Bookings'), '9' => __('Cotizaciones')] as $valor => $etiqueta)
                         <option value="{{ $valor }}" @selected((string) $valor === $mode)>{{ $etiqueta }}</option>
                     @endforeach
                 </select>
@@ -81,7 +89,7 @@
             <label class="block">
                 <span class="field-label text-xs">{{ __('Estado') }}</span>
                 <select wire:model.live="onlyLocked" class="field-input mt-1 py-1.5 text-sm">
-                    @foreach (['0' => 'Todos', '1' => 'Solo cerrados'] as $valor => $etiqueta)
+                    @foreach (['0' => __('Todos'), '1' => __('Solo cerrados')] as $valor => $etiqueta)
                         <option value="{{ $valor }}" @selected((string) $valor === $onlyLocked)>{{ $etiqueta }}</option>
                     @endforeach
                 </select>
@@ -117,7 +125,7 @@
                     <div class="flex items-start justify-between gap-3">
                         <div class="min-w-0">
                             <a href="{{ route('operations.bookings.show', $fila->booking_id) }}" wire:navigate
-                               class="font-semibold text-brand hover:underline">{{ trim((string) $fila->booking_number) ?: 'Sin número' }}</a>
+                               class="font-semibold text-brand hover:underline">{{ trim((string) $fila->booking_number) ?: __('Sin número') }}</a>
                             <p class="truncate text-sm text-ink-muted">{{ $fila->client_name ?: '—' }}</p>
                         </div>
                         @if ($fila->locked)
@@ -134,10 +142,12 @@
                     </div>
 
                     <dl class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-                        <div class="flex justify-between gap-2">
-                            <dt class="text-ink-faint">{{ __('Buque') }}</dt>
-                            <dd class="truncate text-ink-soft">{{ $fila->vessel_name ?: '—' }}</dd>
-                        </div>
+                        @if ($verBuque)
+                            <div class="flex justify-between gap-2">
+                                <dt class="text-ink-faint">{{ __('Buque') }}</dt>
+                                <dd class="truncate text-ink-soft">{{ $fila->vessel_name ?: '—' }}</dd>
+                            </div>
+                        @endif
                         <div class="flex justify-between gap-2">
                             <dt class="text-ink-faint">{{ __('Carga') }}</dt>
                             <dd class="text-ink-soft">{{ $fecha($fila->loading_EDT) }}</dd>
@@ -156,7 +166,9 @@
                     <tr>
                         <th class="px-3 py-2.5 text-left font-semibold">{{ __('Booking') }}</th>
                         <th class="px-3 py-2.5 text-left font-semibold">{{ __('Cliente') }}</th>
-                        <th class="px-3 py-2.5 text-left font-semibold">{{ __('Buque') }}</th>
+                        @if ($verBuque)
+                            <th class="px-3 py-2.5 text-left font-semibold">{{ __('Buque') }}</th>
+                        @endif
                         <th class="px-3 py-2.5 text-left font-semibold">{{ __('Origen') }}</th>
                         <th class="px-3 py-2.5 text-left font-semibold">{{ __('Destino') }}</th>
                         <th class="px-3 py-2.5 text-left font-semibold">{{ __('Recolección') }}</th>
@@ -177,7 +189,9 @@
                                 @endif
                             </td>
                             <td class="max-w-[14rem] truncate px-3 py-2 text-ink-muted" title="{{ $fila->client_name }}">{{ $fila->client_name ?: '—' }}</td>
-                            <td class="max-w-[12rem] truncate px-3 py-2 text-ink-muted" title="{{ $fila->vessel_name }}">{{ $fila->vessel_name ?: '—' }}</td>
+                            @if ($verBuque)
+                                <td class="max-w-[12rem] truncate px-3 py-2 text-ink-muted" title="{{ $fila->vessel_name }}">{{ $fila->vessel_name ?: '—' }}</td>
+                            @endif
                             <td class="max-w-[10rem] truncate px-3 py-2 text-ink-muted">{{ trim((string) $fila->port_name) ?: '—' }}</td>
                             <td class="max-w-[10rem] truncate px-3 py-2 text-ink-muted">{{ $fila->discharge_name ?: '—' }}</td>
                             <td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ $fecha($fila->pickup_date) }}</td>

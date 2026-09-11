@@ -2,12 +2,12 @@
 
 namespace Tests\Feature\Operations;
 
-use App\Models\Frego\Booking;
+use App\Models\Core\Booking;
 use App\Support\Pdf\BookingConfirmation;
 use DOMDocument;
 use DOMXPath;
 use PHPUnit\Framework\Attributes\Group;
-use Tests\FregoDatabaseTestCase;
+use Tests\LegacyDatabaseTestCase;
 
 /**
  * Paridad de la confirmación de booking contra el documento real de Yii2.
@@ -24,8 +24,26 @@ use Tests\FregoDatabaseTestCase;
  *   php tools/export_legacy_booking_pdf.php
  */
 #[Group('parity')]
-class BookingConfirmationParityTest extends FregoDatabaseTestCase
+class BookingConfirmationParityTest extends LegacyDatabaseTestCase
 {
+    /**
+     * La ficha de la empresa ya no está escrita en la plantilla sino en
+     * `config/marca.php`, y por omisión trae la de la demostración. La paridad
+     * se comprueba contra el documento que produce la instalación de Frego, así
+     * que aquí se fija la suya: la del fixture.
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config([
+            'marca.empresa.nombre' => 'Freight Global Operator',
+            'marca.empresa.domicilio' => 'Av Mariano Otero 2347-112 Col. Verde Valle',
+            'marca.empresa.rfc' => 'FTM1507038V6',
+            'marca.empresa.telefono' => '+5233130061992',
+        ]);
+    }
+
     public function test_el_documento_es_el_mismo_que_produce_el_sistema_viejo(): void
     {
         $documento = app(BookingConfirmation::class);

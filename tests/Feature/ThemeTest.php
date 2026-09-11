@@ -6,7 +6,7 @@ use App\Models\User;
 use App\Models\UserPreference;
 use App\Support\Theme;
 use Illuminate\Support\Facades\Schema;
-use Tests\Support\FregoSchema;
+use Tests\Support\CoreSchema;
 use Tests\TestCase;
 
 /**
@@ -150,7 +150,7 @@ class ThemeTest extends TestCase
     public function test_el_usuario_sin_preferencia_hereda_el_tema_de_la_cookie(): void
     {
         // El panel consulta las cifras del mes, así que necesita las tablas.
-        FregoSchema::create();
+        CoreSchema::create();
 
         // Elegir el tema en la pantalla de acceso y verlo cambiar al entrar
         // sería desconcertante: sin preferencia guardada, manda la cookie.

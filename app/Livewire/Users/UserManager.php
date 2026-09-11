@@ -2,8 +2,8 @@
 
 namespace App\Livewire\Users;
 
-use App\Models\Frego\Client;
-use App\Models\Frego\Provider;
+use App\Models\Core\Client;
+use App\Models\Core\Provider;
 use App\Models\User;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Url;
@@ -77,7 +77,7 @@ class UserManager extends Component
 
     public function paginationView(): string
     {
-        return 'vendor.pagination.frego';
+        return 'vendor.pagination.app';
     }
 
     public function updatedSearch(): void
@@ -144,7 +144,7 @@ class UserManager extends Component
             'userRole' => 'rol',
             'access' => 'acceso',
             'partyId' => $this->access === (string) self::ACCESS_CLIENT ? 'cliente' : 'proveedor',
-            'password' => 'contraseña',
+            'password' => __('contraseña'),
         ]);
 
         $usuario = $esNuevo ? new User : User::findOrFail($this->editing);
@@ -194,7 +194,7 @@ class UserManager extends Component
 
         $this->validate([
             'password' => ['required', 'string', 'min:8', 'same:passwordConfirmation'],
-        ], attributes: ['password' => 'contraseña']);
+        ], attributes: ['password' => __('contraseña')]);
 
         User::findOrFail($this->changingPassword)
             ->forceFill(['password' => $this->password])
@@ -212,12 +212,12 @@ class UserManager extends Component
     {
         $this->assertSuperAdmin();
 
-        abort_if($id === auth()->id(), 422, 'No puedes darte de baja a ti mismo.');
+        abort_if($id === auth()->id(), 422, __('No puedes darte de baja a ti mismo.'));
 
         $usuario = User::findOrFail($id);
         $usuario->forceFill(['status' => $usuario->status ? 0 : 1])->save();
 
-        session()->flash('status', $usuario->status ? 'Usuario reactivado.' : 'Usuario dado de baja.');
+        session()->flash('status', $usuario->status ? 'Usuario reactivado.' : __('Usuario dado de baja.'));
     }
 
     private function assertSuperAdmin(): void
@@ -247,6 +247,6 @@ class UserManager extends Component
             'usuarios' => $usuarios,
             'clientes' => $this->access === (string) self::ACCESS_CLIENT ? Client::options() : [],
             'proveedores' => $this->access === (string) self::ACCESS_PROVIDER ? Provider::options() : [],
-        ])->layout('components.app-layout', ['title' => 'Usuarios y accesos']);
+        ])->layout('components.app-layout', ['title' => __('Usuarios y accesos')]);
     }
 }

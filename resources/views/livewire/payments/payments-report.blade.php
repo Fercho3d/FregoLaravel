@@ -3,9 +3,9 @@
     $llave = $this->keyColumn();
 
     $nombre = fn ($fila) => match ($mode) {
-        'vendor' => $fila->providerName ?: 'Sin proveedor',
-        'general' => ((int) $fila->type === 1 ? 'Cobros a clientes' : 'Pagos a proveedores'),
-        default => $fila->clientName ?: 'Sin cliente',
+        'vendor' => $fila->providerName ?: __('Sin proveedor'),
+        'general' => ((int) $fila->type === 1 ? __('Cobros a clientes') : __('Pagos a proveedores')),
+        default => $fila->clientName ?: __('Sin cliente'),
     };
 
     // Columnas de dinero, iguales en las tres pantallas.
@@ -81,7 +81,7 @@
                 <thead class="border-b border-line text-xs uppercase tracking-wide text-ink-muted">
                     <tr>
                         <th class="px-4 py-2.5 text-left font-semibold">
-                            {{ $mode === 'vendor' ? 'Proveedor' : ($mode === 'general' ? 'Tipo' : 'Cliente') }}
+                            {{ $mode === 'vendor' ? __('Proveedor') : ($mode === 'general' ? __('Tipo') : __('Cliente')) }}
                         </th>
                         @foreach ($columnas as [$etiqueta, $columna])
                             <th class="px-4 py-2.5 text-right font-semibold">{{ $etiqueta }}</th>

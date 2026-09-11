@@ -99,7 +99,7 @@ class FacturacionModernaClient implements PacClient
                         'verify_peer' => (bool) config('timbrado.verificar_tls', true),
                         'verify_peer_name' => (bool) config('timbrado.verificar_tls', true),
                     ],
-                    'http' => ['user_agent' => 'FregoCargo/1.0', 'timeout' => self::TIEMPO_LIMITE],
+                    'http' => ['user_agent' => 'CargoSuite/1.0', 'timeout' => self::TIEMPO_LIMITE],
                 ]),
             ]);
 

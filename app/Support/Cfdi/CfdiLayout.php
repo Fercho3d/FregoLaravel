@@ -2,8 +2,8 @@
 
 namespace App\Support\Cfdi;
 
-use App\Models\Frego\Charge;
-use App\Models\Frego\Transaction;
+use App\Models\Core\Charge;
+use App\Models\Core\Transaction;
 use Illuminate\Support\Collection;
 
 /**
@@ -49,6 +49,7 @@ class CfdiLayout
         private object $receptor,
         private Collection $conceptos,
         private string $rfcPorOmision,
+        private string $nombrePorOmision,
         private string $lugarPorOmision,
         private ?float $tipoCambio = null,
         private ?string $numeroBooking = null,
@@ -158,7 +159,7 @@ class CfdiLayout
         $rfc = filled($this->emisor?->rfc) ? $this->emisor->rfc : $this->rfcPorOmision;
         $nombre = filled($this->emisor?->business_name)
             ? $this->emisor->business_name
-            : 'FREGO TRADING & LOGISTICS DE MEXICO';
+            : $this->nombrePorOmision;
         $regimen = filled($this->emisor?->regimen_fiscal) ? $this->emisor->regimen_fiscal : '601';
 
         // El espacio después de `Rfc=` no es un descuido: así lo emite el sistema

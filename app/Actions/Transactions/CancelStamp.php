@@ -2,7 +2,7 @@
 
 namespace App\Actions\Transactions;
 
-use App\Models\Frego\Transaction;
+use App\Models\Core\Transaction;
 use App\Support\Cfdi\CfdiException;
 use App\Support\Cfdi\PacClient;
 use App\Support\TransactionFiles;

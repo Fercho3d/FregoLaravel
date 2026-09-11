@@ -23,7 +23,7 @@ enum Locale: string
     case En = 'en';
 
     /** Cookie que recuerda el idioma de quien todavía no inicia sesión. */
-    public const COOKIE = 'frego_locale';
+    public const COOKIE = 'app_locale';
 
     /** Un año, igual que la del tema. */
     public const COOKIE_MINUTES = 525_600;

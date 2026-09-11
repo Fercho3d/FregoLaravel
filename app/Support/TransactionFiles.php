@@ -2,7 +2,7 @@
 
 namespace App\Support;
 
-use App\Models\Frego\Transaction;
+use App\Models\Core\Transaction;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -24,7 +24,7 @@ class TransactionFiles
 
     public function __construct()
     {
-        $this->disk = Storage::disk('frego');
+        $this->disk = Storage::disk('documentos');
     }
 
     /** Carpeta relativa dentro del disco compartido. */

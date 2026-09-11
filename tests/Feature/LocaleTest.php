@@ -8,7 +8,7 @@ use App\Support\Locale;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rules\Enum;
-use Tests\Support\FregoSchema;
+use Tests\Support\CoreSchema;
 use Tests\TestCase;
 
 /**
@@ -25,8 +25,8 @@ class LocaleTest extends TestCase
     {
         parent::setUp();
 
-        FregoSchema::createUsers();
-        FregoSchema::create();
+        CoreSchema::createUsers();
+        CoreSchema::create();
     }
 
     private function usuario(): User

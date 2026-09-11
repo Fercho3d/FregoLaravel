@@ -2,12 +2,12 @@
 
 namespace Tests\Feature\Transactions;
 
-use App\Models\Frego\Transaction;
+use App\Models\Core\Transaction;
 use App\Queries\ProfitByBooking;
 use App\Queries\TransactionFilters;
 use App\Queries\TransactionQuery;
 use PHPUnit\Framework\Attributes\Group;
-use Tests\FregoDatabaseTestCase;
+use Tests\LegacyDatabaseTestCase;
 
 /**
  * Utilidad por booking: que sumar en la base dé lo mismo que sumaba el original
@@ -19,7 +19,7 @@ use Tests\FregoDatabaseTestCase;
  * SQL, sin que se mueva ningún número.
  */
 #[Group('parity')]
-class ProfitByBookingTest extends FregoDatabaseTestCase
+class ProfitByBookingTest extends LegacyDatabaseTestCase
 {
     /** Un mes con volumen de verdad: cientos de facturas y sus costos. */
     private const RANGO = '01/12/2022 - 31/12/2022';

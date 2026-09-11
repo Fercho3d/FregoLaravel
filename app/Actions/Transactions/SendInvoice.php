@@ -3,8 +3,8 @@
 namespace App\Actions\Transactions;
 
 use App\Mail\InvoiceMail;
-use App\Models\Frego\Client;
-use App\Models\Frego\Transaction;
+use App\Models\Core\Client;
+use App\Models\Core\Transaction;
 use App\Support\TransactionFiles;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -66,7 +66,7 @@ class SendInvoice
     private function recipients(Transaction $transaccion): array
     {
         if (! config('timbrado.produccion')) {
-            return config('frego.copia_facturas');
+            return config('marca.correo.copia_facturas');
         }
 
         return Client::find($transaccion->customer)?->notificationEmails() ?? [];

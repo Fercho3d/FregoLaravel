@@ -111,22 +111,31 @@
                 </a>
             </div>
 
-            <ul class="mt-3 space-y-2">
-                @foreach ([
-                    ['n' => $panel['pendientes']['timbrar'], 'texto' => __('facturas sin timbrar'), 'ruta' => route('transactions.invoice')],
-                    ['n' => $panel['pendientes']['solicitudes'], 'texto' => __('solicitudes de pago abiertas'), 'ruta' => route('payments.requests')],
-                ] as $pendiente)
-                    <li>
-                        <a href="{{ $pendiente['ruta'] }}" wire:navigate
-                           class="flex items-center justify-between gap-3 rounded-xl border border-line px-4 py-3 transition hover:border-accent-500/40 hover:bg-raised">
-                            <span class="text-sm text-ink-muted">{{ $pendiente['texto'] }}</span>
-                            <span class="text-lg font-semibold tabular-nums {{ $pendiente['n'] > 0 ? 'text-brand' : 'text-ink-faint' }}">
-                                {{ $entero($pendiente['n']) }}
-                            </span>
-                        </a>
-                    </li>
-                @endforeach
-            </ul>
+            {{-- Los dos pendientes llevan a facturación, que es solo de
+                 administradores: a los demás roles esos enlaces les responderían
+                 403, así que ni se calculan ni se pintan. --}}
+            @isset ($panel['pendientes'])
+                <ul class="mt-3 space-y-2">
+                    @foreach ([
+                        ['n' => $panel['pendientes']['timbrar'], 'texto' => __('facturas sin timbrar'), 'ruta' => route('transactions.invoice')],
+                        ['n' => $panel['pendientes']['solicitudes'], 'texto' => __('solicitudes de pago abiertas'), 'ruta' => route('payments.requests')],
+                    ] as $pendiente)
+                        <li>
+                            <a href="{{ $pendiente['ruta'] }}" wire:navigate
+                               class="flex items-center justify-between gap-3 rounded-xl border border-line px-4 py-3 transition hover:border-accent-500/40 hover:bg-raised">
+                                <span class="text-sm text-ink-muted">{{ $pendiente['texto'] }}</span>
+                                <span class="text-lg font-semibold tabular-nums {{ $pendiente['n'] > 0 ? 'text-brand' : 'text-ink-faint' }}">
+                                    {{ $entero($pendiente['n']) }}
+                                </span>
+                            </a>
+                        </li>
+                    @endforeach
+                </ul>
+            @else
+                <p class="mt-3 rounded-xl border border-line px-4 py-3 text-sm text-ink-faint">
+                    {{ __('Aquí aparecen tus avisos sin leer.') }}
+                </p>
+            @endisset
         </section>
     </div>
 
@@ -173,4 +182,7 @@
             </table>
         </div>
     </section>
+
+    @include('partials.mapa-rutas')
+
 </div>

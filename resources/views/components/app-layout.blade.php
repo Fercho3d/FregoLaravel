@@ -1,4 +1,5 @@
-@props(['title' => 'Panel'])
+@props(['title' => null])
+@php $title ??= __('Panel'); @endphp
 <!DOCTYPE html>
 @php
     $tema = \App\Support\Theme::current();
@@ -12,11 +13,12 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ $title }} · {{ config('app.name', 'FregoCargo') }}</title>
+    <title>{{ $title }} · {{ \App\Support\Marca::nombre() }}</title>
     @include('partials.theme-script')
     <style>[x-cloak]{display:none!important}</style>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
+    @include('partials.marca-colores')
 </head>
 <body class="h-full antialiased">
 @php
@@ -32,6 +34,21 @@
             [__('Transacciones'), route('transactions.all'), request()->routeIs('transactions.all', 'transactions.booking'), 'transaccion'],
             [__('Utilidad por booking'), route('transactions.report.booking'), request()->routeIs('transactions.report.*'), 'reporte'],
             [__('Solicitudes de pago'), route('payments.requests'), request()->routeIs('payments.requests'), 'banco'],
+            // Solo con flota propia: quien subcontrata no liquida operadores.
+            ...(\App\Support\Expediente::visible('operadorId')
+                ? [[__('Liquidaciones'), route('payments.settlements'), request()->routeIs('payments.settlements'), 'banco']]
+                : []),
+            // La nómina se apaga entera en quien ya la lleva en otro sistema.
+            ...(config('marca.nomina')
+                ? [[__('Nómina'), route('payments.payroll'), request()->routeIs('payments.payroll'), 'nomina']]
+                : []),
+            // El taller solo con flota propia: quien subcontrata no repara nada.
+            ...(config('marca.taller') && \App\Support\Expediente::visible('unidadId')
+                ? [
+                    [__('Mantenimiento'), route('workshop.maintenance'), request()->routeIs('workshop.maintenance'), 'taller'],
+                    [__('Almacén'), route('workshop.inventory'), request()->routeIs('workshop.inventory'), 'almacen'],
+                ]
+                : []),
             [__('Cobros por cliente'), route('payments.report.customer'), request()->routeIs('payments.report.customer'), 'banco'],
             [__('Pagos por proveedor'), route('payments.report.vendor'), request()->routeIs('payments.report.vendor'), 'banco'],
             [__('Cobros y pagos'), route('payments.report.general'), request()->routeIs('payments.report.general'), 'banco'],
@@ -39,7 +56,12 @@
         // Los usuarios los administra solo el super administrador; para el resto
         // la ruta responde 403, así que ni se lista.
         (auth()->user()?->isSuperAdmin() ?? false)
-            ? [[__('Usuarios'), route('users'), request()->routeIs('users'), 'usuarios']]
+            ? [
+                [__('Usuarios'), route('users'), request()->routeIs('users'), 'usuarios'],
+                // Sin entrada en el menú, las solicitudes que llegan por la
+                // página pública se quedarían ahí sin que nadie las lea.
+                [__('Solicitudes de demostración'), route('demo-requests'), request()->routeIs('demo-requests'), 'usuarios'],
+            ]
             : [],
         [
             [__('Clientes y proveedores'), route('parties.clients'), request()->routeIs('parties.clients', 'parties.providers'), 'usuarios'],
@@ -48,7 +70,12 @@
             [__('Tipos de cambio'), route('exchange'), request()->routeIs('exchange'), 'banco'],
             [__('Operación'), route('operations.bookings'), request()->routeIs('operations.bookings*'), 'operacion'],
             [__('Continuidad'), route('operations.continuity'), request()->routeIs('operations.continuity'), 'reporte'],
-        ]
+        ],
+        // Los ajustes van al final: se entra una vez a configurarlos y casi
+        // nunca más, así que no deben competir con lo que se usa a diario.
+        (auth()->user()?->isSuperAdmin() ?? false)
+            ? [[__('Ajustes'), route('settings'), request()->routeIs('settings'), 'ajustes']]
+            : [],
     );
 @endphp
 
@@ -59,8 +86,10 @@
     <aside class="fixed inset-y-0 left-0 z-40 flex w-64 transform flex-col border-r border-line bg-panel transition-transform duration-200 ease-out lg:translate-x-0"
            :class="sidebar ? 'translate-x-0' : '-translate-x-full'">
         <div class="flex h-16 shrink-0 items-center gap-2 border-b border-line px-5">
-            @include('partials.logo', ['class' => 'text-xl'])
-            <span class="text-[10px] font-semibold uppercase tracking-widest text-ink-faint">Cargo</span>
+            @include('partials.logo', ['class' => 'text-xl', 'alto' => 'h-8'])
+            @if ($etiqueta = \App\Support\Marca::etiqueta())
+                <span class="text-[10px] font-semibold uppercase tracking-widest text-ink-faint">{{ $etiqueta }}</span>
+            @endif
             <button class="ml-auto rounded-lg p-1.5 text-ink-faint transition hover:bg-raised lg:hidden"
                     x-on:click="sidebar = false" aria-label="Cerrar menú">
                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/></svg>
@@ -86,8 +115,8 @@
 
         <div class="border-t border-line p-3">
             <p class="px-2 text-[11px] leading-relaxed text-ink-faint">
-                {{ config('app.name') }} · Laravel<br>
-                Sistema interno confidencial
+                {{ \App\Support\Marca::nombre() }}<br>
+                {{ \App\Support\Marca::pie() }}
             </p>
         </div>
     </aside>
@@ -158,7 +187,7 @@
             </div>
         </header>
 
-        <main class="flex-1 p-4 sm:p-6 lg:p-8">
+        <main data-pantalla class="page-enter flex-1 p-4 sm:p-6 lg:p-8">
             @include('partials.session-status')
             {{ $slot }}
         </main>

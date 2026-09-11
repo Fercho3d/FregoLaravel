@@ -1,7 +1,7 @@
 @use('App\Livewire\Operations\ContinuityReport')
 
 @php
-    $hitos = ContinuityReport::HITOS;
+    $hitos = ContinuityReport::hitos();
     $fecha = fn ($v) => $v ? \Illuminate\Support\Carbon::parse($v)->format('d/m') : null;
     $esAdmin = auth()->user()?->isAdmin() ?? false;
 @endphp
@@ -85,14 +85,14 @@
                                         </span>
                                     @elseif ($esAdmin)
                                         <button type="button"
-                                                wire:click="editMilestone({{ $fila->booking_id }}, '{{ $hito }}', @js($fila->{$hito}))"
+                                                wire:click="editMilestone({{ $fila->booking_id }}, '{{ $hito }}', @js($fechas[$fila->booking_id][$hito] ?? null))"
                                                 class="rounded px-2 py-1 transition hover:bg-line
-                                                       {{ $fila->{$hito} ? 'font-medium text-ink' : 'text-ink-faint' }}">
-                                            {{ $fecha($fila->{$hito}) ?? '·' }}
+                                                       {{ ($fechas[$fila->booking_id][$hito] ?? null) ? 'font-medium text-ink' : 'text-ink-faint' }}">
+                                            {{ $fecha($fechas[$fila->booking_id][$hito] ?? null) ?? '·' }}
                                         </button>
                                     @else
-                                        <span class="{{ $fila->{$hito} ? 'text-ink' : 'text-ink-faint' }}">
-                                            {{ $fecha($fila->{$hito}) ?? '·' }}
+                                        <span class="{{ ($fechas[$fila->booking_id][$hito] ?? null) ? 'text-ink' : 'text-ink-faint' }}">
+                                            {{ $fecha($fechas[$fila->booking_id][$hito] ?? null) ?? '·' }}
                                         </span>
                                     @endif
                                 </td>

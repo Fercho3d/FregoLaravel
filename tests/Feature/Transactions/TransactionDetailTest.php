@@ -3,12 +3,12 @@
 namespace Tests\Feature\Transactions;
 
 use App\Livewire\Transactions\TransactionDetail;
-use App\Models\Frego\Charge;
+use App\Models\Core\Charge;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\Group;
-use Tests\FregoDatabaseTestCase;
+use Tests\LegacyDatabaseTestCase;
 
 /**
  * Pantalla de detalle de una transacción.
@@ -18,7 +18,7 @@ use Tests\FregoDatabaseTestCase;
  * documento — dos cosas que solo se ven con datos de verdad.
  */
 #[Group('parity')]
-class TransactionDetailTest extends FregoDatabaseTestCase
+class TransactionDetailTest extends LegacyDatabaseTestCase
 {
     private function admin(): User
     {

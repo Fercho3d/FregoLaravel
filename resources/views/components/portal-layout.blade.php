@@ -12,11 +12,12 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ $title }} · {{ config('app.name', 'FregoCargo') }}</title>
+    <title>{{ $title }} · {{ \App\Support\Marca::nombre() }}</title>
     @include('partials.theme-script')
     <style>[x-cloak]{display:none!important}</style>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
+    @include('partials.marca-colores')
 </head>
 <body class="h-full antialiased">
 {{--
@@ -26,7 +27,7 @@
 <div class="flex min-h-full flex-col">
     <header class="sticky top-0 z-20 border-b border-line bg-surface/85 backdrop-blur">
         <div class="mx-auto flex h-16 max-w-5xl items-center gap-3 px-4 sm:px-6">
-            @include('partials.logo', ['class' => 'text-xl'])
+            @include('partials.logo', ['class' => 'text-xl', 'alto' => 'h-8'])
             <span class="text-[10px] font-semibold uppercase tracking-widest text-ink-faint">Portal</span>
 
             <div class="ml-auto flex items-center gap-3">
@@ -69,7 +70,7 @@
     </main>
 
     <footer class="border-t border-line py-4 text-center text-xs text-ink-faint">
-        &copy; {{ date('Y') }} FregoCargo
+        &copy; {{ date('Y') }} {{ \App\Support\Marca::nombre() }}
     </footer>
 </div>
 @livewireScripts

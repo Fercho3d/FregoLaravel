@@ -9,7 +9,7 @@ use Mpdf\Output\Destination;
 /**
  * Envoltorio de mPDF con los ajustes que traía el original.
  *
- * Frego imprime con mPDF desde Yii2 (a través de `kartik-v/yii2-mpdf`), y los
+ * El sistema anterior imprime con mPDF desde Yii2 (a través de `kartik-v/yii2-mpdf`), y los
  * documentos están escritos para ese motor: tablas con `float`, anchos en píxeles
  * y hojas de estilo que otro renderizador acomodaría distinto. Se conserva el
  * mismo motor para que salgan iguales, y los mismos ajustes: carta, márgenes de

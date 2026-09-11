@@ -46,7 +46,7 @@
     @if ($editing !== null)
         <form wire:submit="save" class="card space-y-4 p-5">
             <p class="text-sm font-medium text-ink">
-                {{ $editing === 0 ? 'Nuevo '.mb_strtolower($definicion->singular) : 'Editar '.mb_strtolower($definicion->singular) }}
+                {{ $editing === 0 ? __('Nuevo :cosa', ['cosa' => mb_strtolower($definicion->singular)]) : __('Editar :cosa', ['cosa' => mb_strtolower($definicion->singular)]) }}
             </p>
 
             <div class="grid gap-4 sm:grid-cols-2">
@@ -59,6 +59,14 @@
                                        class="h-4 w-4 rounded border-line bg-panel text-accent-500 focus:ring-accent-500">
                                 {{ $campo->label }}
                             </span>
+                        @elseif ($campo->type === 'select')
+                            <span class="field-label">{{ $campo->label }}</span>
+                            <select wire:model="form.{{ $campo->name }}" class="field-input mt-1.5">
+                                <option value="">{{ __('Ninguno') }}</option>
+                                @foreach ($campo->opciones() as $valor => $etiqueta)
+                                    <option value="{{ $valor }}" @selected((string) ($form[$campo->name] ?? '') === (string) $valor)>{{ $etiqueta }}</option>
+                                @endforeach
+                            </select>
                         @else
                             <span class="field-label">{{ $campo->label }}</span>
                             <input type="{{ $campo->type === 'date' ? 'date' : ($campo->type === 'number' ? 'number' : 'text') }}"
@@ -122,7 +130,7 @@
                 </li>
             @empty
                 <li class="px-4 py-12 text-center text-sm text-ink-faint">
-                    {{ $search === '' ? 'Este catálogo está vacío.' : 'Nada coincide con la búsqueda.' }}
+                    {{ $search === '' ? __('Este catálogo está vacío.') : __('Nada coincide con la búsqueda.') }}
                 </li>
             @endforelse
         </ul>
@@ -169,7 +177,7 @@
                     @empty
                         <tr>
                             <td colspan="{{ count($definicion->listFields()) + 1 }}" class="px-4 py-12 text-center text-ink-faint">
-                                {{ $search === '' ? 'Este catálogo está vacío.' : 'Nada coincide con la búsqueda.' }}
+                                {{ $search === '' ? __('Este catálogo está vacío.') : __('Nada coincide con la búsqueda.') }}
                             </td>
                         </tr>
                     @endforelse

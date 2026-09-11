@@ -49,7 +49,22 @@ class FortifyServiceProvider extends ServiceProvider
             return null;
         });
 
-        // Vistas de autenticación (Blade + tema FregoCargo negro/gris).
+        /*
+         * Confirmación de contraseña para entrar a una zona segura (activar el
+         * 2FA, por ejemplo).
+         *
+         * Hay que decirle a Fortify CÓMO comprobarla. Por omisión hace
+         * `$guard->validate([Fortify::username() => $user->{Fortify::username()}, ...])`,
+         * y aquí `Fortify::username()` es **`login`**: un campo virtual del
+         * formulario de acceso —que admite usuario O correo— que NO existe en la
+         * tabla. El resultado era `select * from users where login is null` y un
+         * 500 al confirmar, así que el 2FA no se podía activar.
+         */
+        Fortify::confirmPasswordsUsing(
+            fn (User $user, string $password) => Hash::check($password, $user->password)
+        );
+
+        // Vistas de autenticación (Blade, con el tema y la marca del sistema).
         Fortify::loginView(fn () => view('auth.login'));
         Fortify::requestPasswordResetLinkView(fn () => view('auth.forgot-password'));
         Fortify::resetPasswordView(fn (Request $request) => view('auth.reset-password', ['request' => $request]));

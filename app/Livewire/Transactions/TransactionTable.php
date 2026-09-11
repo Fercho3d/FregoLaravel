@@ -2,9 +2,9 @@
 
 namespace App\Livewire\Transactions;
 
-use App\Models\Frego\Account;
-use App\Models\Frego\Booking;
-use App\Models\Frego\Company;
+use App\Models\Core\Account;
+use App\Models\Core\Booking;
+use App\Models\Core\Company;
 use App\Queries\ProfitByBooking;
 use App\Queries\TransactionFilters;
 use App\Queries\TransactionQuery;
@@ -104,12 +104,12 @@ class TransactionTable extends Component
      */
     public function paginationView(): string
     {
-        return 'vendor.pagination.frego';
+        return 'vendor.pagination.app';
     }
 
     public function paginationSimpleView(): string
     {
-        return 'vendor.pagination.frego';
+        return 'vendor.pagination.app';
     }
 
     public function mount(string $screen = 'invoice', ?int $booking = null): void
@@ -152,6 +152,7 @@ class TransactionTable extends Component
         $this->showCancelled = '0';
         $this->totals = null;
         $this->profit = null;
+        $this->selected = [];
         $this->resetPage();
     }
 
@@ -161,12 +162,73 @@ class TransactionTable extends Component
         abort_unless(auth()->user()?->isAdmin() ?? false, 403);
 
         if ($this->selected === []) {
-            $this->addError('selected', 'Marca al menos una transacción.');
+            $this->addError('selected', __('Marca al menos una transacción.'));
 
             return;
         }
 
-        $this->redirectRoute('payments.requests.create', ['ids' => implode(',', $this->selected)], navigate: true);
+        $this->redirectRoute('payments.requests.create', [
+            'ids' => implode(',', $this->selected),
+            'volver' => $this->currentUrl(),
+        ], navigate: true);
+    }
+
+    /**
+     * Los filtros de la pantalla, tal como viajan en la dirección.
+     *
+     * @return array<string, mixed>
+     */
+    private function urlParams(): array
+    {
+        return array_filter([
+            'num' => $this->tranNumber,
+            'bk' => $this->bookingNumber,
+            'q' => $this->appliedTo,
+            'f' => $this->dates,
+            'co' => $this->companyId,
+            'ccy' => $this->accountId,
+            'pago' => $this->paid,
+            'canc' => $this->showCancelled,
+            'ord' => $this->sort,
+            'dir' => $this->direction,
+        ], fn ($valor) => $valor !== null && $valor !== '');
+    }
+
+    /** Esta misma pantalla, con su filtro: a dónde volver desde otra sección. */
+    public function currentUrl(): string
+    {
+        $ruta = match ($this->screen) {
+            'bill' => 'transactions.bill',
+            'all' => 'transactions.all',
+            'booking' => 'transactions.booking',
+            default => 'transactions.invoice',
+        };
+
+        $parametros = $this->urlParams();
+
+        if ($this->screen === 'booking') {
+            $parametros['booking'] = $this->bookingId;
+        }
+
+        return route($ruta, $parametros, absolute: false);
+    }
+
+    /**
+     * Dirección de la descarga, con el MISMO filtro que se está viendo.
+     *
+     * Los nombres son los que la pantalla ya usa en la dirección, así que el
+     * archivo trae exactamente la tabla de enfrente —y el enlace se puede
+     * compartir igual que el de la pantalla.
+     */
+    public function exportUrl(): string
+    {
+        $parametros = $this->urlParams();
+
+        if ($this->bookingId !== null) {
+            $parametros['booking'] = $this->bookingId;
+        }
+
+        return route('transactions.export', ['screen' => $this->screen] + $parametros);
     }
 
     /** ¿Esta pantalla permite agrupar en solicitudes de pago? */
@@ -238,10 +300,10 @@ class TransactionTable extends Component
     public function title(): string
     {
         return match ($this->screen) {
-            'invoice' => 'Facturas',
-            'bill' => 'Costos',
-            'booking' => 'Transacciones del booking',
-            default => 'Todas las transacciones',
+            'invoice' => __('Facturas'),
+            'bill' => __('Costos'),
+            'booking' => __('Transacciones del booking'),
+            default => __('Todas las transacciones'),
         };
     }
 }

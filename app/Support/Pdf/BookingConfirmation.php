@@ -2,11 +2,12 @@
 
 namespace App\Support\Pdf;
 
-use App\Models\Frego\Booking;
-use App\Models\Frego\Client;
-use App\Models\Frego\Provider;
+use App\Models\Core\Booking;
+use App\Models\Core\Client;
+use App\Models\Core\Provider;
 use App\Queries\TransactionFilters;
 use App\Queries\TransactionQuery;
+use App\Support\Documentos;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -59,6 +60,11 @@ class BookingConfirmation
 
     public function html(Booking $booking): string
     {
+        return Documentos::conIdioma(fn () => $this->arma($booking));
+    }
+
+    private function arma(Booking $booking): string
+    {
         $contenedores = $this->containers($booking);
         $piezas = (float) $contenedores->sum('quantity');
         $esCotizacion = $booking->isQuotation();
@@ -66,7 +72,7 @@ class BookingConfirmation
 
         return view('pdf.booking-confirmation', [
             'booking' => $booking,
-            'titulo' => $esCotizacion ? 'Booking Quotation' : 'Booking confirmation',
+            'titulo' => $esCotizacion ? __('impresos.quotation_title') : __('impresos.confirmation_title'),
             'cliente' => Client::find($booking->client),
             'recoleccion' => DB::table('pickup_place')->where('pick_id', $booking->pick_up_place_id)->first(),
             'continuidad' => DB::table('booking_continuity')->where('booking', $booking->booking_id)->first(),

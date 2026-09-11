@@ -3,12 +3,12 @@
 namespace App\Livewire\Transactions;
 
 use App\Actions\Transactions\SaveTransaction;
-use App\Models\Frego\Account;
-use App\Models\Frego\Booking;
-use App\Models\Frego\Client;
-use App\Models\Frego\Company;
-use App\Models\Frego\Provider;
-use App\Models\Frego\Transaction;
+use App\Models\Core\Account;
+use App\Models\Core\Booking;
+use App\Models\Core\Client;
+use App\Models\Core\Company;
+use App\Models\Core\Provider;
+use App\Models\Core\Transaction;
 use App\Queries\TransactionFilters;
 use App\Queries\TransactionQuery;
 use App\Support\TransactionFiles;
@@ -106,7 +106,7 @@ class TransactionForm extends Component
     private function mountForCreate(?int $booking, string $tipo): void
     {
         if ($booking === null || ! Booking::whereKey($booking)->exists()) {
-            throw new NotFoundHttpException('Falta el booking al que pertenece la transacción.');
+            throw new NotFoundHttpException(__('Falta el booking al que pertenece la transacción.'));
         }
 
         $this->bookingId = $booking;
@@ -210,9 +210,9 @@ class TransactionForm extends Component
         return [
             'tranDate' => 'fecha',
             'accountId' => 'moneda',
-            'companyId' => 'compañía',
-            'tranNumber' => 'número',
-            'invoiceType' => 'tipo de factura',
+            'companyId' => __('compañía'),
+            'tranNumber' => __('número'),
+            'invoiceType' => __('tipo de factura'),
             'customerId' => 'cliente',
             'vendorId' => 'proveedor',
             'pdfFile' => 'archivo PDF',
@@ -239,7 +239,7 @@ class TransactionForm extends Component
 
         if ($repetida !== null) {
             throw ValidationException::withMessages(['vendorId' => sprintf(
-                'Este proveedor ya está en la transacción %s: solo se permite un servicio por proveedor y booking.',
+                __('Este proveedor ya está en la transacción %s: solo se permite un servicio por proveedor y booking.'),
                 $repetida->tran_number ?: $repetida->transc_id,
             )]);
         }
@@ -281,7 +281,7 @@ class TransactionForm extends Component
         // que nombrar su carpeta. Es el mismo orden que sigue el original.
         $this->storeAttachments($modelo);
 
-        session()->flash('status', $this->transactionId === null ? 'Transacción creada.' : 'Transacción actualizada.');
+        session()->flash('status', $this->transactionId === null ? __('Transacción creada.') : __('Transacción actualizada.'));
         $this->redirectRoute('transactions.show', $modelo->transc_id, navigate: true);
     }
 
@@ -341,9 +341,9 @@ class TransactionForm extends Component
         // Se escribe entero y no armando la cadena por partes: «factura» es
         // femenino y «costo» masculino, y así no sale «Nueva costo».
         return match (true) {
-            $this->transactionId !== null => $this->isInvoice() ? 'Editar factura' : 'Editar costo',
-            $this->isInvoice() => 'Nueva factura',
-            default => 'Nuevo costo',
+            $this->transactionId !== null => $this->isInvoice() ? __('Editar factura') : __('Editar costo'),
+            $this->isInvoice() => __('Nueva factura'),
+            default => __('Nuevo costo'),
         };
     }
 }

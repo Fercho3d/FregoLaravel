@@ -9,22 +9,22 @@
         ->filter(fn ($v) => filled($v))
         ->count() + ($showCancelled !== '0' ? 1 : 0);
     $columns = [
-        [__('booking'), 'Booking', 'text-left'],
-        [__('tran_date'), 'Fecha', 'text-left'],
-        [__('tran_number'), 'Número', 'text-left'],
-        [null, 'Aplicado a', 'text-left'],
-        [null, 'Compañía', 'text-left'],
-        [null, 'Ccy', 'text-left'],
-        [null, 'Importe', 'text-right'],
-        [null, 'TC', 'text-right'],
-        [null, 'Sub 0 %', 'text-right'],
-        [null, 'Sub 16 %', 'text-right'],
-        [null, 'IVA 16 %', 'text-right'],
-        [null, 'Ret. IVA', 'text-right'],
-        [null, 'Total', 'text-right'],
-        [null, 'Pagado', 'text-right'],
-        [null, 'Estado', 'text-left'],
-        [__('seal'), 'CFDI', 'text-left'],
+        ['booking', 'Booking', 'text-left'],
+        ['tran_date', __('Fecha'), 'text-left'],
+        ['tran_number', __('Número'), 'text-left'],
+        ['applied_to', __('Aplicado a'), 'text-left'],
+        ['company', __('Compañía'), 'text-left'],
+        ['currency', 'Ccy', 'text-left'],
+        ['amount_original', __('Importe'), 'text-right'],
+        ['exchange_value', 'TC', 'text-right'],
+        ['sub_0_mxn', 'Sub 0 %', 'text-right'],
+        ['sub_16_mxn', 'Sub 16 %', 'text-right'],
+        ['tax_16_mxn', 'IVA 16 %', 'text-right'],
+        ['tax_ret_mxn', 'Ret. IVA', 'text-right'],
+        ['total_amount', __('Total'), 'text-right'],
+        ['tran_paid_amount', __('Pagado'), 'text-right'],
+        ['left_to_pay', __('Estado'), 'text-left'],
+        ['seal', 'CFDI', 'text-left'],
     ];
 @endphp
 
@@ -33,9 +33,9 @@
     {{-- Pestañas: navegación sin recarga completa --}}
     <nav class="flex flex-wrap items-center gap-1 rounded-xl border border-line bg-panel p-1 text-sm">
         @foreach ([
-            [__('invoice'), 'Facturas', route('transactions.invoice')],
-            [__('bill'), 'Costos', route('transactions.bill')],
-            [__('all'), 'Todas', route('transactions.all')],
+            ['invoice', __('Facturas'), route('transactions.invoice')],
+            ['bill', __('Costos'), route('transactions.bill')],
+            ['all', __('Todas'), route('transactions.all')],
         ] as [$key, $label, $href])
             <a href="{{ $href }}" wire:navigate
                class="rounded-lg px-4 py-2 font-medium transition {{ $screen === $key ? 'bg-accent-500 text-white' : 'text-ink-muted hover:bg-raised hover:text-ink' }}">
@@ -50,7 +50,7 @@
 
             {{-- El alta necesita saber a qué booking pertenece; por eso solo se
                  ofrece desde esta pantalla. --}}
-            @foreach ([['factura', 'Nueva factura'], ['costo', 'Nuevo costo']] as [$tipo, $etiqueta])
+            @foreach ([['factura', __('Nueva factura')], ['costo', __('Nuevo costo')]] as [$tipo, $etiqueta])
                 <a href="{{ route('transactions.create', ['booking' => $booking->booking_id, 'tipo' => $tipo]) }}"
                    wire:navigate class="btn-ghost px-3 py-1.5 text-xs">{{ $etiqueta }}</a>
             @endforeach
@@ -128,7 +128,7 @@
                 <select wire:model.live="paid" class="field-input mt-1 py-1.5 text-sm">
                     {{-- Ojo con el `(string)`: PHP convierte en enteros las claves
                          numéricas del arreglo, y la comparación estricta fallaría. --}}
-                    @foreach (['' => 'Todas', '0' => 'Sin pagar', '2' => 'Parciales', '1' => 'Pagadas'] as $valor => $etiqueta)
+                    @foreach (['' => __('Todas'), '0' => __('Sin pagar'), '2' => __('Parciales'), '1' => __('Pagadas')] as $valor => $etiqueta)
                         <option value="{{ $valor }}" @selected((string) $valor === $paid)>{{ $etiqueta }}</option>
                     @endforeach
                 </select>
@@ -137,7 +137,7 @@
             <label class="block">
                 <span class="field-label text-xs">{{ __('Canceladas') }}</span>
                 <select wire:model.live="showCancelled" class="field-input mt-1 py-1.5 text-sm">
-                    @foreach (['0' => 'Solo vigentes', '1' => 'Vigentes y canceladas', '2' => 'Solo canceladas'] as $valor => $etiqueta)
+                    @foreach (['0' => __('Solo vigentes'), '1' => __('Vigentes y canceladas'), '2' => __('Solo canceladas')] as $valor => $etiqueta)
                         <option value="{{ $valor }}" @selected((string) $valor === $showCancelled)>{{ $etiqueta }}</option>
                     @endforeach
                 </select>
@@ -149,12 +149,32 @@
                     {{ __('Sumar todo el filtro') }}
                 </button>
                 @if ($this->allowsSelection() && auth()->user()?->isAdmin())
-                    <button type="button" wire:click="createPaymentRequest" class="btn-ghost !py-1.5 !px-3 text-xs"
-                            @disabled($selected === [])>
+                    <button type="button" wire:click="createPaymentRequest"
+                            @disabled($selected === [])
+                            class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition
+                                   {{ $selected === []
+                                        ? 'cursor-not-allowed border border-line text-ink-faint'
+                                        : 'bg-accent-500 text-white shadow-sm hover:bg-accent-600' }}">
+                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                             stroke-width="2" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v8m-4-4h8M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/>
+                        </svg>
                         {{ __('Agrupar en solicitud de pago') }}
-                        @if ($selected !== []) <span class="text-brand">({{ count($selected) }})</span> @endif
+                        @if ($selected !== [])
+                            <span class="rounded-full bg-white/25 px-1.5 py-0.5 tabular-nums">{{ count($selected) }}</span>
+                        @endif
                     </button>
                 @endif
+                <a href="{{ $this->exportUrl() }}"
+                   title="{{ __('Baja todo el filtro, no solo esta página.') }}"
+                   class="btn-ghost !py-1.5 !px-3 text-xs">
+                    <svg class="mr-1 inline h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                         stroke-width="1.8" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>
+                    </svg>
+                    {{ __('Exportar a Excel') }}
+                </a>
+
                 <label class="ml-auto flex items-center gap-2 text-xs text-ink-muted">
                     {{ __('Por página') }}
                     <select wire:model.live="perPage" class="field-input !w-auto py-1 text-xs">
@@ -286,12 +306,12 @@
                     <div class="flex items-start justify-between gap-3">
                         <div class="min-w-0">
                             <a href="{{ route('transactions.booking', $row->booking) }}" wire:navigate
-                               class="font-semibold text-brand hover:underline">
+                               class="block truncate font-semibold text-brand hover:underline">
                                 {{ trim((string) $row->booking_number) ?: '—' }}
                             </a>
                             <a href="{{ route('transactions.show', $row->transc_id) }}" wire:navigate
-                               class="block truncate text-sm text-ink hover:underline">
-                                {{ $row->tran_number ?: 'Sin número' }}
+                               class="block truncate text-sm font-medium text-brand hover:underline">
+                                {{ $row->tran_number ?: __('Sin número') }}
                             </a>
                         </div>
                         <span class="{{ $status->classes() }} shrink-0">{{ $status->label() }}</span>
@@ -324,7 +344,12 @@
         </ul>
 
         {{-- Tabla (desde md) --}}
-        <div class="hidden overflow-x-auto md:block">
+        {{-- El <style> lo escribe `columnResizer` con los anchos guardados en
+             este navegador; va con `wire:ignore` para que el morph no lo borre
+             al repintar la tabla. --}}
+        <div id="tabla-transacciones" x-data="columnResizer('anchos.transacciones.{{ $this->screen }}')"
+             class="hidden overflow-x-auto md:block">
+            <style x-ref="reglas" wire:ignore></style>
             <table class="min-w-full text-sm">
                 <thead class="border-b border-line bg-panel text-xs uppercase tracking-wide text-ink-muted">
                     <tr>
@@ -332,7 +357,8 @@
                             <th class="w-8 px-3 py-2.5"><span class="sr-only">{{ __('Selección') }}</span></th>
                         @endif
                         @foreach ($columns as [$sortKey, $label, $align])
-                            <th class="whitespace-nowrap px-3 py-2.5 font-semibold {{ $align }}">
+                            @php $nth = $loop->iteration + ($this->allowsSelection() ? 1 : 0); @endphp
+                            <th class="relative whitespace-nowrap px-3 py-2.5 font-semibold {{ $align }}">
                                 @if ($sortKey)
                                     <button type="button" wire:click="sortBy('{{ $sortKey }}')" class="inline-flex items-center gap-1 transition hover:text-ink">
                                         {{ $label }}
@@ -343,6 +369,11 @@
                                 @else
                                     {{ $label }}
                                 @endif
+
+                                <span class="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-brand/50"
+                                      title="{{ __('Arrastra para cambiar el ancho; doble clic para restablecerlo.') }}"
+                                      @mousedown="arrastrar($event, {{ $nth }})"
+                                      @dblclick="restablecer({{ $nth }})"></span>
                             </th>
                         @endforeach
                     </tr>
@@ -350,8 +381,11 @@
 
                 <tbody class="divide-y divide-line">
                     @forelse ($rows as $row)
-                        @php $status = PaymentStatus::for($row); @endphp
-                        <tr class="transition hover:bg-raised {{ $row->cancelled ? 'opacity-50' : '' }}">
+                        @php
+                            $status = PaymentStatus::for($row);
+                            $marcada = $this->allowsSelection() && in_array((string) $row->transc_id, $selected);
+                        @endphp
+                        <tr class="transition {{ $marcada ? 'row-picked' : 'hover:bg-raised' }} {{ $row->cancelled ? 'opacity-50' : '' }}">
                             @if ($this->allowsSelection())
                                 <td class="px-3 py-2">
                                     <input type="checkbox" wire:model.live="selected" value="{{ $row->transc_id }}"
@@ -359,16 +393,20 @@
                                            class="h-4 w-4 rounded border-line bg-panel text-accent-500 focus:ring-accent-500">
                                 </td>
                             @endif
-                            <td class="whitespace-nowrap px-3 py-2">
+                            {{-- Hay bookings que encadenan diez referencias («MXO…-TRJPT42/21-…»)
+                                 y estiraban la tabla entera. Se recorta y el valor completo
+                                 queda en el `title`. --}}
+                            <td class="max-w-[12rem] truncate px-3 py-2" title="{{ trim((string) $row->booking_number) }}">
                                 <a href="{{ route('transactions.booking', $row->booking) }}" wire:navigate
                                    class="text-brand hover:underline">{{ trim((string) $row->booking_number) ?: '—' }}</a>
                             </td>
                             <td class="whitespace-nowrap px-3 py-2 text-ink-muted">
                                 {{ $row->tran_date ? \Illuminate\Support\Carbon::parse($row->tran_date)->format('d/m/Y') : '—' }}
                             </td>
-                            <td class="whitespace-nowrap px-3 py-2">
+                            <td class="max-w-[12rem] truncate px-3 py-2">
                                 <a href="{{ route('transactions.show', $row->transc_id) }}" wire:navigate
-                                   class="text-ink hover:text-brand hover:underline">{{ $row->tran_number ?: 'Ver' }}</a>
+                                   title="{{ __('Abrir').' '.($row->tran_number ?: __('la transacción')) }}"
+                                   class="font-medium text-brand hover:underline">{{ $row->tran_number ?: __('Abrir') }}</a>
                             </td>
                             <td class="max-w-[16rem] truncate px-3 py-2 text-ink-muted" title="{{ $row->customerName ?: $row->vendorName }}">
                                 {{ $row->customerName ?: ($row->vendorName ?: '—') }}

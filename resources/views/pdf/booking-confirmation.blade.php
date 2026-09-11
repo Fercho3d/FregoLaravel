@@ -3,9 +3,10 @@
     Yii2. La maqueta es la que el cliente recibe desde hace años: mismas tablas,
     mismas clases, mismos textos en inglés y las mismas fechas con hora.
 
-    Los datos de la empresa van fijos, como en el original. Ojo: ahí el RFC está
-    escrito a mano (FTM1507038V6) aunque el sistema ya factura con varias
-    compañías; se conserva para no cambiar el documento sin que lo pidan.
+    Los datos de la empresa salen de `config/marca.php`. En el original iban
+    escritos a mano en la plantilla, RFC incluido (FTM1507038V6), aunque el
+    sistema ya facturaba con varias compañías; sigue siendo una ficha única, y
+    quien la quiera por compañía tiene que pedirlo.
 --}}
 @php
     $fecha = fn ($valor) => empty($valor) ? 'no set' : \Illuminate\Support\Carbon::parse($valor)->format('d/m/Y h:i:s A');
@@ -14,21 +15,19 @@
 <div class="row">
     <div class="column">
         <div class="address">
-            Freight Global Operator</br>
-            Av Mariano Otero 2347-112 Col. Verde Valle<br/>
-            RFC:FTM1507038V6</br>
-            Tel: +5233130061992</br>
+            {{ \App\Support\Marca::empresa() }}<br />
+            @include('pdf.membrete')
         </div>
     </div>
     <div class="column">
         <h1 class="confirm-title" style="font-family: sans-serif">{{ $titulo }}</h1>
         <table>
             <tr>
-                <td class="backcolor">Reference</td>
+                <td class="backcolor">{{ __('impresos.reference') }}</td>
                 <td>{{ $texto($booking->booking_number) }}<br /></td>
             </tr>
             <tr>
-                <td class="backcolor">Creation Date</td>
+                <td class="backcolor">{{ __('impresos.creation_date') }}</td>
                 <td>{{ \Illuminate\Support\Carbon::parse($booking->created_at)->format('d/m/Y h:i:s A') }}<br/></td>
             </tr>
         </table>
@@ -39,7 +38,7 @@
     <div class="column">
         <table>
             <tr>
-                <td class="backcolor">Client Information</td>
+                <td class="backcolor">{{ __('impresos.client_information') }}</td>
             </tr>
             <tr>
                 <td style="text-align: left; vertical-align: top; height:125px;">
@@ -55,7 +54,7 @@
     <div class="column">
         <table>
             <tr>
-                <td class="backcolor" colspan="2">Equipment Delivery Address</td>
+                <td class="backcolor" colspan="2">{{ __('impresos.delivery_address') }}</td>
             </tr>
             <tr>
                 <td colspan="2">
@@ -67,7 +66,7 @@
                 </td>
             </tr>
             <tr>
-                <td class="backcolor">Spotting Date</td>
+                <td class="backcolor">{{ __('impresos.spotting_date') }}</td>
                 <td>{{ $fecha($continuidad?->pickup_date) }}</td>
             </tr>
         </table>
@@ -78,41 +77,41 @@
     <div class="column">
         <table id="table-1">
             <tr>
-                <td class="backcolor">Carrier</td>
+                <td class="backcolor">{{ __('impresos.carrier') }}</td>
                 <td>{{ $texto($naviera?->fullName) }}</td>
             </tr>
             <tr>
-                <td class="backcolor">Pick Up Place</td>
+                <td class="backcolor">{{ __('impresos.pick_up_place') }}</td>
                 <td>{{ $texto($recoleccion?->name) }}</td>
             </tr>
             <tr>
-                <td class="backcolor">Origin Port</td>
+                <td class="backcolor">{{ __('impresos.origin_port') }}</td>
                 <td>{{ $texto($puertoCarga) }}</td>
             </tr>
             <tr>
-                <td class="backcolor">Destination Port</td>
+                <td class="backcolor">{{ __('impresos.destination_port') }}</td>
                 <td>{{ $texto($puertoDescarga) }}</td>
             </tr>
             <tr>
-                <td class="backcolor">Final Destination</td>
+                <td class="backcolor">{{ __('impresos.final_destination') }}</td>
                 <td>{{ $texto($destinoFinal) }}</td>
             </tr>
         </table>
         <table id="table-2">
             <tr>
-                <td class="backcolor" style="width:43.5%">Cut off Date SI</td>
+                <td class="backcolor" style="width:43.5%">{{ __('impresos.cut_off_si') }}</td>
                 <td>{{ $fecha($continuidad?->SI_date) }}</td>
             </tr>
             <tr>
-                <td class="backcolor" style="width:43.5%">Port Closing date</td>
+                <td class="backcolor" style="width:43.5%">{{ __('impresos.port_closing') }}</td>
                 <td>{{ $fecha($continuidad?->doc_cut_of) }}</td>
             </tr>
             <tr>
-                <td class="backcolor">Departure Date</td>
+                <td class="backcolor">{{ __('impresos.departure_date') }}</td>
                 <td>{{ $fecha($booking->loading_EDT) }}</td>
             </tr>
             <tr>
-                <td class="backcolor">Arrival Date</td>
+                <td class="backcolor">{{ __('impresos.arrival_date') }}</td>
                 <td>{{ $fecha($booking->dicharge_ETA) }}</td>
             </tr>
         </table>
@@ -120,7 +119,7 @@
     <div class="column">
         <table id="zero-table">
             <tr>
-                <td class="backcolor">Remarks</td>
+                <td class="backcolor">{{ __('impresos.remarks') }}</td>
             </tr>
             <tr>
                 <td style="text-align: left; vertical-align: top; height:182px;">{!! nl2br(e((string) $booking->remarks)) !!}</td>
@@ -133,11 +132,11 @@
     <div class="full-col">
         <table class="lastTable">
             <tr>
-                <td class="backcolor">Number</td>
-                <td class="backcolor">Seal</td>
-                <td class="backcolor">Container Type</td>
-                <td class="backcolor">Commodity</td>
-                <td class="backcolor">Quantity</td>
+                <td class="backcolor">{{ __('impresos.number') }}</td>
+                <td class="backcolor">{{ __('impresos.seal') }}</td>
+                <td class="backcolor">{{ __('impresos.container_type') }}</td>
+                <td class="backcolor">{{ __('impresos.commodity') }}</td>
+                <td class="backcolor">{{ __('impresos.quantity') }}</td>
             </tr>
             @foreach ($contenedores as $contenedor)
                 <tr>
@@ -152,8 +151,8 @@
                 <td class="backcolor"></td>
                 <td class="backcolor"></td>
                 <td class="backcolor"></td>
-                <td class="backcolor">Totals</td>
-                <td class="backcolor">Pieces</td>
+                <td class="backcolor">{{ __('impresos.totals') }}</td>
+                <td class="backcolor">{{ __('impresos.pieces') }}</td>
             </tr>
             <tr>
                 <td></td>
@@ -172,16 +171,16 @@
         <div class="full-col">
             <table class="lastTable">
                 <tr>
-                    <th class="backcolor">Number</th>
-                    <th class="backcolor">Amount</th>
-                    <th class="backcolor">Currency</th>
+                    <th class="backcolor">{{ __('impresos.number') }}</th>
+                    <th class="backcolor">{{ __('impresos.amount') }}</th>
+                    <th class="backcolor">{{ __('impresos.currency') }}</th>
                     <th class="backcolor">TC</th>
                     <th class="backcolor">Subtotal %0</th>
                     <th class="backcolor">Subtotal %16</th>
                     <th class="backcolor">VAT 16%</th>
-                    <th class="backcolor">Ret VAT</th>
-                    <th class="backcolor">Non Deduc</th>
-                    <th class="backcolor">Amount</th>
+                    <th class="backcolor">{{ __('impresos.ret_vat') }}</th>
+                    <th class="backcolor">{{ __('impresos.non_deductible') }}</th>
+                    <th class="backcolor">{{ __('impresos.amount') }}</th>
                 </tr>
                 @foreach ($facturas as $factura)
                     <tr>
@@ -198,7 +197,7 @@
                     </tr>
                 @endforeach
                 <tr>
-                    <td colspan="9" class="total" style="text-align: right;"><b>Total</b></td>
+                    <td colspan="9" class="total" style="text-align: right;"><b>{{ __('impresos.total') }}</b></td>
                     <td class="total"><strong>$ {{ number_format($totalFacturado, 2) }}</strong></td>
                 </tr>
             </table>

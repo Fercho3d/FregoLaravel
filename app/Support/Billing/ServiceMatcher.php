@@ -2,9 +2,9 @@
 
 namespace App\Support\Billing;
 
-use App\Models\Frego\Booking;
-use App\Models\Frego\Client;
-use App\Models\Frego\Service;
+use App\Models\Core\Booking;
+use App\Models\Core\Client;
+use App\Models\Core\Service;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 
@@ -100,13 +100,13 @@ class ServiceMatcher
     {
         $consulta = $this->routeQuery($booking);
 
-        $this->matchColumn($consulta, 's.loading_port_id', $booking->loading_port);
-        $this->matchColumn($consulta, 's.dicharge_port_id', $booking->dicharge_port_id);
-        $this->matchColumn($consulta, 's.final_destination_id', $booking->final_destination_id);
+        $this->matchDimension($consulta, 'puerto_carga', 's.loading_port_id', $booking->loading_port);
+        $this->matchDimension($consulta, 'puerto_descarga', 's.dicharge_port_id', $booking->dicharge_port_id);
+        $this->matchDimension($consulta, 'destino_final', 's.final_destination_id', $booking->final_destination_id);
         $this->matchColumn($consulta, 's.client_id', $booking->client);
 
         if ($this->clientMatchesPickupPlace($booking)) {
-            $this->matchColumn($consulta, 's.pickup_place_id', $booking->pick_up_place_id);
+            $this->matchDimension($consulta, 'lugar_recoleccion', 's.pickup_place_id', $booking->pick_up_place_id);
         }
 
         return $consulta->get()->all();
@@ -170,17 +170,19 @@ class ServiceMatcher
 
         $consulta = $this->routeQuery($booking);
 
-        $this->matchColumn($consulta, 's.loading_port_id', $booking->loading_port);
-        $this->matchColumn($consulta, 's.dicharge_port_id', $booking->dicharge_port_id);
-        $this->matchColumn($consulta, 's.final_destination_id', $booking->final_destination_id);
+        $this->matchDimension($consulta, 'puerto_carga', 's.loading_port_id', $booking->loading_port);
+        $this->matchDimension($consulta, 'puerto_descarga', 's.dicharge_port_id', $booking->dicharge_port_id);
+        $this->matchDimension($consulta, 'destino_final', 's.final_destination_id', $booking->final_destination_id);
         $consulta->where('s.provider_id', $naviera);
 
         // Si hay transportista, el acarreo lo cobra él: a la naviera se le piden
         // los servicios sin lugar de recolección. Si no lo hay, la naviera hace
         // también el acarreo y su precio sí depende de dónde se recoge.
-        $booking->transport_id === null
-            ? $this->matchColumn($consulta, 's.pickup_place_id', $booking->pick_up_place_id)
-            : $consulta->whereNull('s.pickup_place_id');
+        if ($this->usaDimension('lugar_recoleccion')) {
+            $booking->transport_id === null
+                ? $this->matchColumn($consulta, 's.pickup_place_id', $booking->pick_up_place_id)
+                : $consulta->whereNull('s.pickup_place_id');
+        }
 
         return array_map(
             fn (object $fila) => $this->candidate(BillingBlock::Carrier, $fila, $this->carrierQuantity($fila)),
@@ -231,8 +233,8 @@ class ServiceMatcher
             ->orderBy('s.account_id')
             ->orderBy('s.service_id');
 
-        $this->matchColumn($consulta, 's.loading_port_id', $booking->loading_port);
-        $this->matchColumn($consulta, 's.pickup_place_id', $booking->pick_up_place_id);
+        $this->matchDimension($consulta, 'puerto_carga', 's.loading_port_id', $booking->loading_port);
+        $this->matchDimension($consulta, 'lugar_recoleccion', 's.pickup_place_id', $booking->pick_up_place_id);
 
         $empataron = $consulta->get()->all();
 
@@ -321,6 +323,32 @@ class ServiceMatcher
      * `where('columna', null)` no empata con nada. Sin esto, un booking sin
      * destino final dejaría de encontrar los servicios que tampoco lo tienen.
      */
+    /**
+     * Las dimensiones de ruta que esta instalación usa (`marca.emparejador_dimensiones`).
+     *
+     * Un negocio que no cobre por geografía las apaga y sus precios dejan de
+     * estar atados a puertos que no tiene. El cliente y el proveedor NO pasan
+     * por aquí a propósito: sin ellos, el precio de un proveedor se le aplicaría
+     * a otro.
+     */
+    private function usaDimension(string $dimension): bool
+    {
+        $configuradas = array_filter(array_map(
+            'trim',
+            explode(',', (string) config('marca.emparejador_dimensiones')),
+        ));
+
+        return $configuradas === [] || in_array($dimension, $configuradas, true);
+    }
+
+    /** `matchColumn`, pero solo si la instalación empareja por esa dimensión. */
+    private function matchDimension(Builder $consulta, string $dimension, string $columna, ?int $valor): void
+    {
+        if ($this->usaDimension($dimension)) {
+            $this->matchColumn($consulta, $columna, $valor);
+        }
+    }
+
     private function matchColumn(Builder $consulta, string $columna, ?int $valor): void
     {
         $valor === null

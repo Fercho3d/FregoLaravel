@@ -49,7 +49,7 @@
             <label class="block">
                 <span class="field-label text-xs">{{ __('Estado de pago') }}</span>
                 <select wire:model.live="paid" class="field-input mt-1 py-1.5 text-sm">
-                    @foreach (['' => 'Todas', '0' => 'Sin pagar', '2' => 'Parciales', '1' => 'Pagadas'] as $valor => $etiqueta)
+                    @foreach (['' => __('Todas'), '0' => __('Sin pagar'), '2' => __('Parciales'), '1' => __('Pagadas')] as $valor => $etiqueta)
                         <option value="{{ $valor }}" @selected((string) $valor === $paid)>{{ $etiqueta }}</option>
                     @endforeach
                 </select>
@@ -64,6 +64,16 @@
                 {{ __('Sumar todo el filtro') }}
             </button>
 
+            <a href="{{ $this->exportUrl() }}"
+               title="{{ __('Baja todo el filtro, no solo esta página.') }}"
+               class="btn-ghost !px-3 !py-1.5 text-xs">
+                <svg class="mr-1 inline h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                     stroke-width="1.8" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>
+                </svg>
+                {{ __('Exportar a Excel') }}
+            </a>
+
             <label class="ml-auto flex items-center gap-2 text-xs text-ink-muted">
                 {{ __('Por página') }}
                 <select wire:model.live="perPage" class="field-input !w-auto py-1 text-xs">
@@ -77,9 +87,9 @@
         @if ($totals !== null)
             <div class="mt-3 grid gap-2 border-t border-line pt-3 text-sm sm:grid-cols-3">
                 @foreach ([
-                    ['Ingreso del filtro', $totals['income']],
-                    ['Egreso del filtro', $totals['expense']],
-                    ['Utilidad del filtro', $totals['income'] - $totals['expense']],
+                    [__('Ingreso del filtro'), $totals['income']],
+                    [__('Egreso del filtro'), $totals['expense']],
+                    [__('Utilidad del filtro'), $totals['income'] - $totals['expense']],
                 ] as [$etiqueta, $valor])
                     <div class="flex justify-between gap-2 sm:block">
                         <span class="text-xs uppercase tracking-wide text-ink-faint">{{ $etiqueta }}</span>
@@ -153,7 +163,15 @@
                                 <a href="{{ route('transactions.booking', $fila->booking_id) }}" wire:navigate
                                    class="text-brand hover:underline">{{ trim((string) $fila->booking_number) ?: '—' }}</a>
                             </td>
-                            <td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ $fila->tran_number ?: '—' }}</td>
+                            <td class="whitespace-nowrap px-3 py-2">
+                                @if ($fila->tran_number)
+                                    <a href="{{ route('transactions.show', $fila->transc_id) }}" wire:navigate
+                                       title="{{ __('Al agrupar por booking, el número es el de una de las transacciones del grupo.') }}"
+                                       class="text-brand hover:underline">{{ $fila->tran_number }}</a>
+                                @else
+                                    <span class="text-ink-muted">—</span>
+                                @endif
+                            </td>
                             <td class="whitespace-nowrap px-3 py-2"><span class="{{ $estado->classes() }}">{{ $estado->label() }}</span></td>
                             <td class="whitespace-nowrap px-3 py-2 text-ink-muted">
                                 {{ $fila->booking_created_at ? \Illuminate\Support\Carbon::parse($fila->booking_created_at)->format('d/m/Y') : '—' }}

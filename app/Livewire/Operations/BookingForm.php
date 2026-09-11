@@ -3,9 +3,10 @@
 namespace App\Livewire\Operations;
 
 use App\Actions\Bookings\SendBookingConfirmation;
-use App\Models\Frego\Booking;
-use App\Models\Frego\Client;
-use App\Models\Frego\Provider;
+use App\Models\Core\Booking;
+use App\Models\Core\Client;
+use App\Models\Core\Provider;
+use App\Support\Expediente;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
@@ -71,9 +72,27 @@ class BookingForm extends Component
 
     public ?string $remarks = null;
 
+    // --- Flota propia ---
+    public ?string $operadorId = null;
+
+    public ?string $unidadId = null;
+
+    public ?string $cajaId = null;
+
+    /**
+     * Campos propios de esta instalación, por clave. Van en un arreglo y no en
+     * propiedades porque no se saben al escribir la clase: los define quien
+     * instala el sistema desde `/catalogos/campos-expediente`.
+     *
+     * @var array<string, mixed>
+     */
+    public array $propios = [];
+
     public function mount(?int $booking = null): void
     {
         abort_unless(auth()->user()?->isAdmin() ?? false, 403);
+
+        $this->propios = Expediente::valores($booking);
 
         if ($booking === null) {
             $this->loadingDate = now()->toDateString();
@@ -105,6 +124,9 @@ class BookingForm extends Component
         $this->commodity = $modelo->commodity;
         $this->setPoint = $modelo->set_point;
         $this->remarks = $modelo->remarks;
+        $this->operadorId = $this->asOption($modelo->operador_id);
+        $this->unidadId = $this->asOption($modelo->unidad_id);
+        $this->cajaId = $this->asOption($modelo->caja_id);
     }
 
     private function asOption(mixed $valor): ?string
@@ -115,11 +137,14 @@ class BookingForm extends Component
     public function save(): void
     {
         abort_unless(auth()->user()?->isAdmin() ?? false, 403);
-        abort_if($this->locked, 422, 'Este booking está cerrado y no se puede editar.');
+        abort_if($this->locked, 422, __('Este booking está cerrado y no se puede editar.'));
 
         $this->blanksToNull();
 
-        $datos = $this->validate([
+        // Lo que esta instalación no pide ni se valida ni se escribe. Ojo con
+        // el orden: se filtra ANTES de validar, porque una regla sobre un campo
+        // que la pantalla no enseñó dejaría el formulario imposible de guardar.
+        $datos = $this->validate(Expediente::soloVisibles([
             'bookingNumber' => ['required', 'string', 'max:128'],
             'hb' => ['nullable', 'string', 'max:64'],
             'customerReference' => ['nullable', 'string', 'max:64'],
@@ -140,32 +165,42 @@ class BookingForm extends Component
             'commodity' => ['nullable', 'string', 'max:50'],
             'setPoint' => ['nullable', 'string', 'max:50'],
             'remarks' => ['nullable', 'string'],
-        ], attributes: $this->etiquetas());
+            'operadorId' => ['nullable', Rule::exists('operador', 'operador_id')],
+            'unidadId' => ['nullable', Rule::exists('unidad', 'unidad_id')],
+            'cajaId' => ['nullable', Rule::exists('unidad', 'unidad_id')],
+        ] + Expediente::reglasPropias()), attributes: $this->etiquetas() + Expediente::etiquetasPropias());
 
         $modelo = $this->bookingId === null ? new Booking : Booking::findOrFail($this->bookingId);
 
-        $modelo->forceFill([
-            'booking_number' => $datos['bookingNumber'],
-            'HB' => $datos['hb'],
-            'customer_reference' => $datos['customerReference'],
-            'client' => (int) $datos['clientId'],
-            'booking_type' => $datos['bookingType'],
-            'vessel' => $this->resolveVessel(),
-            'carrier_id' => $this->entero($datos['carrierId']),
-            'transport_id' => $this->entero($datos['transportId']),
-            'custom_brocker_id' => $this->entero($datos['brokerId']),
-            'loading_port' => (int) $datos['loadingPort'],
-            'loading_EDT' => $datos['loadingDate'],
-            'dicharge_port_id' => (int) $datos['dischargePort'],
-            'dicharge_ETA' => $datos['arrivalDate'],
-            'pick_up_place_id' => (int) $datos['pickupPlace'],
-            'final_destination_id' => $this->entero($datos['finalDestination']),
-            'container_type' => $this->entero($datos['containerType']),
-            'commodity' => $datos['commodity'],
-            'set_point' => $datos['setPoint'],
-            'remarks' => $datos['remarks'],
-            'modified_by' => auth()->id(),
-        ]);
+        // Un campo apagado se OMITE del forceFill en vez de escribirse en nulo:
+        // si alguien lo apaga en una instalación con historial, lo que ya estaba
+        // capturado tiene que quedarse como está.
+        $modelo->forceFill(Expediente::aColumnas([
+            'bookingNumber' => $datos['bookingNumber'] ?? null,
+            'hb' => $datos['hb'] ?? null,
+            'customerReference' => $datos['customerReference'] ?? null,
+            'clientId' => (int) $datos['clientId'],
+            'bookingType' => $datos['bookingType'] ?? null,
+            // Solo se resuelve si el campo está encendido: si no, un alta
+            // rápida de buque colada por la petición crearía un renglón fantasma.
+            'vesselId' => Expediente::visible('vesselId') ? $this->resolveVessel() : null,
+            'carrierId' => $this->entero($datos['carrierId'] ?? null),
+            'transportId' => $this->entero($datos['transportId'] ?? null),
+            'brokerId' => $this->entero($datos['brokerId'] ?? null),
+            'loadingPort' => (int) $datos['loadingPort'],
+            'loadingDate' => $datos['loadingDate'],
+            'dischargePort' => (int) $datos['dischargePort'],
+            'arrivalDate' => $datos['arrivalDate'],
+            'pickupPlace' => (int) $datos['pickupPlace'],
+            'finalDestination' => $this->entero($datos['finalDestination'] ?? null),
+            'containerType' => $this->entero($datos['containerType'] ?? null),
+            'commodity' => $datos['commodity'] ?? null,
+            'setPoint' => $datos['setPoint'] ?? null,
+            'remarks' => $datos['remarks'] ?? null,
+            'operadorId' => $this->entero($datos['operadorId'] ?? null),
+            'unidadId' => $this->entero($datos['unidadId'] ?? null),
+            'cajaId' => $this->entero($datos['cajaId'] ?? null),
+        ]) + ['modified_by' => auth()->id()]);
 
         if ($this->bookingId === null) {
             // Nace como booking real y no como borrador: el listado del sistema
@@ -182,6 +217,8 @@ class BookingForm extends Component
 
         $modelo->save();
 
+        Expediente::guardaValores((int) $modelo->booking_id, $this->propios);
+
         // El alta de un booking en firme le avisa al cliente con la confirmación
         // en PDF, como en el original. Allá la condición era `is_draft = 0` y
         // `mode != 9`; aquí todo booking nuevo nace así.
@@ -189,7 +226,7 @@ class BookingForm extends Component
 
         session()->flash('status', match (true) {
             ! $esNuevo => 'Booking actualizado.',
-            $avisados !== [] => 'Booking creado. Se mandó la confirmación a '.implode(', ', $avisados).'.',
+            $avisados !== [] => __('Booking creado. Se mandó la confirmación a ').implode(', ', $avisados).'.',
             default => 'Booking creado.',
         });
         $this->redirectRoute('operations.bookings.show', $modelo->booking_id, navigate: true);
@@ -234,23 +271,23 @@ class BookingForm extends Component
     private function etiquetas(): array
     {
         return [
-            'bookingNumber' => 'número de booking',
+            'bookingNumber' => __('número de booking'),
             'hb' => 'HB',
-            'customerReference' => 'referencia del cliente',
+            'customerReference' => __('referencia del cliente'),
             'clientId' => 'cliente',
             'vesselId' => 'buque',
             'newVessel' => 'buque nuevo',
             'carrierId' => 'naviera',
             'transportId' => 'transportista',
             'brokerId' => 'agente aduanal',
-            'loadingPort' => 'puerto de carga',
-            'loadingDate' => 'fecha de carga',
-            'dischargePort' => 'puerto de descarga',
-            'arrivalDate' => 'fecha de arribo',
-            'pickupPlace' => 'lugar de recolección',
+            'loadingPort' => __('puerto de carga'),
+            'loadingDate' => __('fecha de carga'),
+            'dischargePort' => __('puerto de descarga'),
+            'arrivalDate' => __('fecha de arribo'),
+            'pickupPlace' => __('lugar de recolección'),
             'finalDestination' => 'destino final',
-            'containerType' => 'tipo de contenedor',
-            'commodity' => 'mercancía',
+            'containerType' => __('tipo de contenedor'),
+            'commodity' => __('mercancía'),
             'setPoint' => 'temperatura',
         ];
     }
@@ -268,8 +305,13 @@ class BookingForm extends Component
             'lugares' => DB::table('pickup_place')->orderBy('name')->pluck('name', 'pick_id')->all(),
             'destinos' => DB::table('final_destination')->where('deleted', 0)->orderBy('name')->pluck('name', 'final_destination_id')->all(),
             'tiposContenedor' => DB::table('container_types')->orderBy('container_name')->pluck('container_name', 'contType_id')->all(),
+            // Solo los activos: un operador dado de baja o una unidad vendida no
+            // deben poder asignarse a un viaje nuevo.
+            'operadores' => DB::table('operador')->where('activo', 1)->orderBy('nombre')->pluck('nombre', 'operador_id')->all(),
+            'tractores' => DB::table('unidad')->where('activo', 1)->where('tipo', 'tractor')->orderBy('numero')->pluck('numero', 'unidad_id')->all(),
+            'cajas' => DB::table('unidad')->where('activo', 1)->where('tipo', 'caja')->orderBy('numero')->pluck('numero', 'unidad_id')->all(),
         ])->layout('components.app-layout', [
-            'title' => $this->bookingId === null ? 'Nuevo booking' : 'Editar booking',
+            'title' => $this->bookingId === null ? __('Nuevo booking') : __('Editar booking'),
         ]);
     }
 }

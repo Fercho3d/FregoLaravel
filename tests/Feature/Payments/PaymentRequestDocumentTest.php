@@ -2,11 +2,11 @@
 
 namespace Tests\Feature\Payments;
 
-use App\Models\Frego\PaymentRequest;
+use App\Models\Core\PaymentRequest;
 use App\Models\User;
 use App\Support\Pdf\PaymentRequestDocument;
 use Illuminate\Support\Facades\DB;
-use Tests\Support\FregoSchema;
+use Tests\Support\CoreSchema;
 use Tests\TestCase;
 
 /** La solicitud de pago impresa: el cheque y las facturas que cubre. */
@@ -16,8 +16,8 @@ class PaymentRequestDocumentTest extends TestCase
     {
         parent::setUp();
 
-        FregoSchema::create();
-        FregoSchema::createUsers();
+        CoreSchema::create();
+        CoreSchema::createUsers();
 
         DB::table('account')->insert([['account_id' => 1, 'account_name' => 'Pesos', 'prefix' => 'MXN', 'default' => 1]]);
         DB::table('exchange')->insert([['exchange_id' => 1, 'exchange_value' => 1, 'date_exchange' => '2026-01-15', 'account' => 1]]);

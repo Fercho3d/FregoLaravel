@@ -2,6 +2,7 @@
 
 namespace App\Queries;
 
+use App\Support\Milestones\MilestoneCatalog;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -114,6 +115,10 @@ class BookingQuery
      */
     private function progress(): Builder
     {
+        if (config('marca.avance') !== 'verificacion') {
+            return $this->progresoPorHitos();
+        }
+
         $contadas = implode(' + ', array_map(
             fn (string $check) => "CASE WHEN `{$check}_chk_date` IS NOT NULL THEN 1 ELSE 0 END",
             self::CHECKS,
@@ -124,6 +129,27 @@ class BookingQuery
                 'booking AS booking_id, ROUND((100 / '.self::DIVISOR_HISTORICO.") * ({$contadas}), 2) AS total_completed"
             )
             ->groupBy('booking');
+    }
+
+    /**
+     * Avance por hitos: cuántos pasos del catálogo tienen fecha.
+     *
+     * Es el que ve cualquier instalación que no sea la original. El de las
+     * casillas heredadas cuenta 27 verificaciones de CAMPO —que el buque esté
+     * bien escrito, que el cliente sea el que es— y no pasos de la operación:
+     * en una empresa de camiones ese porcentaje no significa nada, y encima no
+     * cuadraba con la lista que se enseña en el detalle.
+     */
+    private function progresoPorHitos(): Builder
+    {
+        $total = max(1, MilestoneCatalog::activos()->count());
+
+        return DB::table('hito_por_expediente as hpe')
+            ->join('hito as h', 'h.hito_id', '=', 'hpe.hito_id')
+            ->where('h.activo', 1)
+            ->whereNotNull('hpe.fecha')
+            ->selectRaw("hpe.booking AS booking_id, ROUND(100 * COUNT(*) / {$total}, 2) AS total_completed")
+            ->groupBy('hpe.booking');
     }
 
     private function applyFilters(Builder $query): void

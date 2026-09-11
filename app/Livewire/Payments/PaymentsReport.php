@@ -2,7 +2,7 @@
 
 namespace App\Livewire\Payments;
 
-use App\Models\Frego\Bank;
+use App\Models\Core\Bank;
 use App\Queries\PaymentRequestFilters;
 use App\Queries\PaymentRequestQuery;
 use Illuminate\Support\Collection;
@@ -77,9 +77,9 @@ class PaymentsReport extends Component
     public function title(): string
     {
         return match ($this->mode) {
-            'vendor' => 'Pagos por proveedor',
-            'general' => 'Cobros y pagos, general',
-            default => 'Cobros por cliente',
+            'vendor' => __('Pagos por proveedor'),
+            'general' => __('Cobros y pagos, general'),
+            default => __('Cobros por cliente'),
         };
     }
 

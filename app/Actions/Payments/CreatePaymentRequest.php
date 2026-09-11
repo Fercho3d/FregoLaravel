@@ -2,9 +2,9 @@
 
 namespace App\Actions\Payments;
 
-use App\Models\Frego\PaymentByTransaction;
-use App\Models\Frego\PaymentRequest;
-use App\Models\Frego\Transaction;
+use App\Models\Core\PaymentByTransaction;
+use App\Models\Core\PaymentRequest;
+use App\Models\Core\Transaction;
 use App\Models\User;
 use App\Support\ExchangeRates;
 use Illuminate\Support\Carbon;

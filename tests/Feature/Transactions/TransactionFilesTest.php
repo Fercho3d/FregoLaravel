@@ -3,7 +3,7 @@
 namespace Tests\Feature\Transactions;
 
 use App\Livewire\Transactions\TransactionForm;
-use App\Models\Frego\Transaction;
+use App\Models\Core\Transaction;
 use App\Models\User;
 use App\Support\TransactionFiles;
 use Illuminate\Http\UploadedFile;
@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
-use Tests\Support\FregoSchema;
+use Tests\Support\CoreSchema;
 use Tests\TestCase;
 
 /**
@@ -27,8 +27,8 @@ class TransactionFilesTest extends TestCase
     {
         parent::setUp();
 
-        FregoSchema::create();
-        Storage::fake('frego');
+        CoreSchema::create();
+        Storage::fake('documentos');
 
         Http::preventStrayRequests();
         Http::fake(['sidofqa.segob.gob.mx/*' => Http::response(['ListaIndicadores' => []])]);
@@ -61,7 +61,7 @@ class TransactionFilesTest extends TestCase
             ->assertHasNoErrors();
 
         // Ojo: el XML también vive en la subcarpeta `pdf`; así lo dejó el original.
-        Storage::disk('frego')->assertExists('transactions/1/pdf/factura 001.pdf');
+        Storage::disk('documentos')->assertExists('transactions/1/pdf/factura 001.pdf');
 
         $this->assertSame('factura 001.pdf', Transaction::find(1)->pdf_attach);
     }
@@ -89,7 +89,7 @@ class TransactionFilesTest extends TestCase
             ->call('save')
             ->assertHasNoErrors();
 
-        Storage::disk('frego')->assertExists('transactions/1/pdf/factura.xml');
+        Storage::disk('documentos')->assertExists('transactions/1/pdf/factura.xml');
         $this->assertSame('factura.xml', Transaction::find(1)->xml_attach);
     }
 
@@ -100,7 +100,7 @@ class TransactionFilesTest extends TestCase
      */
     public function test_se_encuentra_el_archivo_aunque_la_extension_este_en_mayusculas(): void
     {
-        Storage::disk('frego')->put('transactions/1/pdf/FACTURA.PDF', 'contenido');
+        Storage::disk('documentos')->put('transactions/1/pdf/FACTURA.PDF', 'contenido');
         DB::table('transaction')->where('transc_id', 1)->update(['pdf_attach' => 'FACTURA.pdf']);
 
         $ruta = app(TransactionFiles::class)->path(Transaction::find(1), TransactionFiles::PDF);
@@ -120,7 +120,7 @@ class TransactionFilesTest extends TestCase
 
     public function test_la_descarga_entrega_el_archivo(): void
     {
-        Storage::disk('frego')->put('transactions/1/pdf/factura.pdf', 'contenido');
+        Storage::disk('documentos')->put('transactions/1/pdf/factura.pdf', 'contenido');
         DB::table('transaction')->where('transc_id', 1)->update(['pdf_attach' => 'factura.pdf']);
 
         $this->actingAs($this->admin())

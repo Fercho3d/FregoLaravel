@@ -53,7 +53,7 @@ class FakePacClient implements PacClient
     {
         return '<?xml version="1.0" encoding="UTF-8"?>'
             .'<cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/4" xmlns:tfd="http://www.sat.gob.mx/TimbreFiscalDigital">'
-            .'<cfdi:Emisor Rfc="FTM1507038V6" Nombre="FREGO TRANSPORTACIONES MARITIMAS"/>'
+            .'<cfdi:Emisor Rfc="XAXX010101000" Nombre="EMPRESA DEMO SA DE CV"/>'
             .'<cfdi:Complemento><tfd:TimbreFiscalDigital UUID="'.$this->uuid.'"/></cfdi:Complemento>'
             .'</cfdi:Comprobante>';
     }
