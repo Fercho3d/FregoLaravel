@@ -149,19 +149,40 @@
                     {{ __('Sumar todo el filtro') }}
                 </button>
                 @if ($this->allowsSelection() && auth()->user()?->isAdmin())
+                    {{-- Timbrar en lote (solo Facturas): equivale al «Seal» del sistema viejo. --}}
+                    @if ($screen === 'invoice')
+                        <button type="button" wire:click="stampSelected"
+                                wire:confirm="{{ __('Se timbrarán ante el SAT las facturas seleccionadas. No se puede deshacer sin cancelarlas. ¿Continuar?') }}"
+                                wire:loading.attr="disabled" wire:target="stampSelected"
+                                @disabled($selected === [])
+                                class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition
+                                       {{ $selected === []
+                                            ? 'cursor-not-allowed border border-line text-ink-faint'
+                                            : 'bg-accent-500 text-white shadow-sm hover:bg-accent-600' }}">
+                            <x-spinner wire:loading wire:target="stampSelected" class="h-3.5 w-3.5" />
+                            {{ __('Timbrar seleccionadas') }}
+                            @if ($selected !== [])
+                                <span class="rounded-full bg-white/25 px-1.5 py-0.5 tabular-nums">{{ count($selected) }}</span>
+                            @endif
+                        </button>
+                    @endif
+
+                    {{-- Pagar: lleva a la pantalla de pago con las seleccionadas. --}}
                     <button type="button" wire:click="createPaymentRequest"
+                            title="{{ __('Agrupa las seleccionadas en una solicitud de pago') }}"
                             @disabled($selected === [])
-                            class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition
+                            class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition
                                    {{ $selected === []
-                                        ? 'cursor-not-allowed border border-line text-ink-faint'
-                                        : 'bg-accent-500 text-white shadow-sm hover:bg-accent-600' }}">
+                                        ? 'cursor-not-allowed border-line text-ink-faint'
+                                        : 'border-line text-ink hover:bg-raised' }}">
                         <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                             stroke-width="2" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v8m-4-4h8M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/>
+                             stroke-width="1.8" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 7h14a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18"/>
                         </svg>
-                        {{ __('Agrupar en solicitud de pago') }}
+                        {{ __('Pagar') }}
                         @if ($selected !== [])
-                            <span class="rounded-full bg-white/25 px-1.5 py-0.5 tabular-nums">{{ count($selected) }}</span>
+                            <span class="rounded-full bg-ink/10 px-1.5 py-0.5 tabular-nums">{{ count($selected) }}</span>
                         @endif
                     </button>
                 @endif
@@ -188,6 +209,36 @@
     </div>
 
     @error('selected') <p class="alert-danger">{{ $message }}</p> @enderror
+
+    {{-- Resultado del timbrado en lote: cuántas se timbraron y cuáles no. --}}
+    @if ($stampResult !== null)
+        <div class="card space-y-2 p-4 text-sm">
+            <div class="flex items-center justify-between gap-3">
+                <p class="font-semibold text-ink">
+                    {{ __('Timbrado en lote') }}:
+                    <span class="text-emerald-600 dark:text-emerald-400">{{ $stampResult['done'] }} {{ __('timbradas') }}</span>
+                    @if (count($stampResult['errors']) > 0)
+                        · <span class="text-brand">{{ count($stampResult['errors']) }} {{ __('con error') }}</span>
+                    @endif
+                </p>
+                <button type="button" wire:click="$set('stampResult', null)" class="text-xs text-ink-faint hover:text-ink">{{ __('Cerrar') }}</button>
+            </div>
+
+            @if (count($stampResult['errors']) > 0)
+                <ul class="space-y-0.5 text-xs text-ink-muted">
+                    @foreach ($stampResult['errors'] as $factura => $motivo)
+                        <li><span class="font-medium text-ink">{{ $factura }}</span> — {{ $motivo }}</li>
+                    @endforeach
+                </ul>
+            @endif
+
+            @if ($stampResult['pending'] > 0)
+                <p class="text-xs text-ink-faint">
+                    {{ __('Quedaron :n sin procesar (se timbran por tandas). Vuelve a seleccionarlas y timbra otra vez.', ['n' => $stampResult['pending']]) }}
+                </p>
+            @endif
+        </div>
+    @endif
 
     {{-- Utilidad por booking. Solo en Facturas y bajo demanda: es la consulta
          más cara de la pantalla y no siempre se ocupa. --}}

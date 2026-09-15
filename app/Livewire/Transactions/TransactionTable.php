@@ -2,12 +2,15 @@
 
 namespace App\Livewire\Transactions;
 
+use App\Actions\Transactions\StampTransaction;
 use App\Models\Core\Account;
 use App\Models\Core\Booking;
 use App\Models\Core\Company;
+use App\Models\Core\Transaction;
 use App\Queries\ProfitByBooking;
 use App\Queries\TransactionFilters;
 use App\Queries\TransactionQuery;
+use App\Support\Cfdi\CfdiException;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -81,6 +84,19 @@ class TransactionTable extends Component
      */
     public array $selected = [];
 
+    /**
+     * Resultado del último timbrado en lote: cuántas se timbraron y qué facturas
+     * fallaron con su motivo. Se muestra arriba del listado.
+     */
+    public ?array $stampResult = null;
+
+    /**
+     * Cuántas facturas se timbran por tanda. Cada una es una llamada al PAC, así
+     * que se acota para no exceder el tiempo de la petición; si hay más, se
+     * timbran en varias vueltas.
+     */
+    private const STAMP_BATCH = 25;
+
     /** Milisegundos que tardó la consulta de la última pintada. */
     public float $queryMs = 0;
 
@@ -132,6 +148,7 @@ class TransactionTable extends Component
         $this->totals = null;
         $this->profit = null;
         $this->selected = [];
+        $this->stampResult = null;
     }
 
     public function sortBy(string $column): void
@@ -153,6 +170,7 @@ class TransactionTable extends Component
         $this->totals = null;
         $this->profit = null;
         $this->selected = [];
+        $this->stampResult = null;
         $this->resetPage();
     }
 
@@ -171,6 +189,53 @@ class TransactionTable extends Component
             'ids' => implode(',', $this->selected),
             'volver' => $this->currentUrl(),
         ], navigate: true);
+    }
+
+    /**
+     * Timbra en lote las facturas seleccionadas, como el botón «Seal» del
+     * sistema viejo. Cada timbrado es una llamada real al PAC, así que se
+     * procesan de a pocas por tanda y se informa una por una: las que se
+     * timbraron y las que no, con su motivo (ya timbrada, sin conceptos, etc.).
+     */
+    public function stampSelected(StampTransaction $stamp): void
+    {
+        abort_unless(auth()->user()?->isAdmin() ?? false, 403);
+
+        // Solo se timbran facturas al cliente, no costos de proveedor.
+        if ($this->screen !== 'invoice') {
+            return;
+        }
+
+        if ($this->selected === []) {
+            $this->addError('selected', __('Marca al menos una factura para timbrar.'));
+
+            return;
+        }
+
+        $lote = array_slice($this->selected, 0, self::STAMP_BATCH);
+
+        // Cada factura es una llamada al PAC; puede tardar.
+        set_time_limit(0);
+
+        $done = 0;
+        $errors = [];
+
+        foreach (Transaction::whereIn('transc_id', $lote)->get() as $factura) {
+            try {
+                $stamp->handle($factura);
+                $done++;
+            } catch (CfdiException $e) {
+                $errors[$factura->tran_number ?: (string) $factura->transc_id] = $e->getMessage();
+            }
+        }
+
+        $this->stampResult = [
+            'done' => $done,
+            'errors' => $errors,
+            'pending' => max(0, count($this->selected) - count($lote)),
+        ];
+
+        $this->selected = [];
     }
 
     /**

@@ -900,5 +900,13 @@
     "Llevar el taller y el almacén": "Run the workshop and the parts store",
     "Órdenes de mantenimiento por unidad —preventivo y correctivo, propio o externo— con las refacciones que se le ponen, descontadas de un almacén con mínimos y kárdex. Apágalo si todo el mantenimiento se manda fuera y no llevas refacciones.": "Maintenance orders per unit — scheduled and repair, in-house or outside — with the parts fitted to it, taken out of a store with reorder levels and a movement history. Turn it off if all maintenance goes out of house and you keep no parts.",
     "Taller propio": "In-house workshop",
-    "Taller externo": "Outside workshop"
+    "Taller externo": "Outside workshop",
+    "Marca al menos una factura para timbrar.": "Select at least one invoice to stamp.",
+    "Se timbrarán ante el SAT las facturas seleccionadas. No se puede deshacer sin cancelarlas. ¿Continuar?": "The selected invoices will be stamped with the SAT. This cannot be undone without cancelling them. Continue?",
+    "Timbrar seleccionadas": "Stamp selected",
+    "Agrupa las seleccionadas en una solicitud de pago": "Groups the selected ones into a payment request",
+    "Timbrado en lote": "Bulk stamping",
+    "timbradas": "stamped",
+    "con error": "with errors",
+    "Quedaron :n sin procesar (se timbran por tandas). Vuelve a seleccionarlas y timbra otra vez.": ":n left unprocessed (they are stamped in batches). Select them again and stamp once more."
 }

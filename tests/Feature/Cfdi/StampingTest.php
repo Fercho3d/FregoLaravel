@@ -3,6 +3,7 @@
 namespace Tests\Feature\Cfdi;
 
 use App\Livewire\Transactions\TransactionDetail;
+use App\Livewire\Transactions\TransactionTable;
 use App\Models\Core\Transaction;
 use App\Models\User;
 use App\Support\Cfdi\PacClient;
@@ -185,5 +186,49 @@ class StampingTest extends TestCase
     public function test_una_factura_sin_timbrar_no_se_cancela(): void
     {
         $this->detalle()->call('startCancel')->assertForbidden();
+    }
+
+    /**
+     * Timbrado en lote desde el listado (el «Seal» del sistema viejo): timbra las
+     * que se pueden e informa una por una las que no.
+     */
+    public function test_timbrado_en_lote_desde_el_listado(): void
+    {
+        // Una segunda factura YA timbrada, para ver que el lote la reporta como
+        // error sin volver a timbrarla ni tocar su sello.
+        DB::table('transaction')->insert([
+            'transc_id' => 2, 'booking' => 1, 'tran_type' => 0, 'customer' => 1, 'company_id' => 1,
+            'account' => 1, 'tran_number' => 'F-2', 'tran_date' => '2026-01-15', 'invoice_type' => 1,
+            'seal' => 'YA-TIMBRADA',
+        ]);
+        DB::table('charge')->insert([
+            'charge_id' => 2, 'transaction' => 2, 'type' => 1, 'quantity' => 1, 'price' => 500,
+            'description' => 'Flete',
+        ]);
+
+        $this->actingAs($this->usuario());
+
+        $resultado = Livewire::test(TransactionTable::class, ['screen' => 'invoice'])
+            ->set('selected', [1, 2])
+            ->call('stampSelected')
+            ->assertHasNoErrors()
+            ->get('stampResult');
+
+        $this->assertSame(1, $resultado['done']);
+        $this->assertArrayHasKey('F-2', $resultado['errors']);
+        $this->assertSame($this->pac->uuid, Transaction::find(1)->seal);
+        $this->assertSame('YA-TIMBRADA', Transaction::find(2)->seal);
+    }
+
+    public function test_un_no_administrador_no_timbra_en_lote(): void
+    {
+        $this->actingAs($this->usuario(User::ROLE_USER));
+
+        Livewire::test(TransactionTable::class, ['screen' => 'invoice'])
+            ->set('selected', [1])
+            ->call('stampSelected')
+            ->assertForbidden();
+
+        $this->assertNull(Transaction::find(1)->seal);
     }
 }
