@@ -82,30 +82,38 @@
         {{-- Los filtros llevan `value` y `@selected` además de `wire:model`: viven
              en la dirección, así que al abrir un enlace compartido la tabla ya
              viene filtrada y los campos tienen que enseñar por qué. --}}
-        <div x-show="abierto" x-cloak class="grid gap-3 border-t border-line p-4 sm:grid-cols-2 lg:grid-cols-4">
+        {{-- Los filtros ya no consultan en vivo: se capturan y se aplican con el
+             botón «Filtrar» (o Enter). Así escribir no dispara una consulta por
+             tecla y la pantalla se siente ligera. Por eso los campos usan
+             `wire:model` diferido, no `.live`. --}}
+        <form wire:submit="filtrar" x-show="abierto" x-cloak class="grid gap-3 border-t border-line p-4 sm:grid-cols-2 lg:grid-cols-4">
             <label class="block">
                 <span class="field-label text-xs">{{ __('Número') }}</span>
-                <input type="text" wire:model.live.debounce.400ms="tranNumber" value="{{ $tranNumber }}" class="field-input mt-1 py-1.5 text-sm" placeholder="{{ __('F-1234') }}">
+                <input type="text" wire:model="tranNumber" value="{{ $tranNumber }}" class="field-input mt-1 py-1.5 text-sm" placeholder="{{ __('F-1234') }}">
             </label>
 
             <label class="block">
                 <span class="field-label text-xs">{{ __('Booking') }}</span>
-                <input type="text" wire:model.live.debounce.400ms="bookingNumber" value="{{ $bookingNumber }}" class="field-input mt-1 py-1.5 text-sm" placeholder="{{ __('MEX…') }}">
+                <input type="text" wire:model="bookingNumber" value="{{ $bookingNumber }}" class="field-input mt-1 py-1.5 text-sm" placeholder="{{ __('MEX…') }}">
             </label>
 
             <label class="block">
                 <span class="field-label text-xs">{{ __('Cliente o proveedor') }}</span>
-                <input type="text" wire:model.live.debounce.400ms="appliedTo" value="{{ $appliedTo }}" class="field-input mt-1 py-1.5 text-sm" placeholder="{{ __('Nombre') }}">
+                <input type="text" wire:model="appliedTo" value="{{ $appliedTo }}" class="field-input mt-1 py-1.5 text-sm" placeholder="{{ __('Nombre') }}">
             </label>
 
-            <label class="block">
-                <span class="field-label text-xs">{{ __('Fechas') }} <span class="text-ink-faint">{{ __('(dd/mm/aaaa - dd/mm/aaaa)') }}</span></span>
-                <input type="text" wire:model.live.debounce.600ms="dates" value="{{ $dates }}" class="field-input mt-1 py-1.5 text-sm" placeholder="01/01/2025 - 31/12/2025">
-            </label>
+            {{-- El calendario lo maneja flatpickr (ver `dateRangePicker` en app.js);
+                 va en `wire:ignore` para que el repintado de Livewire no lo pise. --}}
+            <div class="block" wire:ignore x-data="dateRangePicker(@js($dates))">
+                <span class="field-label text-xs">{{ __('Fechas') }}</span>
+                <input type="text" x-ref="input" readonly value="{{ $dates }}"
+                       class="field-input mt-1 py-1.5 text-sm cursor-pointer bg-panel"
+                       placeholder="{{ __('Elegir rango…') }}">
+            </div>
 
             <label class="block">
                 <span class="field-label text-xs">{{ __('Compañía') }}</span>
-                <select wire:model.live="companyId" class="field-input mt-1 py-1.5 text-sm">
+                <select wire:model="companyId" class="field-input mt-1 py-1.5 text-sm">
                     <option value="">{{ __('Todas') }}</option>
                     @foreach ($companies as $id => $name)
                         <option value="{{ $id }}" @selected((string) $id === $companyId)>{{ $name }}</option>
@@ -115,7 +123,7 @@
 
             <label class="block">
                 <span class="field-label text-xs">{{ __('Divisa') }}</span>
-                <select wire:model.live="accountId" class="field-input mt-1 py-1.5 text-sm">
+                <select wire:model="accountId" class="field-input mt-1 py-1.5 text-sm">
                     <option value="">{{ __('Todas') }}</option>
                     @foreach ($currencies as $id => $prefix)
                         <option value="{{ $id }}" @selected((string) $id === $accountId)>{{ $prefix }}</option>
@@ -125,7 +133,7 @@
 
             <label class="block">
                 <span class="field-label text-xs">{{ __('Estado de pago') }}</span>
-                <select wire:model.live="paid" class="field-input mt-1 py-1.5 text-sm">
+                <select wire:model="paid" class="field-input mt-1 py-1.5 text-sm">
                     {{-- Ojo con el `(string)`: PHP convierte en enteros las claves
                          numéricas del arreglo, y la comparación estricta fallaría. --}}
                     @foreach (['' => __('Todas'), '0' => __('Sin pagar'), '2' => __('Parciales'), '1' => __('Pagadas')] as $valor => $etiqueta)
@@ -136,14 +144,22 @@
 
             <label class="block">
                 <span class="field-label text-xs">{{ __('Canceladas') }}</span>
-                <select wire:model.live="showCancelled" class="field-input mt-1 py-1.5 text-sm">
+                <select wire:model="showCancelled" class="field-input mt-1 py-1.5 text-sm">
                     @foreach (['0' => __('Solo vigentes'), '1' => __('Vigentes y canceladas'), '2' => __('Solo canceladas')] as $valor => $etiqueta)
                         <option value="{{ $valor }}" @selected((string) $valor === $showCancelled)>{{ $etiqueta }}</option>
                     @endforeach
                 </select>
             </label>
 
-            <div class="flex items-end gap-2 sm:col-span-2 lg:col-span-4">
+            <div class="flex flex-wrap items-end gap-2 sm:col-span-2 lg:col-span-4">
+                <button type="submit" wire:loading.attr="disabled" wire:target="filtrar"
+                        class="inline-flex items-center gap-1.5 rounded-lg bg-accent-500 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-accent-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/50">
+                    <x-spinner wire:loading wire:target="filtrar" class="h-3.5 w-3.5" />
+                    <svg wire:loading.remove wire:target="filtrar" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 4h18l-7 8v6l-4 2v-8z"/>
+                    </svg>
+                    {{ __('Filtrar') }}
+                </button>
                 <button type="button" wire:click="clearFilters" class="btn-ghost !py-1.5 !px-3 text-xs">{{ __('Limpiar filtros') }}</button>
 
                 {{-- Switch «mostrar sumatoria»: enciende el pie de totales y se recuerda en
@@ -217,7 +233,7 @@
                     </select>
                 </label>
             </div>
-        </div>
+        </form>
     </div>
 
     @error('selected') <p class="alert-danger">{{ $message }}</p> @enderror

@@ -1,3 +1,53 @@
+import flatpickr from 'flatpickr';
+
+/**
+ * Selector de rango de fechas (el campo «Fechas» de los listados).
+ *
+ * Abre un calendario al hacer clic y deja elegir inicio y fin. Escribe el valor
+ * en la propiedad de Livewire con el MISMO formato que ya espera el servidor
+ * ("dd/mm/aaaa - dd/mm/aaaa"), pero de forma diferida: no dispara la consulta:
+ * eso lo hace el botón «Filtrar», para que capturar no se sienta pesado.
+ */
+document.addEventListener('alpine:init', () => {
+    window.Alpine.data('dateRangePicker', (valorInicial) => ({
+        fp: null,
+
+        init() {
+            this.fp = flatpickr(this.$refs.input, {
+                mode: 'range',
+                dateFormat: 'd/m/Y',
+                locale: { rangeSeparator: ' - ', firstDayOfWeek: 1 },
+                defaultDate: this.parse(valorInicial),
+                onChange: (fechas, texto) => {
+                    // Un rango solo se aplica cuando están las dos fechas; al
+                    // limpiar el calendario se vacía el filtro.
+                    if (fechas.length === 2) {
+                        this.$wire.set('dates', texto, false);
+                    } else if (fechas.length === 0) {
+                        this.$wire.set('dates', '', false);
+                    }
+                },
+            });
+
+            // Si el servidor limpia el filtro («Limpiar filtros»), vaciar también
+            // el calendario, que vive fuera del alcance de Livewire (wire:ignore).
+            this.$watch('$wire.dates', (valor) => {
+                if (!valor && this.fp.selectedDates.length) {
+                    this.fp.clear();
+                }
+            });
+        },
+
+        parse(valor) {
+            return valor && valor.includes(' - ') ? valor.split(' - ') : null;
+        },
+
+        destroy() {
+            this.fp?.destroy();
+        },
+    }));
+});
+
 /**
  * Tema claro/oscuro.
  *

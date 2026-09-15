@@ -167,6 +167,17 @@ class TransactionTable extends Component
         $this->resetPage();
     }
 
+    /**
+     * Aplica los filtros capturados. Los campos son diferidos (no consultan por
+     * tecla): al enviar el formulario sus valores llegan de golpe, `updated()`
+     * los detecta y aquí solo se vuelve a la primera página. Es el botón
+     * «Filtrar», que hace la captura ligera.
+     */
+    public function filtrar(): void
+    {
+        $this->resetPage();
+    }
+
     public function clearFilters(): void
     {
         $this->reset(['tranNumber', 'bookingNumber', 'appliedTo', 'dates', 'companyId', 'accountId', 'paid']);

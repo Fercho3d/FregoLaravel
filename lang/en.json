@@ -912,5 +912,7 @@
     "No se pueden agrupar transacciones de distinta divisa en la misma solicitud.": "Transactions in different currencies cannot be grouped in the same request.",
     "Todas las facturas de una solicitud tienen que ser del mismo cliente.": "All invoices in a request must belong to the same customer.",
     "Todos los costos de una solicitud tienen que ser del mismo proveedor.": "All costs in a request must belong to the same vendor.",
-    "Mostrar sumatoria": "Show totals"
+    "Mostrar sumatoria": "Show totals",
+    "Filtrar": "Filter",
+    "Elegir rango…": "Pick a range…"
 }

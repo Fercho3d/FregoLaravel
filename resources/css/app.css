@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import 'flatpickr/dist/flatpickr.css';
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
@@ -267,4 +268,62 @@
     box-shadow:
         0 0 10px var(--color-accent-500),
         0 0 5px var(--color-accent-500) !important;
+}
+
+/*
+ * Calendario flatpickr (campo «Fechas»): el rango pintado con el rojo de la
+ * marca, y una variante oscura para que no salga un recuadro blanco sobre el
+ * tema oscuro.
+ */
+.flatpickr-day.selected,
+.flatpickr-day.startRange,
+.flatpickr-day.endRange {
+    background: var(--color-accent-500);
+    border-color: var(--color-accent-500);
+}
+
+.flatpickr-day.inRange {
+    background: color-mix(in srgb, var(--color-accent-500) 16%, transparent);
+    border-color: transparent;
+    box-shadow: none;
+}
+
+.dark .flatpickr-calendar {
+    background: var(--panel);
+    color: var(--ink);
+    box-shadow: 0 8px 24px rgb(0 0 0 / 0.5);
+}
+
+.dark .flatpickr-calendar::before,
+.dark .flatpickr-calendar::after {
+    border-bottom-color: var(--panel);
+    border-top-color: var(--panel);
+}
+
+.dark .flatpickr-months .flatpickr-month,
+.dark .flatpickr-current-month input.cur-year,
+.dark .flatpickr-monthDropdown-months {
+    color: var(--ink);
+    fill: var(--ink);
+}
+
+.dark .flatpickr-day {
+    color: var(--ink-soft);
+}
+
+.dark .flatpickr-day:hover {
+    background: var(--raised);
+    border-color: var(--raised);
+}
+
+.dark .flatpickr-day.flatpickr-disabled,
+.dark .flatpickr-day.prevMonthDay,
+.dark .flatpickr-day.nextMonthDay,
+.dark span.flatpickr-weekday {
+    color: var(--ink-faint);
+}
+
+.dark .flatpickr-months .flatpickr-prev-month svg,
+.dark .flatpickr-months .flatpickr-next-month svg {
+    fill: var(--ink-soft);
 }
