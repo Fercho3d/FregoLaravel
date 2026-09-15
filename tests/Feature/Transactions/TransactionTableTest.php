@@ -192,16 +192,6 @@ class TransactionTableTest extends LegacyDatabaseTestCase
             ->assertSeeHtml('>2<');
     }
 
-    public function test_los_totales_se_calculan_solo_cuando_se_piden(): void
-    {
-        $this->actAsUser();
-
-        Livewire::test(TransactionTable::class, ['screen' => 'invoice'])
-            ->assertSet('totals', null)
-            ->call('calculateTotals')
-            ->assertNotSet('totals', null);
-    }
-
     public function test_la_pantalla_de_un_booking_solo_trae_ese_booking(): void
     {
         $this->actAsUser();

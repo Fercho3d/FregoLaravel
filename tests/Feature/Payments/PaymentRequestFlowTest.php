@@ -197,6 +197,29 @@ class PaymentRequestFlowTest extends TestCase
             ->assertRedirect();
     }
 
+    /** El switch «mostrar sumatoria» prende y apaga el pie de totales. */
+    public function test_el_switch_muestra_y_oculta_la_sumatoria(): void
+    {
+        $this->actingAs($this->usuario());
+
+        Livewire::test(TransactionTable::class, ['screen' => 'bill'])
+            ->assertSet('totals', null)
+            ->set('showTotals', true)
+            ->assertNotSet('totals', null)
+            ->set('showTotals', false)
+            ->assertSet('totals', null);
+    }
+
+    /** El switch se recuerda: si la cookie viene puesta, arranca encendido. */
+    public function test_el_switch_recuerda_su_estado_por_cookie(): void
+    {
+        $this->actingAs($this->usuario());
+
+        Livewire::withCookies(['mostrar_totales' => '1'])
+            ->test(TransactionTable::class, ['screen' => 'bill'])
+            ->assertSet('showTotals', true);
+    }
+
     public function test_el_importe_se_puede_ajustar_renglon_por_renglon(): void
     {
         $this->formulario([1, 2])

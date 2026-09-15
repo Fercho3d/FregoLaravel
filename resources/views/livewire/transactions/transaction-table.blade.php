@@ -145,9 +145,16 @@
 
             <div class="flex items-end gap-2 sm:col-span-2 lg:col-span-4">
                 <button type="button" wire:click="clearFilters" class="btn-ghost !py-1.5 !px-3 text-xs">{{ __('Limpiar filtros') }}</button>
-                <button type="button" wire:click="calculateTotals" class="btn-ghost !py-1.5 !px-3 text-xs">
-                    {{ __('Sumar todo el filtro') }}
-                </button>
+
+                {{-- Switch «mostrar sumatoria»: enciende el pie de totales y se recuerda en cookie. --}}
+                <label class="inline-flex cursor-pointer select-none items-center gap-2 text-xs text-ink-soft">
+                    <button type="button" role="switch" wire:click="$toggle('showTotals')"
+                            aria-checked="{{ $showTotals ? 'true' : 'false' }}"
+                            class="relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/50 {{ $showTotals ? 'bg-accent-500' : 'bg-line' }}">
+                        <span class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition {{ $showTotals ? 'translate-x-4' : 'translate-x-0.5' }}"></span>
+                    </button>
+                    {{ __('Mostrar sumatoria') }}
+                </label>
                 @if ($this->allowsSelection() && auth()->user()?->isAdmin())
                     {{-- Timbrar en lote (solo Facturas): equivale al «Seal» del sistema viejo. --}}
                     @if ($screen === 'invoice')

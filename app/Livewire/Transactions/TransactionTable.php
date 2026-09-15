@@ -68,8 +68,11 @@ class TransactionTable extends Component
     #[Url(as: 'n', except: 50)]
     public int $perPage = 50;
 
-    /** Totales de TODO el filtro: se calculan solo si el usuario los pide. */
+    /** Totales de TODO el filtro: se muestran mientras `showTotals` esté encendido. */
     public ?array $totals = null;
+
+    /** Casilla «mostrar sumatoria» del pie; se recuerda en cookie (ver `mount`). */
+    public bool $showTotals = false;
 
     /**
      * Utilidad por booking de la pantalla de Facturas. También bajo demanda: el
@@ -132,6 +135,7 @@ class TransactionTable extends Component
     {
         $this->screen = $screen;
         $this->bookingId = $booking;
+        $this->showTotals = request()->cookie('mostrar_totales') === '1';
     }
 
     /** Cualquier cambio de filtro vuelve a la primera página e invalida totales. */
@@ -344,11 +348,25 @@ class TransactionTable extends Component
     }
 
     /** Suma las columnas de dinero sobre el conjunto filtrado completo. */
-    public function calculateTotals(): void
+    private function calculateTotals(): void
     {
         $this->totals = $this->query()->totals([
             'amount_original', 'sub_16_mxn', 'sub_0_mxn', 'tax_16_mxn', 'total_amount', 'left_to_pay',
         ]);
+    }
+
+    /**
+     * La casilla «mostrar sumatoria» se recuerda en una cookie (un año), para
+     * que quien la prende la encuentre puesta la próxima vez, en cualquier
+     * pantalla del listado. Al apagarla se borra el pie.
+     */
+    public function updatedShowTotals(bool $value): void
+    {
+        cookie()->queue('mostrar_totales', $value ? '1' : '0', 60 * 24 * 365);
+
+        if (! $value) {
+            $this->totals = null;
+        }
     }
 
     private function filters(): TransactionFilters
@@ -388,6 +406,14 @@ class TransactionTable extends Component
         $start = microtime(true);
         $rows = $this->query()->paginate($this->perPage, $this->getPage());
         $this->queryMs = round((microtime(true) - $start) * 1000, 1);
+
+        // Con la sumatoria encendida, el pie se calcula en cada pintada para que
+        // siga al filtro que se esté viendo.
+        if ($this->showTotals) {
+            $this->calculateTotals();
+        } else {
+            $this->totals = null;
+        }
 
         return view('livewire.transactions.transaction-table', [
             'rows' => $rows,

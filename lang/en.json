@@ -911,5 +911,6 @@
     "Quedaron :n sin procesar (se timbran por tandas). Vuelve a seleccionarlas y timbra otra vez.": ":n left unprocessed (they are stamped in batches). Select them again and stamp once more.",
     "No se pueden agrupar transacciones de distinta divisa en la misma solicitud.": "Transactions in different currencies cannot be grouped in the same request.",
     "Todas las facturas de una solicitud tienen que ser del mismo cliente.": "All invoices in a request must belong to the same customer.",
-    "Todos los costos de una solicitud tienen que ser del mismo proveedor.": "All costs in a request must belong to the same vendor."
+    "Todos los costos de una solicitud tienen que ser del mismo proveedor.": "All costs in a request must belong to the same vendor.",
+    "Mostrar sumatoria": "Show totals"
 }
