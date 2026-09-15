@@ -43,16 +43,52 @@ class UserManagerTest extends TestCase
         return Livewire::test(UserManager::class);
     }
 
-    public function test_solo_el_super_administrador_entra(): void
+    private function admin(): User
     {
-        $admin = User::create([
+        return User::create([
             'name' => 'Admin', 'username' => 'admin.normal', 'password' => 'secreto-de-prueba',
             'role' => User::ROLE_ADMIN, 'status' => 1,
         ]);
+    }
 
-        $this->actingAs($admin);
+    public function test_un_usuario_normal_no_entra(): void
+    {
+        $usuario = User::create([
+            'name' => 'Juan', 'username' => 'juan.normal', 'password' => 'secreto-de-prueba',
+            'role' => User::ROLE_USER, 'status' => 1,
+        ]);
+
+        $this->actingAs($usuario);
 
         Livewire::test(UserManager::class)->assertForbidden();
+    }
+
+    public function test_un_administrador_si_administra_usuarios(): void
+    {
+        $this->actingAs($this->admin());
+
+        Livewire::test(UserManager::class)->assertSee(__('Usuarios y accesos'));
+    }
+
+    public function test_un_administrador_no_puede_crear_super_administradores(): void
+    {
+        $this->pantalla($this->admin())
+            ->call('create')
+            ->set('username', 'aspirante')
+            ->set('userRole', (string) User::ROLE_SUPER_ADMIN)
+            ->set('password', 'contrasena-larga')
+            ->set('passwordConfirmation', 'contrasena-larga')
+            ->call('save')
+            ->assertHasErrors('userRole');
+
+        $this->assertNull(User::where('username', 'aspirante')->first());
+    }
+
+    public function test_un_administrador_no_puede_tocar_a_un_super_administrador(): void
+    {
+        $dueno = $this->superAdmin();
+
+        $this->pantalla($this->admin())->call('edit', $dueno->usr_id)->assertForbidden();
     }
 
     public function test_crear_un_usuario_interno(): void

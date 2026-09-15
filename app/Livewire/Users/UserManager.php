@@ -72,7 +72,7 @@ class UserManager extends Component
     /** La pantalla entera es del super administrador, no solo sus acciones. */
     public function mount(): void
     {
-        $this->assertSuperAdmin();
+        $this->assertCanManageUsers();
     }
 
     public function paginationView(): string
@@ -89,7 +89,7 @@ class UserManager extends Component
 
     public function create(): void
     {
-        $this->assertSuperAdmin();
+        $this->assertCanManageUsers();
 
         $this->reset(['name', 'username', 'email', 'partyId', 'password', 'passwordConfirmation']);
         $this->userRole = (string) User::ROLE_USER;
@@ -101,9 +101,10 @@ class UserManager extends Component
 
     public function edit(int $id): void
     {
-        $this->assertSuperAdmin();
+        $this->assertCanManageUsers();
 
         $usuario = User::findOrFail($id);
+        $this->assertPuedeTocar($usuario);
 
         $this->editing = $id;
         $this->name = (string) $usuario->name;
@@ -125,16 +126,26 @@ class UserManager extends Component
 
     public function save(): void
     {
-        $this->assertSuperAdmin();
+        $this->assertCanManageUsers();
 
         $esNuevo = $this->editing === 0;
+
+        // A un super administrador ya existente solo lo edita otro super
+        // administrador (el candado se comprueba antes de validar nada).
+        $objetivo = $esNuevo ? new User : User::findOrFail($this->editing);
+
+        if (! $esNuevo) {
+            $this->assertPuedeTocar($objetivo);
+        }
 
         $this->validate([
             'name' => ['nullable', 'string', 'max:100'],
             // `username` y `email` son únicos en la tabla heredada.
             'username' => ['required', 'string', 'max:45', Rule::unique('users', 'username')->ignore($this->editing, 'usr_id')],
             'email' => ['nullable', 'string', 'max:45', Rule::unique('users', 'email')->ignore($this->editing, 'usr_id')],
-            'userRole' => ['required', Rule::in([User::ROLE_USER, User::ROLE_ADMIN, User::ROLE_SUPER_ADMIN])],
+            // Los roles asignables dependen de quién guarda: un admin no puede
+            // crear ni nombrar super administradores.
+            'userRole' => ['required', Rule::in($this->rolesAsignables())],
             'access' => ['required', Rule::in([self::ACCESS_INTERNAL, self::ACCESS_CLIENT, self::ACCESS_PROVIDER])],
             'partyId' => [Rule::requiredIf($this->needsParty()), 'nullable'],
             'password' => [Rule::requiredIf($esNuevo), 'nullable', 'string', 'min:8', 'same:passwordConfirmation'],
@@ -147,7 +158,7 @@ class UserManager extends Component
             'password' => __('contraseña'),
         ]);
 
-        $usuario = $esNuevo ? new User : User::findOrFail($this->editing);
+        $usuario = $objetivo;
 
         $usuario->forceFill([
             'name' => $this->name ?: null,
@@ -179,9 +190,9 @@ class UserManager extends Component
 
     public function startPasswordChange(int $id): void
     {
-        $this->assertSuperAdmin();
+        $this->assertCanManageUsers();
 
-        User::findOrFail($id);
+        $this->assertPuedeTocar(User::findOrFail($id));
 
         $this->changingPassword = $id;
         $this->reset(['password', 'passwordConfirmation']);
@@ -190,15 +201,16 @@ class UserManager extends Component
 
     public function changePassword(): void
     {
-        $this->assertSuperAdmin();
+        $this->assertCanManageUsers();
+
+        $objetivo = User::findOrFail($this->changingPassword);
+        $this->assertPuedeTocar($objetivo);
 
         $this->validate([
             'password' => ['required', 'string', 'min:8', 'same:passwordConfirmation'],
         ], attributes: ['password' => __('contraseña')]);
 
-        User::findOrFail($this->changingPassword)
-            ->forceFill(['password' => $this->password])
-            ->save();
+        $objetivo->forceFill(['password' => $this->password])->save();
 
         session()->flash('status', __('Contraseña actualizada.'));
         $this->cancel();
@@ -210,19 +222,48 @@ class UserManager extends Component
      */
     public function toggleActive(int $id): void
     {
-        $this->assertSuperAdmin();
+        $this->assertCanManageUsers();
 
         abort_if($id === auth()->id(), 422, __('No puedes darte de baja a ti mismo.'));
 
         $usuario = User::findOrFail($id);
+        $this->assertPuedeTocar($usuario);
         $usuario->forceFill(['status' => $usuario->status ? 0 : 1])->save();
 
         session()->flash('status', $usuario->status ? 'Usuario reactivado.' : __('Usuario dado de baja.'));
     }
 
-    private function assertSuperAdmin(): void
+    /** La pantalla la manejan los administradores; el dueño (super admin) además maneja a los suyos. */
+    private function assertCanManageUsers(): void
     {
-        abort_unless(auth()->user()?->isSuperAdmin() ?? false, 403);
+        abort_unless(auth()->user()?->isAdmin() ?? false, 403);
+    }
+
+    /**
+     * Un administrador no puede tocar (editar, cambiar contraseña, dar de baja) a
+     * un super administrador: esa cuenta es del dueño del software. Solo otro
+     * super administrador puede.
+     */
+    private function assertPuedeTocar(User $usuario): void
+    {
+        abort_if(
+            (int) $usuario->role === User::ROLE_SUPER_ADMIN && ! (auth()->user()?->isSuperAdmin() ?? false),
+            403,
+        );
+    }
+
+    /**
+     * Roles que el usuario actual puede asignar. Solo el super administrador
+     * puede crear o nombrar a otro super administrador; el resto se queda en
+     * usuario y administrador. Así un admin no se auto-asciende ni crea dueños.
+     *
+     * @return int[]
+     */
+    private function rolesAsignables(): array
+    {
+        return (auth()->user()?->isSuperAdmin() ?? false)
+            ? [User::ROLE_USER, User::ROLE_ADMIN, User::ROLE_SUPER_ADMIN]
+            : [User::ROLE_USER, User::ROLE_ADMIN];
     }
 
     // --------------------------------------------------------- Pintado

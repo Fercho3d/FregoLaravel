@@ -53,16 +53,16 @@
             [__('Pagos por proveedor'), route('payments.report.vendor'), request()->routeIs('payments.report.vendor'), 'banco'],
             [__('Cobros y pagos'), route('payments.report.general'), request()->routeIs('payments.report.general'), 'banco'],
         ] : [],
-        // Los usuarios los administra solo el super administrador; para el resto
-        // la ruta responde 403, así que ni se lista.
-        (auth()->user()?->isSuperAdmin() ?? false)
-            ? [
-                [__('Usuarios'), route('users'), request()->routeIs('users'), 'usuarios'],
-                // Sin entrada en el menú, las solicitudes que llegan por la
-                // página pública se quedarían ahí sin que nadie las lea.
-                [__('Solicitudes de demostración'), route('demo-requests'), request()->routeIs('demo-requests'), 'usuarios'],
-            ]
-            : [],
+        // Los usuarios los administra cualquier administrador (para dar de alta a
+        // su gente); las solicitudes de demo, solo el dueño (super admin).
+        ($esAdmin
+            ? [[__('Usuarios'), route('users'), request()->routeIs('users'), 'usuarios']]
+            : []),
+        // Sin entrada en el menú, las solicitudes que llegan por la página
+        // pública se quedarían ahí sin que nadie las lea. Solo las ve el dueño.
+        ((auth()->user()?->isSuperAdmin() ?? false)
+            ? [[__('Solicitudes de demostración'), route('demo-requests'), request()->routeIs('demo-requests'), 'usuarios']]
+            : []),
         [
             [__('Clientes y proveedores'), route('parties.clients'), request()->routeIs('parties.clients', 'parties.providers'), 'usuarios'],
             [__('Servicios y precios'), route('parties.services'), request()->routeIs('parties.services'), 'costo'],

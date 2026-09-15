@@ -13,6 +13,13 @@
         UserManager::ACCESS_CLIENT => __('Portal de cliente'),
         UserManager::ACCESS_PROVIDER => __('Portal de proveedor'),
     ];
+
+    // Solo el dueño (super admin) crea o edita super administradores; para el
+    // resto se oculta ese rol y no se ofrecen acciones sobre esas cuentas.
+    $esDueno = auth()->user()?->isSuperAdmin() ?? false;
+    $rolesForm = $esDueno
+        ? $roles
+        : array_filter($roles, fn ($k) => $k !== User::ROLE_SUPER_ADMIN, ARRAY_FILTER_USE_KEY);
 @endphp
 
 <div class="space-y-4">
@@ -74,7 +81,7 @@
                 <label class="block">
                     <span class="field-label">{{ __('Rol') }}</span>
                     <select wire:model="userRole" class="field-input mt-1.5">
-                        @foreach ($roles as $valor => $etiqueta)
+                        @foreach ($rolesForm as $valor => $etiqueta)
                             <option value="{{ $valor }}" @selected((string) $valor === $userRole)>{{ $etiqueta }}</option>
                         @endforeach
                     </select>
@@ -192,15 +199,21 @@
                                 {{ $usuario->last_login ? $usuario->last_login->format('d/m/Y') : '—' }}
                             </td>
                             <td class="whitespace-nowrap px-4 py-2 text-right">
+                                {{-- A un super administrador solo lo toca otro super administrador. --}}
+                                @php $puedeTocar = $esDueno || (int) $usuario->role !== User::ROLE_SUPER_ADMIN; @endphp
                                 <div class="flex justify-end gap-3 text-xs">
-                                    <button type="button" wire:click="edit({{ $usuario->usr_id }})" class="text-brand hover:underline">{{ __('Editar') }}</button>
-                                    <button type="button" wire:click="startPasswordChange({{ $usuario->usr_id }})" class="text-ink-muted hover:text-ink">{{ __('Contraseña') }}</button>
-                                    @if ($usuario->usr_id !== auth()->id())
-                                        <button type="button" wire:click="toggleActive({{ $usuario->usr_id }})"
-                                                wire:confirm="{{ $usuario->status ? '¿Dar de baja a este usuario?' : '¿Reactivar a este usuario?' }}"
-                                                class="text-ink-muted transition hover:text-brand">
-                                            {{ $usuario->status ? __('Baja') : __('Reactivar') }}
-                                        </button>
+                                    @if ($puedeTocar)
+                                        <button type="button" wire:click="edit({{ $usuario->usr_id }})" class="text-brand hover:underline">{{ __('Editar') }}</button>
+                                        <button type="button" wire:click="startPasswordChange({{ $usuario->usr_id }})" class="text-ink-muted hover:text-ink">{{ __('Contraseña') }}</button>
+                                        @if ($usuario->usr_id !== auth()->id())
+                                            <button type="button" wire:click="toggleActive({{ $usuario->usr_id }})"
+                                                    wire:confirm="{{ $usuario->status ? '¿Dar de baja a este usuario?' : '¿Reactivar a este usuario?' }}"
+                                                    class="text-ink-muted transition hover:text-brand">
+                                                {{ $usuario->status ? __('Baja') : __('Reactivar') }}
+                                            </button>
+                                        @endif
+                                    @else
+                                        <span class="text-ink-faint">—</span>
                                     @endif
                                 </div>
                             </td>
