@@ -153,6 +153,38 @@
                             <dd class="text-ink-soft">{{ $fecha($fila->loading_EDT) }}</dd>
                         </div>
                     </dl>
+
+                    {{-- Acciones (mismas que la tabla). --}}
+                    <div class="flex items-center gap-1 pt-1">
+                        <a href="{{ route('transactions.booking', $fila->booking_id) }}" wire:navigate
+                           title="{{ __('Transacciones') }}" class="booking-accion">
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 7h16v12H4z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                            </svg>
+                        </a>
+                        @if (auth()->user()?->isAdmin() ?? false)
+                            <a href="{{ route('operations.bookings.edit', $fila->booking_id) }}" wire:navigate
+                               title="{{ __('Editar') }}" class="booking-accion">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.5 5.5l3 3M4 20l1-4L16.5 4.5a1.5 1.5 0 0 1 2 0l1 1a1.5 1.5 0 0 1 0 2L8 19l-4 1z"/>
+                                </svg>
+                            </a>
+                            <a href="{{ route('operations.bookings.generate', $fila->booking_id) }}" wire:navigate
+                               title="{{ __('Generar factura') }}" class="booking-accion">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M7 3h7l4 4v14H7z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 3v5h5M10 13h5M10 17h5"/>
+                                </svg>
+                            </a>
+                        @endif
+                        <a href="{{ route('operations.bookings.pdf', $fila->booking_id) }}" target="_blank"
+                           title="{{ __('PDF de confirmación') }}" class="booking-accion">
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v10m0 0l-3.5-3.5M12 13l3.5-3.5M5 17v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2"/>
+                            </svg>
+                        </a>
+                    </div>
                 </li>
             @empty
                 <li class="px-4 py-12 text-center text-sm text-ink-faint">{{ __('No hay embarques con estos filtros.') }}</li>
@@ -175,6 +207,7 @@
                         <th class="px-3 py-2.5 text-left font-semibold">{{ __('Carga') }}</th>
                         <th class="px-3 py-2.5 text-left font-semibold">{{ __('Arribo') }}</th>
                         <th class="w-40 px-3 py-2.5 text-left font-semibold">{{ __('Avance') }}</th>
+                        <th class="px-3 py-2.5 text-right font-semibold">{{ __('Acciones') }}</th>
                     </tr>
                 </thead>
 
@@ -206,10 +239,45 @@
                                     <span class="shrink-0 text-xs tabular-nums text-ink-muted">{{ number_format((float) $fila->total_completed, 0) }}%</span>
                                 </div>
                             </td>
+                            {{-- Acciones por fila, como en el sistema viejo: transacciones,
+                                 editar, generar factura y PDF. Editar/generar solo para
+                                 administradores; ver y PDF, para todos. --}}
+                            <td class="whitespace-nowrap px-3 py-2 text-right">
+                                <div class="inline-flex items-center gap-1">
+                                    <a href="{{ route('transactions.booking', $fila->booking_id) }}" wire:navigate
+                                       title="{{ __('Transacciones') }}" class="booking-accion">
+                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 7h16v12H4z"/>
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                                        </svg>
+                                    </a>
+                                    @if (auth()->user()?->isAdmin() ?? false)
+                                        <a href="{{ route('operations.bookings.edit', $fila->booking_id) }}" wire:navigate
+                                           title="{{ __('Editar') }}" class="booking-accion">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.5 5.5l3 3M4 20l1-4L16.5 4.5a1.5 1.5 0 0 1 2 0l1 1a1.5 1.5 0 0 1 0 2L8 19l-4 1z"/>
+                                            </svg>
+                                        </a>
+                                        <a href="{{ route('operations.bookings.generate', $fila->booking_id) }}" wire:navigate
+                                           title="{{ __('Generar factura') }}" class="booking-accion">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M7 3h7l4 4v14H7z"/>
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M13 3v5h5M10 13h5M10 17h5"/>
+                                            </svg>
+                                        </a>
+                                    @endif
+                                    <a href="{{ route('operations.bookings.pdf', $fila->booking_id) }}" target="_blank"
+                                       title="{{ __('PDF de confirmación') }}" class="booking-accion">
+                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v10m0 0l-3.5-3.5M12 13l3.5-3.5M5 17v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2"/>
+                                        </svg>
+                                    </a>
+                                </div>
+                            </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" class="px-3 py-12 text-center text-ink-faint">{{ __('No hay embarques con estos filtros.') }}</td>
+                            <td colspan="{{ $verBuque ? 10 : 9 }}" class="px-3 py-12 text-center text-ink-faint">{{ __('No hay embarques con estos filtros.') }}</td>
                         </tr>
                     @endforelse
                 </tbody>

@@ -914,5 +914,7 @@
     "Todos los costos de una solicitud tienen que ser del mismo proveedor.": "All costs in a request must belong to the same vendor.",
     "Mostrar sumatoria": "Show totals",
     "Filtrar": "Filter",
-    "Elegir rango…": "Pick a range…"
+    "Elegir rango…": "Pick a range…",
+    "Generar factura": "Generate invoice",
+    "PDF de confirmación": "Confirmation PDF"
 }
