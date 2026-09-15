@@ -43,10 +43,25 @@ $excluded = [
     '.env', '.env.example', '.phpunit.result.cache', '.phpunit.cache',
 ];
 
-$isExcluded = static function (string $relative) use ($excluded): bool {
-    $top = explode('/', $relative)[0];
+// Rutas anidadas que NO deben viajar: la caché compilada de arranque es de la
+// máquina donde se generó (lista los paquetes de desarrollo, p. ej. Pail) y el
+// despliegue la regenera en el servidor. Si se copia, tumba el sitio en producción.
+$excludedPaths = [
+    'bootstrap/cache',
+];
 
-    return in_array($top, $excluded, true);
+$isExcluded = static function (string $relative) use ($excluded, $excludedPaths): bool {
+    if (in_array(explode('/', $relative)[0], $excluded, true)) {
+        return true;
+    }
+
+    foreach ($excludedPaths as $ruta) {
+        if ($relative === $ruta || str_starts_with($relative, $ruta.'/')) {
+            return true;
+        }
+    }
+
+    return false;
 };
 
 if (! is_dir($dest) && ! mkdir($dest, 0755, true) && ! is_dir($dest)) {
