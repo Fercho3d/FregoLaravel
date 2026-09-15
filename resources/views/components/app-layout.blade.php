@@ -68,7 +68,7 @@
             [__('Servicios y precios'), route('parties.services'), request()->routeIs('parties.services'), 'costo'],
             [__('Catálogos'), route('catalogs.show', 'companias'), request()->routeIs('catalogs.*'), 'catalogo'],
             [__('Tipos de cambio'), route('exchange'), request()->routeIs('exchange'), 'banco'],
-            [__('Operación'), route('operations.bookings'), request()->routeIs('operations.bookings*'), 'operacion'],
+            [__('Bookings'), route('operations.bookings'), request()->routeIs('operations.bookings*'), 'operacion'],
             [__('Continuidad'), route('operations.continuity'), request()->routeIs('operations.continuity'), 'reporte'],
         ],
         // Los ajustes van al final: se entra una vez a configurarlos y casi
