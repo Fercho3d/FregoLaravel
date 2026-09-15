@@ -160,6 +160,43 @@ class PaymentRequestFlowTest extends TestCase
         $this->assertSame(0, PaymentRequest::count());
     }
 
+    /**
+     * La misma regla, pero adelantada al listado: marcar transacciones que no se
+     * pueden agrupar ni siquiera lleva a la pantalla de pago; el aviso sale ahí.
+     */
+    public function test_el_listado_no_deja_pasar_a_pago_proveedores_distintos(): void
+    {
+        $this->actingAs($this->usuario());
+
+        Livewire::test(TransactionTable::class, ['screen' => 'bill'])
+            ->set('selected', [1, 3])
+            ->call('createPaymentRequest')
+            ->assertHasErrors('selected')
+            ->assertNoRedirect();
+    }
+
+    public function test_el_listado_no_deja_pasar_a_pago_divisas_distintas(): void
+    {
+        $this->actingAs($this->usuario());
+
+        Livewire::test(TransactionTable::class, ['screen' => 'bill'])
+            ->set('selected', [1, 4])
+            ->call('createPaymentRequest')
+            ->assertHasErrors('selected')
+            ->assertNoRedirect();
+    }
+
+    public function test_el_listado_pasa_a_pago_cuando_se_pueden_agrupar(): void
+    {
+        $this->actingAs($this->usuario());
+
+        Livewire::test(TransactionTable::class, ['screen' => 'bill'])
+            ->set('selected', [1, 2])
+            ->call('createPaymentRequest')
+            ->assertHasNoErrors()
+            ->assertRedirect();
+    }
+
     public function test_el_importe_se_puede_ajustar_renglon_por_renglon(): void
     {
         $this->formulario([1, 2])

@@ -185,10 +185,45 @@ class TransactionTable extends Component
             return;
         }
 
+        if (! $this->selectionIsGroupable()) {
+            return;
+        }
+
         $this->redirectRoute('payments.requests.create', [
             'ids' => implode(',', $this->selected),
             'volver' => $this->currentUrl(),
         ], navigate: true);
+    }
+
+    /**
+     * Antes de llevar a la pantalla de pago, las transacciones marcadas tienen
+     * que poder agruparse en UNA solicitud: misma divisa y misma contraparte,
+     * porque una solicitud se paga con un solo cheque a un solo tercero. Es la
+     * regla que el controlador de Yii2 aplicaba al agrupar, adelantada aquí al
+     * momento de seleccionar para no pasar a una pantalla donde el guardado
+     * fallaría sin decir por qué.
+     */
+    private function selectionIsGroupable(): bool
+    {
+        $marcadas = Transaction::whereIn('transc_id', $this->selected)->get(['account', 'customer', 'vendor']);
+
+        if ($marcadas->pluck('account')->unique()->count() > 1) {
+            $this->addError('selected', __('No se pueden agrupar transacciones de distinta divisa en la misma solicitud.'));
+
+            return false;
+        }
+
+        $esCobro = $this->screen === 'invoice';
+
+        if ($marcadas->pluck($esCobro ? 'customer' : 'vendor')->unique()->count() > 1) {
+            $this->addError('selected', __($esCobro
+                ? 'Todas las facturas de una solicitud tienen que ser del mismo cliente.'
+                : 'Todos los costos de una solicitud tienen que ser del mismo proveedor.'));
+
+            return false;
+        }
+
+        return true;
     }
 
     /**
