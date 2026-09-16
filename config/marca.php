@@ -134,6 +134,16 @@ return [
     'demo' => filter_var(env('MARCA_DEMO', false), FILTER_VALIDATE_BOOL),
 
     /**
+     * Página pública de presentación (la portada con «Solicitar demostración»
+     * y el contacto).
+     *
+     * Encendida (por omisión) la raíz muestra esa portada; apagada, la raíz va
+     * directo al login. En la instalación de un cliente que entra por su propia
+     * dirección —sin vender nada— se apaga: no hay nada que promocionar.
+     */
+    'landing' => filter_var(env('MARCA_LANDING', true), FILTER_VALIDATE_BOOL),
+
+    /**
      * Taller: mantenimiento de las unidades y almacén de refacciones.
      *
      * Solo tiene sentido con flota propia, y ni siquiera siempre: quien manda

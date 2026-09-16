@@ -44,6 +44,14 @@ class PaginaPublicaTest extends TestCase
             ->assertSee(__('Qué incluye'));
     }
 
+    /** Sin portada (instalación de cliente): la raíz va directo al login. */
+    public function test_sin_portada_la_raiz_va_al_login(): void
+    {
+        config(['marca.landing' => false]);
+
+        $this->get('/')->assertRedirect(route('login'));
+    }
+
     /** Quien ya entró no ve la página de venta: se va a lo suyo. */
     public function test_con_sesion_no_se_ve_la_pagina_publica(): void
     {
