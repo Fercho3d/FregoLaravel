@@ -58,9 +58,10 @@
         ($esAdmin
             ? [[__('Usuarios'), route('users'), request()->routeIs('users'), 'usuarios']]
             : []),
-        // Sin entrada en el menú, las solicitudes que llegan por la página
-        // pública se quedarían ahí sin que nadie las lea. Solo las ve el dueño.
-        ((auth()->user()?->isSuperAdmin() ?? false)
+        // Solo con portada pública (producto de marca blanca) hay solicitudes de
+        // demo que leer, y solo las ve el dueño. En la instalación de un cliente
+        // (sin portada) ni se lista.
+        ((config('marca.landing') && (auth()->user()?->isSuperAdmin() ?? false))
             ? [[__('Solicitudes de demostración'), route('demo-requests'), request()->routeIs('demo-requests'), 'usuarios']]
             : []),
         [
