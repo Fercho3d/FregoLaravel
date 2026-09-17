@@ -500,9 +500,16 @@
                             <ul class="flex flex-wrap gap-2">
                                 @foreach ($campo->files as $archivo)
                                     <li class="inline-flex items-center gap-2 rounded-lg border border-line px-3 py-1.5 text-xs">
-                                        <a href="{{ route('operations.bookings.file', [$booking->booking_id, urlencode($archivo)]) }}"
-                                           class="max-w-[16rem] truncate text-brand hover:underline" title="{{ $archivo }}">
+                                        <a href="{{ route('operations.bookings.file', [$booking->booking_id, urlencode($archivo), 'ver' => 1]) }}"
+                                           target="_blank" rel="noopener"
+                                           class="max-w-[16rem] truncate text-brand hover:underline" title="{{ __('Ver') }}: {{ $archivo }}">
                                             {{ $archivo }}
+                                        </a>
+                                        <a href="{{ route('operations.bookings.file', [$booking->booking_id, urlencode($archivo)]) }}"
+                                           class="text-ink-faint transition hover:text-brand" title="{{ __('Descargar') }}" aria-label="{{ __('Descargar') }}">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/>
+                                            </svg>
                                         </a>
                                         @if (auth()->user()?->isAdmin() && ! $booking->locked)
                                             <button type="button" wire:click="removeFile({{ $campo->field_id }}, @js($archivo))"
@@ -548,7 +555,7 @@
                                     <circle cx="12" cy="12" r="8"/>
                                 </svg>
                             @endif
-                            <span class="truncate {{ $hito['fecha'] ? 'text-ink' : 'text-ink-faint' }}">{{ $hito['etiqueta'] }}</span>
+                            <span class="truncate {{ $hito['fecha'] ? 'text-ink' : 'text-ink-faint' }}">{{ __($hito['etiqueta']) }}</span>
                         </button>
 
                         @if ($hitoEditando === $hito['clave'])

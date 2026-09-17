@@ -23,6 +23,11 @@ class BookingFileController extends Controller
 
         abort_if($ruta === null, 404, 'El archivo ya no está en el servidor.');
 
+        // `?ver=1` lo abre en el navegador (PDF/imagen); por omisión se descarga.
+        if (request()->boolean('ver')) {
+            return response()->file($ruta, ['Content-Disposition' => 'inline; filename="'.$nombre.'"']);
+        }
+
         return response()->download($ruta, $nombre);
     }
 }

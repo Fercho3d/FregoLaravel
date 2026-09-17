@@ -113,6 +113,23 @@ class BookingFilesTest extends TestCase
         $this->get(route('operations.bookings.file', [1, 'ajeno.pdf']))->assertNotFound();
     }
 
+    public function test_con_ver_el_archivo_se_abre_en_el_navegador(): void
+    {
+        DB::table('files_by_booking')->insert([
+            'booking_file_id' => 1, 'booking_id' => 1, 'field_id' => 1, 'value' => 'uno.pdf',
+        ]);
+        Storage::disk('documentos')->put('bookings/1/docs/uno.pdf', 'contenido');
+
+        $this->actingAs($this->usuario());
+
+        // Por omisión se descarga (adjunto); con ?ver=1 se muestra en línea.
+        $this->get(route('operations.bookings.file', [1, 'uno.pdf']))
+            ->assertOk()->assertHeader('content-disposition', 'attachment; filename=uno.pdf');
+
+        $ver = $this->get(route('operations.bookings.file', [1, 'uno.pdf', 'ver' => 1]))->assertOk();
+        $this->assertStringContainsString('inline', $ver->headers->get('content-disposition'));
+    }
+
     public function test_un_booking_cerrado_no_recibe_documentos(): void
     {
         DB::table('booking')->where('booking_id', 1)->update(['locked' => 1]);
