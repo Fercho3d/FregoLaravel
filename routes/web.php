@@ -24,6 +24,7 @@ use App\Livewire\Operations\BookingHistory;
 use App\Livewire\Operations\BookingList;
 use App\Livewire\Operations\ContinuityReport;
 use App\Livewire\Parties\PartyManager;
+use App\Livewire\Payments\PaymentRequestDetail;
 use App\Livewire\Payments\PaymentRequestForm;
 use App\Livewire\Payments\PaymentRequestList;
 use App\Livewire\Payments\PaymentsReport;
@@ -144,6 +145,8 @@ Route::middleware(['auth', EnsureUserIsInternal::class])->group(function () {
         Route::get('/solicitudes/nueva', PaymentRequestForm::class)->name('requests.create');
         Route::get('/solicitudes/{request}/documento.pdf', PaymentRequestDocumentController::class)
             ->whereNumber('request')->name('requests.document');
+        Route::get('/solicitudes/{request}', PaymentRequestDetail::class)
+            ->whereNumber('request')->name('requests.show');
         Route::get('/reporte/clientes', PaymentsReport::class)->defaults('mode', 'customer')->name('report.customer');
         Route::get('/reporte/proveedores', PaymentsReport::class)->defaults('mode', 'vendor')->name('report.vendor');
         Route::get('/reporte/general', PaymentsReport::class)->defaults('mode', 'general')->name('report.general');

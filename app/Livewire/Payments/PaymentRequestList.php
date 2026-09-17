@@ -7,9 +7,6 @@ use App\Models\Core\PaymentByTransaction;
 use App\Models\Core\PaymentRequest;
 use App\Queries\PaymentRequestFilters;
 use App\Queries\PaymentRequestQuery;
-use App\Queries\TransactionFilters;
-use App\Queries\TransactionQuery;
-use Illuminate\Support\Collection;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -46,9 +43,6 @@ class PaymentRequestList extends Component
     #[Url(as: 'n', except: 50)]
     public int $perPage = 50;
 
-    /** Solicitud desplegada, para ver sus transacciones. */
-    public ?int $expanded = null;
-
     /**
      * La solicitud que se acaba de crear, para señalarla en verde.
      *
@@ -78,20 +72,19 @@ class PaymentRequestList extends Component
         }
 
         $this->resetPage();
-        $this->expanded = null;
         $this->highlight = null;
     }
 
     public function clearFilters(): void
     {
-        $this->reset(['type', 'bankId', 'paid', 'dates', 'number', 'expanded', 'highlight']);
+        $this->reset(['type', 'bankId', 'paid', 'dates', 'number', 'highlight']);
         $this->resetPage();
     }
 
-    public function toggle(int $requestId): void
+    /** La lista con su filtro: a dónde vuelve el detalle. */
+    public function currentUrl(): string
     {
-        $this->expanded = $this->expanded === $requestId ? null : $requestId;
-        $this->highlight = null;
+        return request()->getRequestUri();
     }
 
     // ------------------------------------------------------------ Acciones
@@ -156,7 +149,6 @@ class PaymentRequestList extends Component
         PaymentByTransaction::where('request_id', $requestId)->delete();
         $solicitud->delete();
 
-        $this->expanded = null;
         $this->highlight = null;
         session()->flash('status', __('Solicitud ').$this->folio($requestId).' borrada.');
     }
@@ -189,20 +181,6 @@ class PaymentRequestList extends Component
         return $filtros;
     }
 
-    /** Transacciones que agrupa la solicitud desplegada. */
-    private function transactions(): Collection
-    {
-        if ($this->expanded === null) {
-            return collect();
-        }
-
-        $filtros = TransactionFilters::make(['request_id' => $this->expanded]);
-        $filtros->paymentMode = true;
-        $filtros->noExchange = true;
-
-        return TransactionQuery::make($filtros)->get();
-    }
-
     public function render()
     {
         $inicio = microtime(true);
@@ -211,7 +189,6 @@ class PaymentRequestList extends Component
 
         return view('livewire.payments.payment-request-list', [
             'filas' => $filas,
-            'transacciones' => $this->transactions(),
             'banks' => Bank::options(),
         ])->layout('components.app-layout', ['title' => __('Solicitudes de pago')]);
     }

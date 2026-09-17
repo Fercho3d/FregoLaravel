@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Payments;
 
+use App\Livewire\Payments\PaymentRequestDetail;
 use App\Livewire\Payments\PaymentRequestForm;
 use App\Livewire\Payments\PaymentRequestList;
 use App\Livewire\Transactions\TransactionTable;
@@ -198,6 +199,63 @@ class PaymentRequestFlowTest extends TestCase
     }
 
     /** El switch «mostrar sumatoria» prende y apaga el pie de totales. */
+    // ---------------------------------------------------- Vista de detalle
+
+    private function solicitudCreada(): int
+    {
+        $this->formulario([1, 2])
+            ->set('number', 'CHQ-DET')->set('date', '2026-01-20')->set('bankId', '1')
+            ->call('save')->assertHasNoErrors();
+
+        return (int) PaymentRequest::first()->request_id;
+    }
+
+    public function test_el_detalle_muestra_la_solicitud_y_sus_transacciones(): void
+    {
+        $id = $this->solicitudCreada();
+
+        $this->actingAs($this->usuario());
+
+        Livewire::test(PaymentRequestDetail::class, ['request' => $id])
+            ->assertOk()
+            ->assertSee(str_pad((string) $id, 4, '0', STR_PAD_LEFT))
+            ->assertSee('C-1')
+            ->assertSee(__('Volver'));
+    }
+
+    public function test_una_solicitud_inexistente_da_404(): void
+    {
+        $this->actingAs($this->usuario());
+
+        Livewire::test(PaymentRequestDetail::class, ['request' => 9999])->assertNotFound();
+    }
+
+    public function test_desde_el_detalle_se_marca_pagada(): void
+    {
+        $id = $this->solicitudCreada();
+
+        $this->actingAs($this->usuario());
+
+        Livewire::test(PaymentRequestDetail::class, ['request' => $id])
+            ->call('markPaid')
+            ->assertHasNoErrors();
+
+        $this->assertSame(1, (int) PaymentRequest::find($id)->paid);
+    }
+
+    public function test_borrar_desde_el_detalle_regresa_al_listado(): void
+    {
+        $id = $this->solicitudCreada();
+
+        $this->actingAs($this->usuario());
+
+        Livewire::test(PaymentRequestDetail::class, ['request' => $id])
+            ->call('delete')
+            ->assertRedirect();
+
+        $this->assertSame(0, PaymentRequest::count());
+    }
+
     public function test_el_switch_muestra_y_oculta_la_sumatoria(): void
     {
         $this->actingAs($this->usuario());
