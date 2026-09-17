@@ -42,10 +42,18 @@ class BookingReport extends Component
     #[Url(as: 'n', except: 50)]
     public int $perPage = 50;
 
-    /** Totales de TODO el filtro; se calculan solo si el usuario los pide. */
+    /** Totales de TODO el filtro; se muestran mientras `showTotals` esté encendido. */
     public ?array $totals = null;
 
+    /** Casilla «mostrar sumatoria» del pie; se recuerda en cookie (ver `mount`). */
+    public bool $showTotals = false;
+
     public float $queryMs = 0;
+
+    public function mount(): void
+    {
+        $this->showTotals = request()->cookie('mostrar_totales') === '1';
+    }
 
     public function paginationView(): string
     {
@@ -74,7 +82,20 @@ class BookingReport extends Component
         $this->resetPage();
     }
 
-    public function calculateTotals(): void
+    /**
+     * La casilla «mostrar sumatoria» se recuerda en una cookie (la misma que el
+     * listado de transacciones), para que quede puesta en cualquier pantalla.
+     */
+    public function updatedShowTotals(bool $value): void
+    {
+        cookie()->queue('mostrar_totales', $value ? '1' : '0', 60 * 24 * 365);
+
+        if (! $value) {
+            $this->totals = null;
+        }
+    }
+
+    private function calculateTotals(): void
     {
         $this->totals = $this->query()->totals(['income', 'expense']);
     }
@@ -111,6 +132,14 @@ class BookingReport extends Component
         $inicio = microtime(true);
         $rows = $this->query()->paginate($this->perPage, $this->getPage());
         $this->queryMs = round((microtime(true) - $inicio) * 1000, 1);
+
+        // Con la sumatoria encendida, el pie se calcula en cada pintada para que
+        // siga al filtro que se esté viendo.
+        if ($this->showTotals) {
+            $this->calculateTotals();
+        } else {
+            $this->totals = null;
+        }
 
         return view('livewire.transactions.booking-report', [
             'rows' => $rows,

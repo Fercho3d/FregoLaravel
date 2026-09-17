@@ -58,10 +58,19 @@
 
         <div class="mt-3 flex flex-wrap items-end gap-2">
             <button type="button" wire:click="clearFilters" class="btn-ghost !px-3 !py-1.5 text-xs">{{ __('Limpiar filtros') }}</button>
-            <button type="button" wire:click="calculateTotals" wire:loading.attr="disabled" wire:target="calculateTotals"
-                    class="btn-ghost !px-3 !py-1.5 text-xs">
-                <x-spinner wire:loading wire:target="calculateTotals" class="h-3.5 w-3.5" />
-                {{ __('Sumar todo el filtro') }}
+
+            {{-- Switch «mostrar sumatoria»: enciende el pie de totales y se recuerda
+                 en cookie (la misma que el listado de transacciones). --}}
+            <button type="button" role="switch" x-data
+                    x-on:click="$wire.showTotals = ! $wire.showTotals"
+                    :aria-checked="$wire.showTotals ? 'true' : 'false'"
+                    class="group inline-flex cursor-pointer select-none items-center gap-2 text-xs text-ink-soft focus:outline-none">
+                <span class="relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition group-focus-visible:ring-2 group-focus-visible:ring-accent-500/50"
+                      :class="$wire.showTotals ? 'bg-accent-500' : 'bg-ink-faint'">
+                    <span class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition"
+                          :class="$wire.showTotals ? 'translate-x-4' : 'translate-x-0.5'"></span>
+                </span>
+                {{ __('Mostrar sumatoria') }}
             </button>
 
             <a href="{{ $this->exportUrl() }}"
