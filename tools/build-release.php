@@ -69,10 +69,18 @@ if (! is_dir($dest) && ! mkdir($dest, 0755, true) && ! is_dir($dest)) {
     exit(1);
 }
 
-$files = new RecursiveIteratorIterator(
+// Se PODAN los directorios excluidos antes de descender: si no, el iterador
+// intenta entrar a `storage` (p. ej. `storage/app/private/livewire-tmp`, sin
+// permiso de lectura) y truena a media construcción, dejando el paquete
+// incompleto —fue justo lo que pasó con `lang/en.json`—.
+$podados = new RecursiveCallbackFilterIterator(
     new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS),
-    RecursiveIteratorIterator::SELF_FIRST,
+    static function ($current) use ($isExcluded, $root): bool {
+        return ! $isExcluded(substr($current->getPathname(), strlen($root) + 1));
+    },
 );
+
+$files = new RecursiveIteratorIterator($podados, RecursiveIteratorIterator::SELF_FIRST);
 
 $copied = 0;
 $stripped = 0;
