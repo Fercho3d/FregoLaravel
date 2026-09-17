@@ -82,6 +82,8 @@
 
 <div class="flex min-h-full"
      x-data="{ sidebar: false, colapsado: (() => { try { return localStorage.getItem('nav_colapsado') === '1' } catch (e) { return false } })(),
+               tip: { show: false, text: '', y: 0 },
+               verTip(e, texto) { if (! this.colapsado) return; const r = e.currentTarget.getBoundingClientRect(); this.tip = { show: true, text: texto, y: r.top + r.height / 2 } },
                togglar() { this.colapsado = ! this.colapsado; try { localStorage.setItem('nav_colapsado', this.colapsado ? '1' : '0') } catch (e) {} } }"
      x-on:keydown.escape.window="sidebar = false"
      x-on:livewire:navigated.window="sidebar = false">
@@ -108,7 +110,8 @@
                 @php $pendiente = $href === '#'; @endphp
                 <a href="{{ $href }}" @if (! $pendiente) wire:navigate @endif
                    @if ($active) aria-current="page" @endif
-                   title="{{ $label }}"
+                   aria-label="{{ $label }}"
+                   x-on:mouseenter="verTip($event, @js($label))" x-on:mouseleave="tip.show = false"
                    :class="colapsado && 'lg:justify-center'"
                    class="flex items-center gap-2.5 rounded-lg px-3 py-2 font-medium transition
                           {{ $active ? 'bg-raised text-ink shadow-sm' : 'text-ink-muted hover:bg-raised hover:text-ink' }}
@@ -129,6 +132,12 @@
             </p>
         </div>
     </aside>
+
+    {{-- Tooltip flotante del menú colapsado: fijo para que no lo corte el scroll
+         de la barra. Solo se muestra cuando la barra está en modo iconos. --}}
+    <div x-show="tip.show" x-cloak x-transition.opacity.duration.100ms
+         class="pointer-events-none fixed left-16 z-50 hidden -translate-y-1/2 translate-x-1 whitespace-nowrap rounded-md bg-ink px-2.5 py-1 text-xs font-medium text-surface shadow-lg lg:block"
+         :style="`top: ${tip.y}px`" x-text="tip.text"></div>
 
     {{-- Fondo oscuro del cajón en móvil --}}
     <div x-show="sidebar" x-cloak x-transition.opacity.duration.200ms
