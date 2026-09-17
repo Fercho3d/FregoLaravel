@@ -54,9 +54,6 @@
         @endunless
     </section>
 
-    {{-- Mapa de rutas en curso: lo primero que se ve tras la bienvenida. --}}
-    @include('partials.mapa-rutas')
-
     {{-- Cifras del mes --}}
     <section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         @foreach ([
@@ -73,6 +70,9 @@
             </div>
         @endforeach
     </section>
+
+    {{-- Mapa de rutas en curso: arriba, tras las cifras del mes. --}}
+    @include('partials.mapa-rutas')
 
     <div class="grid gap-4 lg:grid-cols-3">
         {{-- Facturas emitidas por mes --}}
