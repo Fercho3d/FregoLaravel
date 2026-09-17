@@ -42,7 +42,7 @@
             </div>
 
             <a href="{{ route('operations.bookings') }}" wire:navigate class="btn-accent px-4 py-2 text-sm">
-                {{ __('Ir a operación') }}
+                {{ __('Bookings') }}
             </a>
         </div>
 
@@ -53,6 +53,9 @@
             </div>
         @endunless
     </section>
+
+    {{-- Mapa de rutas en curso: lo primero que se ve tras la bienvenida. --}}
+    @include('partials.mapa-rutas')
 
     {{-- Cifras del mes --}}
     <section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -182,7 +185,5 @@
             </table>
         </div>
     </section>
-
-    @include('partials.mapa-rutas')
 
 </div>
