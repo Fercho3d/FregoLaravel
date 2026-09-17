@@ -34,8 +34,8 @@
                     <rect x="5" y="11" width="14" height="9" rx="2"/><path stroke-linecap="round" d="M8 11V8a4 4 0 0 1 8 0v3"/>
                 </svg>
                 <span>
-                    {{ $lockReason }}
-                    Solo puedes cambiar la compañía emisora{{ $dateIsEditable ? __(' y la fecha') : '' }}.
+                    {{ $lockReason ? __($lockReason) : '' }}
+                    {{ __('Solo puedes cambiar la compañía emisora') }}{{ $dateIsEditable ? __(' y la fecha') : '' }}.
                 </span>
             </p>
         @endif
