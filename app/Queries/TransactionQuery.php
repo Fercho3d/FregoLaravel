@@ -61,9 +61,17 @@ class TransactionQuery
         return collect($this->aggregateQuery()->when($limit, fn ($q) => $q->limit($limit))->get());
     }
 
+    /**
+     * A partir de aquí, la vía de dos fases arma un `IN (…)` con demasiados IDs
+     * —se repite en la consulta de filas y en cada agregado— y MySQL truena con
+     * «too many placeholders» (error 1390). Con páginas así de grandes («Ver
+     * todas») se usa la vía agregada, que filtra con un semi-join sin listar IDs.
+     */
+    private const MAX_DOS_FASES = 2000;
+
     public function paginate(int $perPage = 100, int $page = 1): LengthAwarePaginator
     {
-        if ($this->canUseTwoPhase()) {
+        if ($this->canUseTwoPhase() && $perPage <= self::MAX_DOS_FASES) {
             $total = $this->countIds();
             $ids = $this->idQuery()->forPage($page, $perPage)->pluck('transc_id')->all();
             $rows = $ids === [] ? collect() : $this->rowsFor($ids);
