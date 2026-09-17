@@ -178,6 +178,17 @@ class TransactionTable extends Component
         $this->resetPage();
     }
 
+    /**
+     * «Ver todas»: trae el filtro completo en una sola página, sin paginar. El
+     * tope es muy alto (no una página real de ese tamaño): la consulta devuelve
+     * las filas que haya, que en la práctica son unos miles.
+     */
+    public function verTodas(): void
+    {
+        $this->perPage = 100000;
+        $this->resetPage();
+    }
+
     public function clearFilters(): void
     {
         $this->reset(['tranNumber', 'bookingNumber', 'appliedTo', 'dates', 'companyId', 'accountId', 'paid']);

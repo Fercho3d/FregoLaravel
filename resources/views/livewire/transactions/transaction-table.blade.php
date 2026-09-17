@@ -224,7 +224,14 @@
                     {{ __('Exportar a Excel') }}
                 </a>
 
-                <label class="ml-auto flex items-center gap-2 text-xs text-ink-muted">
+                {{-- Ver todas: carga el filtro completo en una sola página. --}}
+                <button type="button" wire:click="verTodas" wire:loading.attr="disabled" wire:target="verTodas"
+                        class="ml-auto btn-ghost !py-1.5 !px-3 text-xs">
+                    <x-spinner wire:loading wire:target="verTodas" class="h-3.5 w-3.5" />
+                    {{ __('Ver todas') }}
+                </button>
+
+                <label class="flex items-center gap-2 text-xs text-ink-muted">
                     {{ __('Por página') }}
                     <select wire:model.live="perPage" class="field-input !w-auto py-1 text-xs">
                         @foreach ([25, 50, 100, 200, 500, 1000] as $n)
