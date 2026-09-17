@@ -80,17 +80,23 @@
     );
 @endphp
 
-<div class="flex min-h-full" x-data="{ sidebar: false }" x-on:keydown.escape.window="sidebar = false"
+<div class="flex min-h-full"
+     x-data="{ sidebar: false, colapsado: (() => { try { return localStorage.getItem('nav_colapsado') === '1' } catch (e) { return false } })(),
+               togglar() { this.colapsado = ! this.colapsado; try { localStorage.setItem('nav_colapsado', this.colapsado ? '1' : '0') } catch (e) {} } }"
+     x-on:keydown.escape.window="sidebar = false"
      x-on:livewire:navigated.window="sidebar = false">
 
-    {{-- Menú lateral: fijo desde lg, cajón deslizante en móvil --}}
-    <aside class="fixed inset-y-0 left-0 z-40 flex w-64 transform flex-col border-r border-line bg-panel transition-transform duration-200 ease-out lg:translate-x-0"
-           :class="sidebar ? 'translate-x-0' : '-translate-x-full'">
-        <div class="flex h-16 shrink-0 items-center gap-2 border-b border-line px-5">
-            @include('partials.logo', ['class' => 'text-xl', 'alto' => 'h-8'])
-            @if ($etiqueta = \App\Support\Marca::etiqueta())
-                <span class="text-[10px] font-semibold uppercase tracking-widest text-ink-faint">{{ $etiqueta }}</span>
-            @endif
+    {{-- Menú lateral: fijo desde lg, cajón deslizante en móvil. En escritorio se
+         puede colapsar a solo iconos (se recuerda en el navegador). --}}
+    <aside class="fixed inset-y-0 left-0 z-40 flex w-64 transform flex-col border-r border-line bg-panel transition-all duration-200 ease-out lg:translate-x-0"
+           :class="[sidebar ? 'translate-x-0' : '-translate-x-full', colapsado ? 'lg:w-16' : 'lg:w-64']">
+        <div class="flex h-16 shrink-0 items-center gap-2 border-b border-line px-5" :class="colapsado && 'lg:justify-center lg:px-0'">
+            <span :class="colapsado && 'lg:hidden'" class="flex items-center gap-2">
+                @include('partials.logo', ['class' => 'text-xl', 'alto' => 'h-8'])
+                @if ($etiqueta = \App\Support\Marca::etiqueta())
+                    <span class="text-[10px] font-semibold uppercase tracking-widest text-ink-faint">{{ $etiqueta }}</span>
+                @endif
+            </span>
             <button class="ml-auto rounded-lg p-1.5 text-ink-faint transition hover:bg-raised lg:hidden"
                     x-on:click="sidebar = false" aria-label="Cerrar menú">
                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/></svg>
@@ -102,19 +108,21 @@
                 @php $pendiente = $href === '#'; @endphp
                 <a href="{{ $href }}" @if (! $pendiente) wire:navigate @endif
                    @if ($active) aria-current="page" @endif
+                   title="{{ $label }}"
+                   :class="colapsado && 'lg:justify-center'"
                    class="flex items-center gap-2.5 rounded-lg px-3 py-2 font-medium transition
                           {{ $active ? 'bg-raised text-ink shadow-sm' : 'text-ink-muted hover:bg-raised hover:text-ink' }}
                           {{ $pendiente ? 'cursor-default opacity-50' : '' }}">
                     @include('partials.nav-icon', ['icon' => $icon])
-                    <span class="truncate">{{ $label }}</span>
+                    <span class="truncate" :class="colapsado && 'lg:hidden'">{{ $label }}</span>
                     @if ($active)
-                        <span class="ml-auto h-1.5 w-1.5 rounded-full bg-accent-500"></span>
+                        <span class="ml-auto h-1.5 w-1.5 rounded-full bg-accent-500" :class="colapsado && 'lg:hidden'"></span>
                     @endif
                 </a>
             @endforeach
         </nav>
 
-        <div class="border-t border-line p-3">
+        <div class="border-t border-line p-3" :class="colapsado && 'lg:hidden'">
             <p class="px-2 text-[11px] leading-relaxed text-ink-faint">
                 {{ \App\Support\Marca::nombre() }}<br>
                 {{ \App\Support\Marca::pie() }}
@@ -127,11 +135,21 @@
          class="fixed inset-0 z-30 bg-black/50 lg:hidden" x-on:click="sidebar = false"></div>
 
     {{-- Columna principal --}}
-    <div class="flex min-w-0 flex-1 flex-col lg:pl-64">
+    <div class="flex min-w-0 flex-1 flex-col transition-all duration-200" :class="colapsado ? 'lg:pl-16' : 'lg:pl-64'">
         <header class="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-line bg-surface/85 px-4 backdrop-blur sm:px-6">
             <button class="-ml-1 rounded-lg p-2 text-ink-muted transition hover:bg-raised hover:text-ink lg:hidden"
                     x-on:click="sidebar = true" aria-label="{{ __('Abrir menú') }}">
                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+            </button>
+
+            {{-- Colapsar/expandir la barra (solo escritorio); se recuerda. --}}
+            <button class="-ml-1 hidden rounded-lg p-2 text-ink-muted transition hover:bg-raised hover:text-ink lg:inline-flex"
+                    x-on:click="togglar()" :aria-pressed="colapsado"
+                    :aria-label="colapsado ? '{{ __('Expandir menú') }}' : '{{ __('Colapsar menú') }}'"
+                    :title="colapsado ? '{{ __('Expandir menú') }}' : '{{ __('Colapsar menú') }}'">
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h10M4 18h16"/>
+                </svg>
             </button>
 
             <h1 class="min-w-0 flex-1 truncate text-sm font-semibold text-ink-soft">{{ $title }}</h1>
