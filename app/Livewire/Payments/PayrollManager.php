@@ -40,6 +40,8 @@ class PayrollManager extends Component
 
     public function mount(): void
     {
+        // La nómina se apaga entera en quien ya la lleva en otro sistema.
+        abort_unless(config('marca.nomina'), 404);
         abort_unless(auth()->user()?->isAdmin() ?? false, 403);
 
         $this->desde = now()->startOfMonth()->toDateString();

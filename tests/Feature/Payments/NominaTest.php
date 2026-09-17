@@ -84,6 +84,14 @@ class NominaTest extends TestCase
         $this->assertSame(15, Payroll::dias('2026-06-01', '2026-06-15'));
     }
 
+    /** Con la nómina apagada (cliente que la lleva en otro sistema) no se entra. */
+    public function test_sin_el_modulo_la_nomina_no_existe(): void
+    {
+        config(['marca.nomina' => false]);
+
+        $this->actingAs($this->admin())->get(route('payments.payroll'))->assertNotFound();
+    }
+
     public function test_la_nomina_llega_con_el_sueldo_de_cada_quien(): void
     {
         $this->crear()->assertHasNoErrors();
