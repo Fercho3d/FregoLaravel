@@ -227,7 +227,7 @@
                 <label class="ml-auto flex items-center gap-2 text-xs text-ink-muted">
                     {{ __('Por página') }}
                     <select wire:model.live="perPage" class="field-input !w-auto py-1 text-xs">
-                        @foreach ([25, 50, 100, 200] as $n)
+                        @foreach ([25, 50, 100, 200, 500, 1000] as $n)
                             <option value="{{ $n }}" @selected($n === $perPage)>{{ $n }}</option>
                         @endforeach
                     </select>
@@ -529,7 +529,7 @@
                             <td class="px-3 py-2.5 text-right tabular-nums text-ink-soft">{{ $money($totals['sub_0_mxn']) }}</td>
                             <td class="px-3 py-2.5 text-right tabular-nums text-ink-soft">{{ $money($totals['sub_16_mxn']) }}</td>
                             <td class="px-3 py-2.5 text-right tabular-nums text-ink-soft">{{ $money($totals['tax_16_mxn']) }}</td>
-                            <td></td>
+                            <td class="px-3 py-2.5 text-right tabular-nums text-ink-soft">{{ $money($totals['tax_ret_mxn']) }}</td>
                             <td class="px-3 py-2.5 text-right tabular-nums text-ink">{{ $money($totals['total_amount']) }}</td>
                             <td colspan="3" class="px-3 py-2.5 text-right text-ink-muted">
                                 Por cobrar/pagar: {{ $money($totals['left_to_pay']) }}
