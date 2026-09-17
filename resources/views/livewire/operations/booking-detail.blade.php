@@ -533,16 +533,18 @@
 
             <ul class="mt-4 grid gap-x-6 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
                 @foreach ($hitos as $hito)
-                    <li class="flex items-center justify-between gap-3 border-b border-line/60 py-1.5 text-sm">
+                    <li class="group flex items-center justify-between gap-3 rounded-md border-b border-line/60 px-2 py-1.5 text-sm transition
+                               {{ $puedeMarcar ? 'hover:border-transparent hover:bg-raised' : '' }}">
                         <button type="button"
                                 @if ($puedeMarcar) wire:click="marcaHito('{{ $hito['clave'] }}')" @else disabled @endif
-                                class="flex min-w-0 items-center gap-2 text-left {{ $puedeMarcar ? 'transition hover:text-brand' : 'cursor-default' }}">
+                                title="{{ $puedeMarcar ? ($hito['fecha'] ? __('Clic para desmarcar') : __('Clic para marcar hoy')) : '' }}"
+                                class="flex min-w-0 items-center gap-2 text-left {{ $puedeMarcar ? 'cursor-pointer transition hover:text-brand' : 'cursor-default' }}">
                             @if ($hito['fecha'])
                                 <svg class="h-4 w-4 shrink-0 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
                                 </svg>
                             @else
-                                <svg class="h-4 w-4 shrink-0 text-ink-faint" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                <svg class="h-4 w-4 shrink-0 text-ink-faint transition {{ $puedeMarcar ? 'group-hover:text-brand' : '' }}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                                     <circle cx="12" cy="12" r="8"/>
                                 </svg>
                             @endif
@@ -560,7 +562,8 @@
                         @else
                             <button type="button"
                                     @if ($puedeMarcar) wire:click="editaHito('{{ $hito['clave'] }}')" @else disabled @endif
-                                    class="shrink-0 text-xs text-ink-faint {{ $puedeMarcar ? 'transition hover:text-brand' : 'cursor-default' }}">
+                                    title="{{ $puedeMarcar ? __('Clic para elegir la fecha') : '' }}"
+                                    class="shrink-0 text-xs text-ink-faint {{ $puedeMarcar ? 'cursor-pointer transition hover:text-brand' : 'cursor-default' }}">
                                 {{ $hito['fecha'] ? $fecha($hito['fecha']) : ($puedeMarcar ? '—' : '') }}
                             </button>
                         @endif
