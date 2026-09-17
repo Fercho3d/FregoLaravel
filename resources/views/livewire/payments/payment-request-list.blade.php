@@ -148,12 +148,7 @@
                         <tr class="cursor-pointer transition {{ $recienCreada ? 'row-new' : 'hover:bg-raised' }}"
                             x-data x-on:click="Livewire.navigate('{{ $verUrl($fila->request_id) }}')">
                             <td class="whitespace-nowrap px-3 py-2">
-                                <span class="inline-flex items-center gap-2">
-                                    <svg class="h-3.5 w-3.5 shrink-0 text-ink-faint" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
-                                    </svg>
-                                    <span class="font-medium text-ink">{{ $this->folio($fila->request_id) }}</span>
-                                </span>
+                                <span class="font-medium text-brand hover:underline">{{ $this->folio($fila->request_id) }}</span>
                             </td>
                             <td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ (int) $fila->type === 1 ? 'Cobro' : 'Pago' }}</td>
                             <td class="max-w-[16rem] truncate px-3 py-2 text-ink-muted">
