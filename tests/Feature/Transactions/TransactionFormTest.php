@@ -283,7 +283,8 @@ class TransactionFormTest extends TestCase
         $this->assertSame('2026-02-01', Transaction::find(1)->tran_date->toDateString());
     }
 
-    public function test_un_administrador_normal_no_corrige_la_fecha_de_una_timbrada(): void
+    /** Ahora también un administrador normal corrige la fecha (lo pidió el cliente). */
+    public function test_un_administrador_normal_corrige_la_fecha_de_una_timbrada(): void
     {
         $this->actingAs($this->usuario());
 
@@ -293,7 +294,7 @@ class TransactionFormTest extends TestCase
             ->call('save')
             ->assertHasNoErrors();
 
-        $this->assertSame('2026-01-15', Transaction::find(1)->tran_date->toDateString());
+        $this->assertSame('2026-02-01', Transaction::find(1)->tran_date->toDateString());
     }
 
     /** Factura con sello y con cargos: bloqueada para todo menos la compañía. */
