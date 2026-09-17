@@ -42,6 +42,36 @@
             <circle cx="12" cy="12" r="3"/>
             <path stroke-linecap="round" stroke-linejoin="round" d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
             @break
+        @case('dolar')
+            <circle cx="12" cy="12" r="8.5"/>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M14.8 9.3C14.3 8.5 13.2 8 12 8c-1.5 0-2.7.8-2.7 2s1.2 1.9 2.7 2 2.8.9 2.8 2-1.3 2-2.8 2c-1.2 0-2.3-.5-2.8-1.3M12 6.3v11.4"/>
+            @break
+        @case('cobrar')
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v10m0 0l-4-4m4 4 4-4M5 16v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2"/>
+            @break
+        @case('pagar')
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 21V11m0 0-4 4m4-4 4 4M5 8V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v2"/>
+            @break
+        @case('balance')
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v18M6 21h12M6 6l-3 6a3 3 0 0 0 6 0L6 6zm12 0-3 6a3 3 0 0 0 6 0l-3-6zM6 6h12"/>
+            @break
+        @case('cambio')
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 9a8 8 0 0 1 13.7-4.5L20 7M20 3v4h-4M20 15a8 8 0 0 1-13.7 4.5L4 17M4 21v-4h4"/>
+            @break
+        @case('recibo')
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 7c0-1.1 3.1-2 7-2s7 .9 7 2-3.1 2-7 2-7-.9-7-2zm0 0v10c0 1.1 3.1 2 7 2s7-.9 7-2V7M5 12c0 1.1 3.1 2 7 2s7-.9 7-2"/>
+            @break
+        @case('contactos')
+            <rect x="3" y="5" width="18" height="14" rx="2"/>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8.5 12a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm-2.5 4c.3-1.3 1.4-2 2.5-2s2.2.7 2.5 2M14 10h4M14 14h3"/>
+            @break
+        @case('servicio')
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4h7l9 9-7 7-9-9V4z"/>
+            <circle cx="7.5" cy="7.5" r="1.2"/>
+            @break
+        @case('continuidad')
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 21V4m0 1.5 2-.8a4 4 0 0 1 3 0l2 .8a4 4 0 0 0 3 0l3-1.2v8l-3 1.2a4 4 0 0 1-3 0l-2-.8a4 4 0 0 0-3 0L5 13"/>
+            @break
         @default
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 3l9 5v8l-9 5-9-5V8l9-5z"/>
     @endswitch

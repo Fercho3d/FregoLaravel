@@ -33,10 +33,10 @@
             [__('Costos'), route('transactions.bill'), request()->routeIs('transactions.bill'), 'costo'],
             [__('Transacciones'), route('transactions.all'), request()->routeIs('transactions.all', 'transactions.booking'), 'transaccion'],
             [__('Utilidad por booking'), route('transactions.report.booking'), request()->routeIs('transactions.report.*'), 'reporte'],
-            [__('Solicitudes de pago'), route('payments.requests'), request()->routeIs('payments.requests'), 'banco'],
+            [__('Solicitudes de pago'), route('payments.requests'), request()->routeIs('payments.requests'), 'dolar'],
             // Solo con flota propia: quien subcontrata no liquida operadores.
             ...(\App\Support\Expediente::visible('operadorId')
-                ? [[__('Liquidaciones'), route('payments.settlements'), request()->routeIs('payments.settlements'), 'banco']]
+                ? [[__('Liquidaciones'), route('payments.settlements'), request()->routeIs('payments.settlements'), 'recibo']]
                 : []),
             // La nómina se apaga entera en quien ya la lleva en otro sistema.
             ...(config('marca.nomina')
@@ -49,9 +49,9 @@
                     [__('Almacén'), route('workshop.inventory'), request()->routeIs('workshop.inventory'), 'almacen'],
                 ]
                 : []),
-            [__('Cobros por cliente'), route('payments.report.customer'), request()->routeIs('payments.report.customer'), 'banco'],
-            [__('Pagos por proveedor'), route('payments.report.vendor'), request()->routeIs('payments.report.vendor'), 'banco'],
-            [__('Cobros y pagos'), route('payments.report.general'), request()->routeIs('payments.report.general'), 'banco'],
+            [__('Cobros por cliente'), route('payments.report.customer'), request()->routeIs('payments.report.customer'), 'cobrar'],
+            [__('Pagos por proveedor'), route('payments.report.vendor'), request()->routeIs('payments.report.vendor'), 'pagar'],
+            [__('Cobros y pagos'), route('payments.report.general'), request()->routeIs('payments.report.general'), 'balance'],
         ] : [],
         // Los usuarios los administra cualquier administrador (para dar de alta a
         // su gente); las solicitudes de demo, solo el dueño (super admin).
@@ -65,12 +65,12 @@
             ? [[__('Solicitudes de demostración'), route('demo-requests'), request()->routeIs('demo-requests'), 'usuarios']]
             : []),
         [
-            [__('Clientes y proveedores'), route('parties.clients'), request()->routeIs('parties.clients', 'parties.providers'), 'usuarios'],
-            [__('Servicios y precios'), route('parties.services'), request()->routeIs('parties.services'), 'costo'],
+            [__('Clientes y proveedores'), route('parties.clients'), request()->routeIs('parties.clients', 'parties.providers'), 'contactos'],
+            [__('Servicios y precios'), route('parties.services'), request()->routeIs('parties.services'), 'servicio'],
             [__('Catálogos'), route('catalogs.show', 'companias'), request()->routeIs('catalogs.*'), 'catalogo'],
-            [__('Tipos de cambio'), route('exchange'), request()->routeIs('exchange'), 'banco'],
+            [__('Tipos de cambio'), route('exchange'), request()->routeIs('exchange'), 'cambio'],
             [__('Bookings'), route('operations.bookings'), request()->routeIs('operations.bookings*'), 'operacion'],
-            [__('Continuidad'), route('operations.continuity'), request()->routeIs('operations.continuity'), 'reporte'],
+            [__('Continuidad'), route('operations.continuity'), request()->routeIs('operations.continuity'), 'continuidad'],
         ],
         // Los ajustes van al final: se entra una vez a configurarlos y casi
         // nunca más, así que no deben competir con lo que se usa a diario.
