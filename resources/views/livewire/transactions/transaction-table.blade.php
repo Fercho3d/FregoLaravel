@@ -539,7 +539,7 @@
                             <td class="px-3 py-2.5 text-right tabular-nums text-ink-soft">{{ $money($totals['tax_ret_mxn']) }}</td>
                             <td class="px-3 py-2.5 text-right tabular-nums text-ink">{{ $money($totals['total_amount']) }}</td>
                             <td colspan="3" class="px-3 py-2.5 text-right text-ink-muted">
-                                Por cobrar/pagar: {{ $money($totals['left_to_pay']) }}
+                                {{ __('Por cobrar/pagar') }}: {{ $money($totals['left_to_pay']) }}
                             </td>
                         </tr>
                     </tfoot>
