@@ -43,6 +43,9 @@ class BookingFilters
     /** Sobre `booking.dicharge_ETA`. */
     public ?string $dicharge_ETA = null;
 
+    /** Sobre `booking.created_at`: el default del listado (año en curso). */
+    public ?string $created = null;
+
     /**
      * Modo del booking: 10 = booking real, 9 = cotización. El listado del
      * sistema original solo enseña los reales y descarta los borradores.

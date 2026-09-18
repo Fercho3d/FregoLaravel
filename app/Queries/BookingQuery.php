@@ -174,6 +174,7 @@ class BookingQuery
             'si_filter' => 'bc.SI_date',
             'loading_EDT' => 'b.loading_EDT',
             'dicharge_ETA' => 'b.dicharge_ETA',
+            'created' => 'b.created_at',
         ] as $propiedad => $columna) {
             if (($rango = $f->range($propiedad)) !== null) {
                 $query->whereBetween(DB::raw("DATE({$columna})"), $rango);

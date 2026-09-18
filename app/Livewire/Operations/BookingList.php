@@ -79,6 +79,13 @@ class BookingList extends Component
             'commodity' => $this->commodity ?: null,
             'dates' => $this->dates ?: null,
             'loading_EDT' => $this->loadingDates ?: null,
+            // Por omisión el listado se acota al año en curso por fecha de
+            // creación del booking (que SIEMPRE existe; el pickup no, y filtrar
+            // por él escondía bookings recientes). Se aplica solo si el usuario
+            // no puso su propio rango de recolección o de carga.
+            'created' => $this->dates === '' && $this->loadingDates === ''
+                ? now()->startOfYear()->format('d/m/Y').' - '.now()->format('d/m/Y')
+                : null,
         ]);
 
         $filtros->mode = (int) $this->mode;
