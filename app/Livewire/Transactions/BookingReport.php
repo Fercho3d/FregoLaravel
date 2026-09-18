@@ -53,6 +53,12 @@ class BookingReport extends Component
     public function mount(): void
     {
         $this->showTotals = request()->cookie('mostrar_totales') === '1';
+
+        // Por omisión, del 1 de enero de este año a hoy (ver el mismo criterio en
+        // el listado de transacciones): no trae años de historia de golpe.
+        if ($this->dates === '') {
+            $this->dates = now()->startOfYear()->format('d/m/Y').' - '.now()->format('d/m/Y');
+        }
     }
 
     public function paginationView(): string

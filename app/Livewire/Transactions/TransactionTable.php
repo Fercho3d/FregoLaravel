@@ -136,6 +136,20 @@ class TransactionTable extends Component
         $this->screen = $screen;
         $this->bookingId = $booking;
         $this->showTotals = request()->cookie('mostrar_totales') === '1';
+
+        // Por omisión el listado arranca acotado al año en curso (del 1 de enero
+        // a hoy): así no trae años de historia de golpe —las pantallas van
+        // ligeras y «Ver todas» no revienta la memoria—. La pantalla de un
+        // booking no se acota: ahí ya se ve solo ese booking.
+        if ($this->dates === '' && $this->screen !== 'booking') {
+            $this->dates = $this->defaultDates();
+        }
+    }
+
+    /** Rango por omisión: del 1 de enero de este año a hoy («dd/mm/aaaa - dd/mm/aaaa»). */
+    private function defaultDates(): string
+    {
+        return now()->startOfYear()->format('d/m/Y').' - '.now()->format('d/m/Y');
     }
 
     /** Cualquier cambio de filtro vuelve a la primera página e invalida totales. */
@@ -192,6 +206,10 @@ class TransactionTable extends Component
     public function clearFilters(): void
     {
         $this->reset(['tranNumber', 'bookingNumber', 'appliedTo', 'dates', 'companyId', 'accountId', 'paid']);
+        // Limpiar vuelve al default (año en curso), no a «toda la historia».
+        if ($this->screen !== 'booking') {
+            $this->dates = $this->defaultDates();
+        }
         $this->showCancelled = '0';
         $this->totals = null;
         $this->profit = null;
