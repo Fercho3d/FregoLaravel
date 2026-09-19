@@ -32,7 +32,6 @@
             [__('Facturas'), route('transactions.invoice'), request()->routeIs('transactions.invoice'), 'factura'],
             [__('Costos'), route('transactions.bill'), request()->routeIs('transactions.bill'), 'costo'],
             [__('Transacciones'), route('transactions.all'), request()->routeIs('transactions.all', 'transactions.booking'), 'transaccion'],
-            [__('Utilidad por booking'), route('transactions.report.booking'), request()->routeIs('transactions.report.*'), 'reporte'],
             [__('Solicitudes de pago'), route('payments.requests'), request()->routeIs('payments.requests'), 'dolar'],
             // Solo con flota propia: quien subcontrata no liquida operadores.
             ...(\App\Support\Expediente::visible('operadorId')
@@ -49,9 +48,6 @@
                     [__('Almacén'), route('workshop.inventory'), request()->routeIs('workshop.inventory'), 'almacen'],
                 ]
                 : []),
-            [__('Cobros por cliente'), route('payments.report.customer'), request()->routeIs('payments.report.customer'), 'cobrar'],
-            [__('Pagos por proveedor'), route('payments.report.vendor'), request()->routeIs('payments.report.vendor'), 'pagar'],
-            [__('Cobros y pagos'), route('payments.report.general'), request()->routeIs('payments.report.general'), 'balance'],
         ] : [],
         // Los usuarios los administra cualquier administrador (para dar de alta a
         // su gente); las solicitudes de demo, solo el dueño (super admin).
@@ -70,13 +66,25 @@
             [__('Catálogos'), route('catalogs.show', 'companias'), request()->routeIs('catalogs.*'), 'catalogo'],
             [__('Tipos de cambio'), route('exchange'), request()->routeIs('exchange'), 'cambio'],
             [__('Bookings'), route('operations.bookings'), request()->routeIs('operations.bookings*'), 'operacion'],
-            [__('Continuidad'), route('operations.continuity'), request()->routeIs('operations.continuity'), 'continuidad'],
         ],
-        // Los ajustes van al final: se entra una vez a configurarlos y casi
-        // nunca más, así que no deben competir con lo que se usa a diario.
-        (auth()->user()?->isSuperAdmin() ?? false)
-            ? [[__('Ajustes'), route('settings'), request()->routeIs('settings'), 'ajustes']]
-            : [],
+    );
+
+    // Los ajustes van al final: se entra una vez a configurarlos y casi
+    // nunca más, así que no deben competir con lo que se usa a diario.
+    $ajustes = (auth()->user()?->isSuperAdmin() ?? false)
+        ? [[__('Ajustes'), route('settings'), request()->routeIs('settings'), 'ajustes']]
+        : [];
+
+    // Reportes, agrupados y con el nombre que tenían en el sistema original
+    // (sin traducir: así los conoce la gente).
+    $reportes = array_merge(
+        $esAdmin ? [
+            ['Booking Profit Report', route('transactions.report.booking'), request()->routeIs('transactions.report.*'), 'reporte'],
+            ['Transaction Payments General', route('payments.report.general'), request()->routeIs('payments.report.general'), 'balance'],
+            ['Transaction Payments by Customer', route('payments.report.customer'), request()->routeIs('payments.report.customer'), 'cobrar'],
+            ['Transaction Payments by Vendor', route('payments.report.vendor'), request()->routeIs('payments.report.vendor'), 'pagar'],
+        ] : [],
+        [['Continuity Report', route('operations.continuity'), request()->routeIs('operations.continuity'), 'continuidad']],
     );
 @endphp
 
@@ -106,7 +114,14 @@
         </div>
 
         <nav class="flex flex-1 flex-col gap-0.5 overflow-y-auto p-3 text-sm">
-            @foreach ($nav as [$label, $href, $active, $icon])
+            @foreach ([['', $nav], [__('Reportes'), $reportes], ['', $ajustes]] as [$seccion, $items])
+            @if ($seccion !== '')
+                <p class="mt-4 px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-ink-faint" :class="colapsado && 'lg:hidden'">{{ $seccion }}</p>
+                <hr class="my-2 hidden border-line" :class="colapsado && 'lg:block'">
+            @elseif (! $loop->first && $items !== [])
+                <hr class="my-2 border-line">
+            @endif
+            @foreach ($items as [$label, $href, $active, $icon])
                 @php $pendiente = $href === '#'; @endphp
                 <a href="{{ $href }}" @if (! $pendiente) wire:navigate @endif
                    @if ($active) aria-current="page" @endif
@@ -117,11 +132,12 @@
                           {{ $active ? 'bg-raised text-ink shadow-sm' : 'text-ink-muted hover:bg-raised hover:text-ink' }}
                           {{ $pendiente ? 'cursor-default opacity-50' : '' }}">
                     @include('partials.nav-icon', ['icon' => $icon])
-                    <span class="truncate" :class="colapsado && 'lg:hidden'">{{ $label }}</span>
+                    <span class="min-w-0 leading-snug" :class="colapsado && 'lg:hidden'">{{ $label }}</span>
                     @if ($active)
                         <span class="ml-auto h-1.5 w-1.5 rounded-full bg-accent-500" :class="colapsado && 'lg:hidden'"></span>
                     @endif
                 </a>
+            @endforeach
             @endforeach
         </nav>
 
