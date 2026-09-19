@@ -75,7 +75,13 @@
 
         <div class="mt-3 flex flex-wrap items-end gap-2">
             <button type="button" wire:click="clearFilters" class="btn-ghost !px-3 !py-1.5 text-xs">{{ __('Limpiar filtros') }}</button>
-            <label class="ml-auto flex items-center gap-2 text-xs text-ink-muted">
+            <x-totals-switch />
+            <button type="button" wire:click="verTodas" wire:loading.attr="disabled" wire:target="verTodas"
+                    class="ml-auto btn-ghost !py-1.5 !px-3 text-xs">
+                <x-spinner wire:loading wire:target="verTodas" class="h-3.5 w-3.5" />
+                {{ __('Ver todas') }}
+            </button>
+            <label class="flex items-center gap-2 text-xs text-ink-muted">
                 {{ __('Por página') }}
                 <select wire:model.live="perPage" class="field-input !w-auto py-1 text-xs">
                     @foreach ([25, 50, 100] as $n)
@@ -222,6 +228,22 @@
                         </tr>
                     @endforelse
                 </tbody>
+
+                @if ($totals)
+                    <tfoot class="border-t border-line bg-panel text-sm font-semibold">
+                        <tr>
+                            <td colspan="9" class="px-3 py-2.5 text-ink-muted">{{ __('Total del filtro completo') }} <span class="font-normal text-ink-faint">(MXN)</span></td>
+                            @foreach (array_keys($desglose) as $columna)
+                                <td class="whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-ink-soft">{{ $money($totals[$columna]) }}</td>
+                            @endforeach
+                            <td class="whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-ink">{{ $money($totals['total_paid']) }}</td>
+                            <td></td>
+                            <td class="whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-ink">{{ $money($totals['total_to_pay']) }}</td>
+                            <td class="whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-ink-soft">{{ $money($totals['diference']) }}</td>
+                            <td colspan="{{ $esAdmin ? 2 : 1 }}"></td>
+                        </tr>
+                    </tfoot>
+                @endif
             </table>
         </div>
     </div>

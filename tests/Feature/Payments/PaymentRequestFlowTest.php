@@ -278,6 +278,26 @@ class PaymentRequestFlowTest extends TestCase
             ->assertSet('showTotals', true);
     }
 
+    public function test_el_listado_de_solicitudes_muestra_la_sumatoria(): void
+    {
+        $this->solicitudCreada();
+
+        $this->actingAs($this->usuario());
+
+        Livewire::test(PaymentRequestList::class)
+            ->set('showTotals', true)
+            ->assertSee(__('Total del filtro completo'));
+    }
+
+    public function test_ver_todas_las_solicitudes_quita_la_paginacion(): void
+    {
+        $this->actingAs($this->usuario());
+
+        Livewire::test(PaymentRequestList::class)
+            ->call('verTodas')
+            ->assertSet('perPage', 100000);
+    }
+
     public function test_el_importe_se_puede_ajustar_renglon_por_renglon(): void
     {
         $this->formulario([1, 2])
