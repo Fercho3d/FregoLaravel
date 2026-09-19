@@ -19,11 +19,11 @@
 
 <div class="mx-auto max-w-5xl space-y-4">
 
-    {{-- Regreso al listado --}}
-    <a href="{{ route($esFactura ? 'transactions.invoice' : 'transactions.bill') }}" wire:navigate
+    {{-- Regreso a las transacciones de su booking, que es de donde se llega --}}
+    <a href="{{ route('transactions.booking', $fila->booking) }}" wire:navigate
        class="inline-flex items-center gap-1.5 text-sm text-ink-muted transition hover:text-ink">
         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
-        Volver a {{ $esFactura ? __('Facturas') : __('Costos') }}
+        {{ __('Transacciones del booking') }} {{ trim((string) $fila->booking_number) }}
     </a>
 
     {{-- Encabezado --}}
@@ -246,7 +246,7 @@
 
                     <label class="block">
                         <span class="field-label">{{ __('Cantidad') }}</span>
-                        <input type="number" step="0.0001" min="0" wire:model="quantity" value="{{ $quantity }}"
+                        <input type="text" inputmode="decimal" wire:model="quantity" value="{{ $quantity }}"
                                class="field-input mt-1.5" required>
                         @error('quantity') <span class="mt-1 block text-xs text-brand">{{ $message }}</span> @enderror
                     </label>
@@ -258,7 +258,7 @@
                                 <span class="font-normal text-ink-faint">{{ __('(lo fija el servicio)') }}</span>
                             @endif
                         </span>
-                        <input type="number" step="0.0001" min="0" wire:model="price" value="{{ $price }}"
+                        <input type="text" inputmode="decimal" wire:model="price" value="{{ $price }}"
                                @disabled($this->priceIsFixed()) class="field-input mt-1.5" required>
                         @error('price') <span class="mt-1 block text-xs text-brand">{{ $message }}</span> @enderror
                     </label>

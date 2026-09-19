@@ -310,7 +310,7 @@ class TransactionForm extends Component
     {
         $entero = fn (?string $valor) => $valor === null ? null : (int) $valor;
 
-        return [
+        $datos = [
             'booking' => $this->bookingId,
             'tran_type' => $this->tranType,
             'tran_date' => $this->tranDate,
@@ -319,10 +319,17 @@ class TransactionForm extends Component
             'customer' => $this->isInvoice() ? $entero($this->customerId) : null,
             'vendor' => $this->isInvoice() ? null : $entero($this->vendorId),
             'invoice_type' => $this->isInvoice() ? $entero($this->invoiceType) : null,
-            'tran_number' => $this->numberIsEditable() ? $this->tranNumber : null,
             'seal' => $this->seal,
             'new_seal' => $this->newSeal,
         ];
+
+        // El folio del consecutivo no viaja en el formulario: al editar se
+        // conserva el que ya tenía, en lugar de borrarlo.
+        if ($this->numberIsEditable()) {
+            $datos['tran_number'] = $this->tranNumber;
+        }
+
+        return $datos;
     }
 
     public function render()

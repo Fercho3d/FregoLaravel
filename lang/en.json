@@ -850,7 +850,6 @@
     "Vence la verificación": "Inspection expires",
     "Ver": "View",
     "Ver / cambiar": "View / change",
-    "Ver facturación": "View billing",
     "Ver solo lo que falta": "Show only what is missing",
     "Ver todas": "Show all",
     "Ver todos los avisos": "See all alerts",
@@ -950,5 +949,9 @@
     "Último ingreso": "Last sign-in",
     "últimos :n meses": "last :n months",
     "…o un buque nuevo": "…or a new vessel",
-    "⚠️ Borra la base y la vuelve a llenar, cuentas de usuario incluidas: al terminar hay que volver a entrar. Este apartado solo existe en una instalación de demostración (MARCA_DEMO).": "⚠️ It wipes the database and fills it again, user accounts included: you will have to sign in again afterwards. This section only exists on a demo install (MARCA_DEMO)."
+    "⚠️ Borra la base y la vuelve a llenar, cuentas de usuario incluidas: al terminar hay que volver a entrar. Este apartado solo existe en una instalación de demostración (MARCA_DEMO).": "⚠️ It wipes the database and fills it again, user accounts included: you will have to sign in again afterwards. This section only exists on a demo install (MARCA_DEMO).",
+    "TC pago": "Pay rate",
+    "Total a pagar": "Total to pay",
+    "Diferencia": "Difference",
+    "Ret. IVA": "VAT withheld"
 }

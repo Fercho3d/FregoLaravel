@@ -5,6 +5,7 @@ namespace Tests\Feature\Transactions;
 use App\Livewire\Transactions\TransactionForm;
 use App\Models\Core\Transaction;
 use App\Models\User;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Livewire\Features\SupportTesting\Testable;
@@ -120,6 +121,32 @@ class TransactionFormTest extends TestCase
         $this->assertSame('F-42', $creada->tran_number);
         $this->assertSame(7, (int) $creada->created_by);
         $this->assertSame(1, (int) $creada->open, 'Toda transacción nueva nace abierta.');
+    }
+
+    public function test_editar_una_factura_no_le_borra_el_folio(): void
+    {
+        $this->actingAs($this->usuario());
+
+        DB::table('transaction')->insert([
+            'transc_id' => 1, 'booking' => 1, 'tran_type' => 0, 'invoice' => 41, 'tran_number' => 'F-41',
+            'tran_date' => '2026-01-10', 'account' => 1, 'customer' => 1, 'invoice_type' => 1,
+        ]);
+
+        $this->formulario(['transaction' => 1], ['tranDate' => '2026-01-15'])
+            ->call('save')->assertHasNoErrors();
+
+        $this->assertSame('F-41', Transaction::find(1)->tran_number);
+    }
+
+    public function test_la_fecha_propuesta_es_la_de_hoy_en_mexico(): void
+    {
+        $this->actingAs($this->usuario());
+
+        // 18 de septiembre, 6 de la tarde en México: en UTC ya es día 19.
+        $this->travelTo(Carbon::parse('2026-09-19 00:05:00', 'UTC'));
+
+        $this->formulario(['booking' => 1, 'tipo' => 'factura'])
+            ->assertSet('tranDate', '2026-09-18');
     }
 
     public function test_una_factura_historica_conserva_el_numero_capturado(): void

@@ -189,6 +189,10 @@ class TransactionDetail extends Component
     {
         $this->assertEditable();
 
+        // Se captura como se lee, con separador de miles: «2,929.91».
+        $this->quantity = str_replace(',', '', $this->quantity);
+        $this->price = str_replace(',', '', $this->price);
+
         $datos = $this->validate([
             'chargeType' => ['required', 'exists:charge_type,charge_type_id'],
             'serviceId' => ['required', 'exists:service,service_id'],

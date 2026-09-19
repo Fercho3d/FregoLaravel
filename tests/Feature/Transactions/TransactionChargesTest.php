@@ -126,6 +126,19 @@ class TransactionChargesTest extends TestCase
         $this->assertSame(333.50, Charge::first()->price);
     }
 
+    public function test_el_importe_acepta_separador_de_miles(): void
+    {
+        $this->detalle()
+            ->call('addCharge')
+            ->set('chargeType', '2')
+            ->set('serviceId', '11')
+            ->set('price', '2,929.91')
+            ->set('quantity', '1')
+            ->call('saveCharge');
+
+        $this->assertSame(2929.91, Charge::first()->price);
+    }
+
     public function test_cambiar_el_tipo_de_cargo_limpia_el_servicio(): void
     {
         $this->detalle()

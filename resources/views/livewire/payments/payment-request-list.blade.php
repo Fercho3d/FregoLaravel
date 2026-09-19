@@ -1,6 +1,13 @@
 @php
     $money = fn ($v) => $v === null ? '—' : number_format((float) $v, 2);
     $esAdmin = auth()->user()?->isAdmin() ?? false;
+    $desglose = [
+        'sub_0_paid' => 'Sub 0 %',
+        'sub_16_paid' => 'Sub 16 %',
+        'tax_16_paid' => 'IVA 16 %',
+        'non_dec' => __('No deducible'),
+        'tax_ret_paid' => __('Ret. IVA'),
+    ];
     // Al abrir una solicitud se va a su vista propia, llevándose el filtro actual
     // para que «Volver» regrese al mismo listado.
     $verUrl = fn ($id) => route('payments.requests.show', $id, absolute: false).'?volver='.urlencode($this->currentUrl());
@@ -134,7 +141,13 @@
                         <th class="px-3 py-2.5 text-left font-semibold">{{ __('Divisa') }}</th>
                         <th class="px-3 py-2.5 text-right font-semibold">{{ __('TC') }}</th>
                         <th class="px-3 py-2.5 text-right font-semibold">{{ __('Importe') }}</th>
+                        @foreach ($desglose as $etiqueta)
+                            <th class="whitespace-nowrap px-3 py-2.5 text-right font-semibold">{{ $etiqueta }}</th>
+                        @endforeach
                         <th class="px-3 py-2.5 text-right font-semibold">{{ __('Total pagado') }}</th>
+                        <th class="px-3 py-2.5 text-right font-semibold">{{ __('TC pago') }}</th>
+                        <th class="px-3 py-2.5 text-right font-semibold">{{ __('Total a pagar') }}</th>
+                        <th class="px-3 py-2.5 text-right font-semibold">{{ __('Diferencia') }}</th>
                         <th class="px-3 py-2.5 text-left font-semibold">{{ __('Estado') }}</th>
                         @if ($esAdmin)
                             <th class="px-3 py-2.5 text-right font-semibold"><span class="sr-only">{{ __('Acciones') }}</span></th>
@@ -164,9 +177,17 @@
                                 {{ $fila->exchange_value === null ? '—' : number_format((float) $fila->exchange_value, 4) }}
                             </td>
                             <td class="whitespace-nowrap px-3 py-2 text-right tabular-nums text-ink-soft">{{ $money($fila->amount) }}</td>
+                            @foreach ($desglose as $columna => $etiqueta)
+                                <td class="whitespace-nowrap px-3 py-2 text-right tabular-nums text-ink-muted">{{ $money($fila->{$columna}) }}</td>
+                            @endforeach
                             <td class="whitespace-nowrap px-3 py-2 text-right font-semibold tabular-nums {{ (float) $fila->total_paid < 0 ? 'text-brand' : 'text-ink' }}">
                                 {{ $money($fila->total_paid) }}
                             </td>
+                            <td class="whitespace-nowrap px-3 py-2 text-right tabular-nums text-ink-faint">
+                                {{ $fila->pay_tc === null ? '—' : number_format((float) $fila->pay_tc, 4) }}
+                            </td>
+                            <td class="whitespace-nowrap px-3 py-2 text-right tabular-nums text-ink-soft">{{ $money($fila->total_to_pay) }}</td>
+                            <td class="whitespace-nowrap px-3 py-2 text-right tabular-nums text-ink-muted">{{ $money($fila->diference) }}</td>
                             <td class="whitespace-nowrap px-3 py-2">
                                 <span class="badge {{ $fila->paid ? 'badge-ok' : 'badge-warn' }}">
                                     {{ $fila->paid ? __('Pagada') : __('Pendiente') }}
@@ -195,7 +216,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="{{ $esAdmin ? 12 : 11 }}" class="px-3 py-12 text-center text-ink-faint">
+                            <td colspan="{{ $esAdmin ? 20 : 19 }}" class="px-3 py-12 text-center text-ink-faint">
                                 {{ __('No hay solicitudes con estos filtros.') }}
                             </td>
                         </tr>
