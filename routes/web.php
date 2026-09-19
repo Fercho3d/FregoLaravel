@@ -23,6 +23,7 @@ use App\Livewire\Operations\BookingForm;
 use App\Livewire\Operations\BookingHistory;
 use App\Livewire\Operations\BookingList;
 use App\Livewire\Operations\ContinuityReport;
+use App\Livewire\Parties\PartyForm;
 use App\Livewire\Parties\PartyManager;
 use App\Livewire\Payments\PaymentRequestDetail;
 use App\Livewire\Payments\PaymentRequestForm;
@@ -114,6 +115,10 @@ Route::middleware(['auth', EnsureUserIsInternal::class])->group(function () {
     Route::middleware(EnsureUserIsAdmin::class)->prefix('terceros')->name('parties.')->group(function () {
         Route::get('/clientes', PartyManager::class)->defaults('mode', 'client')->name('clients');
         Route::get('/proveedores', PartyManager::class)->defaults('mode', 'provider')->name('providers');
+        Route::get('/clientes/nuevo', PartyForm::class)->defaults('mode', 'client')->name('clients.create');
+        Route::get('/clientes/{party}/editar', PartyForm::class)->defaults('mode', 'client')->whereNumber('party')->name('clients.edit');
+        Route::get('/proveedores/nuevo', PartyForm::class)->defaults('mode', 'provider')->name('providers.create');
+        Route::get('/proveedores/{party}/editar', PartyForm::class)->defaults('mode', 'provider')->whereNumber('party')->name('providers.edit');
         Route::get('/servicios', ServiceManager::class)->name('services');
     });
 

@@ -967,5 +967,12 @@
     "¿Quitar esta transacción de la solicitud?": "Remove this transaction from the request?",
     "Una solicitud pagada no se corrige: primero hay que reabrirla.": "A paid request can't be edited: reopen it first.",
     "Es la última transacción: para quitarla, borra la solicitud.": "This is the last transaction: to remove it, delete the request.",
-    "Volver al reporte": "Back to report"
+    "Volver al reporte": "Back to report",
+    "Nuevo cliente": "New customer",
+    "Nuevo proveedor": "New vendor",
+    "Editar servicios": "Edit services",
+    ":n servicio|:n servicios": ":n service|:n services",
+    "No tiene servicios pactados.": "No agreed services.",
+    "Registro creado.": "Record created.",
+    "Registro actualizado.": "Record updated."
 }

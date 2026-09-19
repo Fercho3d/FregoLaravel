@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Parties;
 
+use App\Livewire\Parties\PartyForm;
 use App\Livewire\Parties\PartyManager;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -37,10 +38,16 @@ class PartyManagerTest extends TestCase
         return Livewire::test(PartyManager::class, ['mode' => $modo]);
     }
 
+    private function ficha(string $modo = 'client', ?int $party = null, int $rol = User::ROLE_ADMIN): Testable
+    {
+        $this->actingAs($this->usuario($rol));
+
+        return Livewire::test(PartyForm::class, ['mode' => $modo, 'party' => $party]);
+    }
+
     public function test_crear_un_cliente_con_sus_datos_fiscales(): void
     {
-        $this->pantalla()
-            ->call('create')
+        $this->ficha()
             ->set('form.fullName', 'Lubricantes de América')
             ->set('form.rfc', 'LAM010101AAA')
             ->set('form.regimen_fiscal_id', '601')
@@ -56,8 +63,7 @@ class PartyManagerTest extends TestCase
 
     public function test_el_nombre_es_obligatorio(): void
     {
-        $this->pantalla()
-            ->call('create')
+        $this->ficha()
             ->set('form.fullName', '')
             ->call('save')
             ->assertHasErrors('form.fullName');
@@ -67,8 +73,7 @@ class PartyManagerTest extends TestCase
 
     public function test_el_correo_debe_ser_valido(): void
     {
-        $this->pantalla()
-            ->call('create')
+        $this->ficha()
             ->set('form.fullName', 'Cliente')
             ->set('form.email', 'no-es-un-correo')
             ->call('save')
@@ -89,8 +94,7 @@ class PartyManagerTest extends TestCase
     {
         DB::table('provider')->insert([['provider_id' => 1, 'fullName' => 'Proveedor Uno', 'type_id' => 2]]);
 
-        $this->pantalla('provider')
-            ->call('edit', 1)
+        $this->ficha('provider', 1)
             ->assertSet('form.fullName', 'Proveedor Uno')
             ->set('form.city', 'Manzanillo')
             ->call('save')
@@ -98,6 +102,50 @@ class PartyManagerTest extends TestCase
 
         $this->assertSame('Manzanillo', DB::table('provider')->where('provider_id', 1)->value('city'));
         $this->assertSame(1, DB::table('provider')->count());
+    }
+
+    public function test_la_ficha_del_proveedor_muestra_sus_servicios(): void
+    {
+        DB::table('provider')->insert([['provider_id' => 1, 'fullName' => 'Proveedor Uno', 'type_id' => 2]]);
+        DB::table('charge_type')->insert([['charge_type_id' => 1, 'charge_type_name' => 'Flete']]);
+        DB::table('service')->insert([
+            ['service_id' => 1, 'type' => 2, 'provider_id' => 1, 'charge_type_id' => 1, 'description' => 'Flete Manzanillo', 'price' => 42500, 'active' => 1],
+        ]);
+
+        $this->ficha('provider', 1)
+            ->assertSee('Flete Manzanillo')
+            ->assertSee('42,500.00');
+    }
+
+    public function test_guardar_regresa_a_la_lista_con_su_filtro(): void
+    {
+        DB::table('provider')->insert([['provider_id' => 1, 'fullName' => 'Proveedor Uno', 'type_id' => 2]]);
+        $this->actingAs($this->usuario());
+
+        Livewire::withQueryParams(['volver' => '/terceros/proveedores?q=uno&page=3'])
+            ->test(PartyForm::class, ['mode' => 'provider', 'party' => 1])
+            ->call('save')
+            ->assertRedirect('/terceros/proveedores?q=uno&page=3');
+    }
+
+    public function test_editar_desde_la_lista_lleva_su_busqueda(): void
+    {
+        DB::table('provider')->insert([['provider_id' => 1, 'fullName' => 'Proveedor Uno', 'type_id' => 2]]);
+
+        $this->pantalla('provider')
+            ->set('search', 'uno')
+            ->assertSeeHtml(e(route('parties.providers.edit', [1, 'volver' => '/terceros/proveedores?q=uno'])));
+    }
+
+    public function test_editar_servicios_regresa_a_la_ficha(): void
+    {
+        DB::table('provider')->insert([['provider_id' => 1, 'fullName' => 'Proveedor Uno', 'type_id' => 2]]);
+
+        $url = $this->ficha('provider', 1)->instance()->servicesUrl();
+        parse_str((string) parse_url($url, PHP_URL_QUERY), $parametros);
+
+        $this->assertSame(['2', '1'], [$parametros['tipo'], $parametros['tercero']]);
+        $this->assertStringStartsWith('/terceros/proveedores/1/editar?volver=', $parametros['volver']);
     }
 
     public function test_la_busqueda_filtra(): void
@@ -115,6 +163,6 @@ class PartyManagerTest extends TestCase
 
     public function test_quien_no_es_administrador_no_escribe(): void
     {
-        $this->pantalla('client', User::ROLE_USER)->call('create')->assertForbidden();
+        $this->ficha('client', null, User::ROLE_USER)->assertForbidden();
     }
 }

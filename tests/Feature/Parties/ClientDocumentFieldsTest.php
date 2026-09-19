@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Parties;
 
-use App\Livewire\Parties\PartyManager;
+use App\Livewire\Parties\PartyForm;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Livewire\Features\SupportTesting\Testable;
@@ -33,19 +33,18 @@ class ClientDocumentFieldsTest extends TestCase
         DB::table('client')->insert([['client_id' => 5, 'fullName' => 'Frialsa']]);
     }
 
-    private function pantalla(int $rol = User::ROLE_ADMIN): Testable
+    private function pantalla(int $party = 5, int $rol = User::ROLE_ADMIN): Testable
     {
         $this->actingAs(User::create([
             'username' => 'operador'.$rol, 'password' => 'secreto-de-prueba', 'role' => $rol, 'status' => 1,
         ]));
 
-        return Livewire::test(PartyManager::class, ['mode' => 'client']);
+        return Livewire::test(PartyForm::class, ['mode' => 'client', 'party' => $party]);
     }
 
     public function test_se_eligen_al_editar_el_cliente(): void
     {
         $this->pantalla()
-            ->call('edit', 5)
             ->set('documentFields', ['1', '3'])
             ->call('save')
             ->assertHasNoErrors();
@@ -66,7 +65,6 @@ class ClientDocumentFieldsTest extends TestCase
         ]);
 
         $this->pantalla()
-            ->call('edit', 5)
             ->set('documentFields', ['2'])
             ->call('save');
 
@@ -80,7 +78,7 @@ class ClientDocumentFieldsTest extends TestCase
     {
         DB::table('fields_by_client')->insert([['client_id' => 5, 'field_id' => 2]]);
 
-        $this->pantalla()->call('edit', 5)->assertSet('documentFields', ['2']);
+        $this->pantalla()->assertSet('documentFields', ['2']);
     }
 
     public function test_el_proveedor_no_los_pide(): void
@@ -91,8 +89,7 @@ class ClientDocumentFieldsTest extends TestCase
             'username' => 'admin2', 'password' => 'secreto-de-prueba', 'role' => User::ROLE_ADMIN, 'status' => 1,
         ]));
 
-        Livewire::test(PartyManager::class, ['mode' => 'provider'])
-            ->call('edit', 3)
+        Livewire::test(PartyForm::class, ['mode' => 'provider', 'party' => 3])
             ->set('documentFields', ['1'])
             ->call('save');
 

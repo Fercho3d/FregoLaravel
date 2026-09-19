@@ -42,6 +42,10 @@ class ServiceManager extends Component
     #[Url(as: 'tercero', except: '')]
     public string $partyId = '';
 
+    /** Ficha del cliente o proveedor de la que se llegó, para regresar a ella. */
+    #[Url(as: 'volver', except: '')]
+    public string $volver = '';
+
     public ?int $editing = null;
 
     /** @var array<string, mixed> */
@@ -50,6 +54,14 @@ class ServiceManager extends Component
     public function paginationView(): string
     {
         return 'vendor.pagination.app';
+    }
+
+    public function mount(): void
+    {
+        // Solo se regresa a direcciones propias del sistema.
+        if (! str_starts_with($this->volver, '/') || str_starts_with($this->volver, '//')) {
+            $this->volver = '';
+        }
     }
 
     public function updated(string $property): void
