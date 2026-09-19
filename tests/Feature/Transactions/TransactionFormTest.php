@@ -31,7 +31,7 @@ class TransactionFormTest extends TestCase
 
         // Guardar consulta el tipo de cambio del DOF; en pruebas no se sale a red.
         Http::preventStrayRequests();
-        Http::fake(['sidofqa.segob.gob.mx/*' => Http::response(['ListaIndicadores' => []])]);
+        Http::fake(['www.banxico.org.mx/*' => Http::response(['bmx' => ['series' => [['datos' => []]]]])]);
     }
 
     private function seedFixture(): void

@@ -5,6 +5,8 @@ namespace Tests\Feature\Exchange;
 use App\Livewire\Exchange\ExchangeManager;
 use App\Models\Core\Exchange;
 use App\Models\User;
+use App\Support\ExchangeRates;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Livewire\Features\SupportTesting\Testable;
@@ -122,9 +124,24 @@ class ExchangeManagerTest extends TestCase
 
     public function test_traer_el_del_dia_avisa_cuando_el_dof_no_contesta(): void
     {
-        Http::fake(['sidofqa.segob.gob.mx/*' => Http::response(['ListaIndicadores' => []])]);
+        Http::fake(['www.banxico.org.mx/*' => Http::response(['bmx' => ['series' => [['datos' => []]]]])]);
 
         $this->pantalla()->call('fetchToday')->assertHasErrors('fetch');
+    }
+
+    /** El valor de Banxico para el día se guarda tal cual, en la cuenta del dólar. */
+    public function test_el_del_dia_se_toma_de_banxico(): void
+    {
+        Http::fake(['www.banxico.org.mx/*' => Http::response(['bmx' => ['series' => [
+            ['idSerie' => 'SF60653', 'datos' => [['fecha' => '24/08/2026', 'dato' => '16.9583']]],
+        ]]])]);
+
+        app(ExchangeRates::class)->ensureFor(Carbon::parse('2026-08-24'));
+
+        $this->assertSame(
+            [16.9583, 2],
+            [(float) Exchange::whereDate('date_exchange', '2026-08-24')->value('exchange_value'), (int) Exchange::value('account')],
+        );
     }
 
     public function test_quien_no_es_administrador_no_entra(): void

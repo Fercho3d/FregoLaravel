@@ -33,7 +33,7 @@ class PaymentRequestFlowTest extends TestCase
         $this->seedFixture();
 
         Http::preventStrayRequests();
-        Http::fake(['sidofqa.segob.gob.mx/*' => Http::response(['ListaIndicadores' => []])]);
+        Http::fake(['www.banxico.org.mx/*' => Http::response(['bmx' => ['series' => [['datos' => []]]]])]);
     }
 
     private function seedFixture(): void

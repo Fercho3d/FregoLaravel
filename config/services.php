@@ -14,6 +14,12 @@ return [
     |
     */
 
+    // Tipo de cambio del dólar (SIE). Token gratis en
+    // https://www.banxico.org.mx/SieAPIRest/service/v1/token
+    'banxico' => [
+        'token' => env('BANXICO_TOKEN'),
+    ],
+
     'postmark' => [
         'key' => env('POSTMARK_API_KEY'),
     ],
