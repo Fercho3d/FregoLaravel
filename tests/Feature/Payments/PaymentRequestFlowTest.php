@@ -256,6 +256,64 @@ class PaymentRequestFlowTest extends TestCase
         $this->assertSame(0, PaymentRequest::count());
     }
 
+    public function test_reabierta_se_corrigen_encabezado_e_importes(): void
+    {
+        $id = $this->solicitudCreada();
+        PaymentRequest::whereKey($id)->update(['paid' => 1, 'opened' => 0]);
+
+        $this->actingAs($this->usuario());
+
+        Livewire::test(PaymentRequestDetail::class, ['request' => $id])
+            ->call('reopen')
+            ->set('number', 'CHQ-CORREGIDO')
+            ->set('amounts.1', '800')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame(
+            ['CHQ-CORREGIDO', 1300.0, 800.0],
+            [PaymentRequest::find($id)->number, (float) PaymentRequest::find($id)->amount, (float) PaymentByTransaction::where('transc_id', 1)->value('amount')],
+        );
+    }
+
+    public function test_reabierta_se_quita_una_transaccion(): void
+    {
+        $id = $this->solicitudCreada();
+
+        $this->actingAs($this->usuario());
+
+        Livewire::test(PaymentRequestDetail::class, ['request' => $id])->call('removeTransaction', 2);
+
+        $this->assertSame([1000.0, [1]], [
+            (float) PaymentRequest::find($id)->amount,
+            PaymentByTransaction::where('request_id', $id)->pluck('transc_id')->all(),
+        ]);
+    }
+
+    public function test_no_se_corrige_mas_de_lo_que_vale_el_documento(): void
+    {
+        $id = $this->solicitudCreada();
+
+        $this->actingAs($this->usuario());
+
+        Livewire::test(PaymentRequestDetail::class, ['request' => $id])
+            ->set('amounts.1', '5000')
+            ->call('save')
+            ->assertHasErrors('amounts.1');
+    }
+
+    public function test_pagada_no_se_corrige(): void
+    {
+        $id = $this->solicitudCreada();
+        PaymentRequest::whereKey($id)->update(['paid' => 1]);
+
+        $this->actingAs($this->usuario());
+
+        Livewire::test(PaymentRequestDetail::class, ['request' => $id])
+            ->call('save')
+            ->assertStatus(422);
+    }
+
     public function test_el_switch_muestra_y_oculta_la_sumatoria(): void
     {
         $this->actingAs($this->usuario());

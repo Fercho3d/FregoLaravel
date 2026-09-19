@@ -174,7 +174,7 @@
                wire:navigate class="btn-ghost">{{ __('Cancelar') }}</a>
             <button type="submit" wire:loading.attr="disabled" wire:target="save" @disabled($locked) class="btn-accent">
                 <x-spinner wire:loading wire:target="save" class="h-4 w-4" />
-                {{ $bookingId ? 'Guardar cambios' : 'Crear booking' }}
+                {{ $bookingId ? __('Guardar cambios') : 'Crear booking' }}
             </button>
         </footer>
     </form>

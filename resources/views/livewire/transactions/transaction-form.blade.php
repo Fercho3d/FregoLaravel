@@ -174,7 +174,7 @@
 
             <button type="submit" wire:loading.attr="disabled" wire:target="save" class="btn-accent">
                 <x-spinner wire:loading wire:target="save" class="h-4 w-4" />
-                <span wire:loading.remove wire:target="save">{{ $transactionId ? 'Guardar cambios' : __('Crear transacción') }}</span>
+                <span wire:loading.remove wire:target="save">{{ $transactionId ? __('Guardar cambios') : __('Crear transacción') }}</span>
                 <span wire:loading wire:target="save">{{ __('Guardando…') }}</span>
             </button>
         </footer>

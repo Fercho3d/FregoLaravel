@@ -2,6 +2,7 @@
     $money = fn ($v) => $v === null ? '—' : number_format((float) $v, 2);
     $esAdmin = auth()->user()?->isAdmin() ?? false;
     $esCobro = (int) $solicitud->type === 1;
+    $editable = $esAdmin && ! $solicitud->paid;
 @endphp
 
 <div class="space-y-4">
@@ -27,6 +28,7 @@
                     <button type="button" wire:click="delete"
                             wire:confirm="{{ __('Se borrará la solicitud y se soltarán sus transacciones. ¿Continuar?') }}"
                             class="btn-ghost !px-3 !py-1.5 text-sm">{{ __('Borrar') }}</button>
+                    <button type="button" wire:click="save" class="btn-ghost !px-3 !py-1.5 text-sm">{{ __('Guardar cambios') }}</button>
                     <button type="button" wire:click="markPaid"
                             wire:confirm="{{ __('¿Marcar esta solicitud como pagada?') }}"
                             class="btn-accent !px-3 !py-1.5 text-sm">{{ __('Pagar') }}</button>
@@ -57,15 +59,35 @@
         <dl class="mt-4 grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
             <div class="flex justify-between gap-2 border-b border-line pb-2">
                 <dt class="text-ink-faint">{{ __('Número') }}</dt>
-                <dd class="text-ink-soft">{{ $solicitud->number ?: '—' }}</dd>
+                @if ($editable)
+                    <dd><input type="text" wire:model="number" maxlength="64" class="field-input !w-44 py-1 text-sm">
+                        @error('number') <span class="mt-1 block text-xs text-brand">{{ $message }}</span> @enderror</dd>
+                @else
+                    <dd class="text-ink-soft">{{ $solicitud->number ?: '—' }}</dd>
+                @endif
             </div>
             <div class="flex justify-between gap-2 border-b border-line pb-2">
                 <dt class="text-ink-faint">{{ __('Fecha') }}</dt>
-                <dd class="text-ink-soft">{{ $solicitud->date ? \Illuminate\Support\Carbon::parse($solicitud->date)->format('d/m/Y') : '—' }}</dd>
+                @if ($editable)
+                    <dd><input type="date" wire:model="date" class="field-input !w-44 py-1 text-sm">
+                        @error('date') <span class="mt-1 block text-xs text-brand">{{ $message }}</span> @enderror</dd>
+                @else
+                    <dd class="text-ink-soft">{{ $solicitud->date ? \Illuminate\Support\Carbon::parse($solicitud->date)->format('d/m/Y') : '—' }}</dd>
+                @endif
             </div>
             <div class="flex justify-between gap-2 border-b border-line pb-2">
                 <dt class="text-ink-faint">{{ __('Banco') }}</dt>
-                <dd class="text-ink-soft">{{ $solicitud->bank_name ?: '—' }}</dd>
+                @if ($editable)
+                    <dd><select wire:model="bankId" class="field-input !w-44 py-1 text-sm">
+                            <option value="">—</option>
+                            @foreach ($banks as $id => $etiqueta)
+                                <option value="{{ $id }}">{{ $etiqueta }}</option>
+                            @endforeach
+                        </select>
+                        @error('bankId') <span class="mt-1 block text-xs text-brand">{{ $message }}</span> @enderror</dd>
+                @else
+                    <dd class="text-ink-soft">{{ $solicitud->bank_name ?: '—' }}</dd>
+                @endif
             </div>
             <div class="flex justify-between gap-2 border-b border-line pb-2">
                 <dt class="text-ink-faint">{{ __('Divisa') }}</dt>
@@ -101,6 +123,10 @@
                         <th class="px-3 py-2 text-right font-semibold">{{ __('Total') }}</th>
                         <th class="px-3 py-2 text-right font-semibold">{{ __('Pagado') }}</th>
                         <th class="px-3 py-2 text-right font-semibold">{{ __('Por pagar') }}</th>
+                        @if ($editable)
+                            <th class="px-3 py-2 text-right font-semibold">{{ __('Se aplica') }}</th>
+                            <th class="px-3 py-2"><span class="sr-only">{{ __('Acciones') }}</span></th>
+                        @endif
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-line">
@@ -117,6 +143,22 @@
                             <td class="whitespace-nowrap px-3 py-2 text-right tabular-nums text-ink-soft">{{ $money($t->total_natural_amount) }}</td>
                             <td class="whitespace-nowrap px-3 py-2 text-right tabular-nums text-ink-muted">{{ $money($t->tran_paid_amount) }}</td>
                             <td class="whitespace-nowrap px-3 py-2 text-right tabular-nums text-ink">{{ $money($t->left_to_pay) }}</td>
+                            @if ($editable)
+                                <td class="whitespace-nowrap px-3 py-2 text-right">
+                                    <input type="number" step="0.01" wire:model="amounts.{{ $t->transc_id }}"
+                                           class="field-input !w-32 py-1 text-right text-sm tabular-nums">
+                                    @error('amounts.'.$t->transc_id)
+                                        <span class="mt-1 block text-xs text-brand">{{ $message }}</span>
+                                    @enderror
+                                </td>
+                                <td class="whitespace-nowrap px-3 py-2 text-right text-xs">
+                                    @if (count($amounts) > 1)
+                                        <button type="button" wire:click="removeTransaction({{ $t->transc_id }})"
+                                                wire:confirm="{{ __('¿Quitar esta transacción de la solicitud?') }}"
+                                                class="text-ink-muted transition hover:text-brand">{{ __('Quitar') }}</button>
+                                    @endif
+                                </td>
+                            @endif
                         </tr>
                     @empty
                         <tr>
