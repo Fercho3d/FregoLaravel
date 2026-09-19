@@ -974,5 +974,10 @@
     ":n servicio|:n servicios": ":n service|:n services",
     "No tiene servicios pactados.": "No agreed services.",
     "Registro creado.": "Record created.",
-    "Registro actualizado.": "Record updated."
+    "Registro actualizado.": "Record updated.",
+    "Servicio creado.": "Service created.",
+    "Servicio actualizado.": "Service updated.",
+    "(referencia)": "(reference)",
+    "Desactivar": "Deactivate",
+    "Activar": "Activate"
 }

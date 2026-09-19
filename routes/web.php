@@ -35,6 +35,7 @@ use App\Livewire\Workshop\MaintenanceManager;
 use App\Livewire\Payments\SettlementManager;
 use App\Livewire\Portal\PortalDocument;
 use App\Livewire\Portal\PortalHome;
+use App\Livewire\Services\ServiceForm;
 use App\Livewire\Services\ServiceManager;
 use App\Livewire\Settings;
 use App\Livewire\Transactions\BookingReport;
@@ -120,6 +121,8 @@ Route::middleware(['auth', EnsureUserIsInternal::class])->group(function () {
         Route::get('/proveedores/nuevo', PartyForm::class)->defaults('mode', 'provider')->name('providers.create');
         Route::get('/proveedores/{party}/editar', PartyForm::class)->defaults('mode', 'provider')->whereNumber('party')->name('providers.edit');
         Route::get('/servicios', ServiceManager::class)->name('services');
+        Route::get('/servicios/nuevo', ServiceForm::class)->name('services.create');
+        Route::get('/servicios/{service}/editar', ServiceForm::class)->whereNumber('service')->name('services.edit');
     });
 
     /*

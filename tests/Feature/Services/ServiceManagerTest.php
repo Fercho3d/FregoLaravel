@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Services;
 
+use App\Livewire\Services\ServiceForm;
 use App\Livewire\Services\ServiceManager;
 use App\Models\Core\Service;
 use App\Models\User;
@@ -49,10 +50,16 @@ class ServiceManagerTest extends TestCase
         return Livewire::test(ServiceManager::class);
     }
 
+    private function formulario(int $rol = User::ROLE_ADMIN): Testable
+    {
+        $this->actingAs($this->usuario($rol));
+
+        return Livewire::test(ServiceForm::class);
+    }
+
     public function test_un_servicio_de_venta_queda_ligado_al_cliente_y_no_al_proveedor(): void
     {
-        $this->pantalla()
-            ->call('create')
+        $this->formulario()
             ->set('form.description', 'Flete Manzanillo')
             ->set('form.price', '850')
             ->set('form.charge_type_id', '1')
@@ -70,9 +77,8 @@ class ServiceManagerTest extends TestCase
 
     public function test_un_servicio_de_compra_queda_ligado_al_proveedor(): void
     {
-        $this->pantalla()
+        $this->formulario()
             ->set('type', '2')
-            ->call('create')
             ->set('form.description', 'Maniobra')
             ->set('form.price', '300')
             ->set('form.charge_type_id', '1')
@@ -90,8 +96,7 @@ class ServiceManagerTest extends TestCase
 
     public function test_el_precio_cero_se_permite_porque_es_precio_abierto(): void
     {
-        $this->pantalla()
-            ->call('create')
+        $this->formulario()
             ->set('form.description', 'Maniobra variable')
             ->set('form.price', '0')
             ->set('form.charge_type_id', '1')
@@ -110,8 +115,7 @@ class ServiceManagerTest extends TestCase
      */
     public function test_un_servicio_auto_incluible_exige_tipo_de_precio(): void
     {
-        $this->pantalla()
-            ->call('create')
+        $this->formulario()
             ->set('form.description', 'Flete')
             ->set('form.price', '850')
             ->set('form.charge_type_id', '1')
@@ -129,8 +133,7 @@ class ServiceManagerTest extends TestCase
         DB::table('loading_ports')->insert([['port_id' => 5, 'port_name' => 'Altamira', 'deleted' => 0]]);
         DB::table('container_types')->insert([['contType_id' => 3, 'container_name' => '40 RF']]);
 
-        $this->pantalla()
-            ->call('create')
+        $this->formulario()
             ->set('form.description', 'Flete Altamira')
             ->set('form.price', '850')
             ->set('form.charge_type_id', '1')
@@ -158,8 +161,7 @@ class ServiceManagerTest extends TestCase
 
     public function test_la_vigencia_no_puede_terminar_antes_de_empezar(): void
     {
-        $this->pantalla()
-            ->call('create')
+        $this->formulario()
             ->set('form.description', 'Flete')
             ->set('form.price', '850')
             ->set('form.charge_type_id', '1')
@@ -173,8 +175,7 @@ class ServiceManagerTest extends TestCase
 
     public function test_el_precio_no_puede_ser_negativo(): void
     {
-        $this->pantalla()
-            ->call('create')
+        $this->formulario()
             ->set('form.description', 'Servicio')
             ->set('form.price', '-10')
             ->set('form.charge_type_id', '1')
@@ -186,8 +187,7 @@ class ServiceManagerTest extends TestCase
 
     public function test_el_tipo_de_cargo_es_obligatorio_porque_decide_el_iva(): void
     {
-        $this->pantalla()
-            ->call('create')
+        $this->formulario()
             ->set('form.description', 'Servicio')
             ->set('form.price', '100')
             ->set('form.party_id', '1')
@@ -232,8 +232,48 @@ class ServiceManagerTest extends TestCase
         $this->assertSame('De compra', $compra->items()[0]->description);
     }
 
+    public function test_el_precio_acepta_separador_de_miles(): void
+    {
+        $this->formulario()
+            ->set('form.description', 'Flete Manzanillo')
+            ->set('form.price', '42,500.50')
+            ->set('form.charge_type_id', '1')
+            ->set('form.account_id', '1')
+            ->set('form.party_id', '1')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame(42500.50, Service::first()->price);
+    }
+
+    public function test_guardar_regresa_a_la_lista_con_su_filtro(): void
+    {
+        $this->actingAs($this->usuario());
+
+        Livewire::withQueryParams(['tipo' => '2', 'tercero' => '1', 'volver' => '/terceros/servicios?tipo=2&tercero=1'])
+            ->test(ServiceForm::class)
+            ->assertSet('type', '2')
+            ->assertSet('form.party_id', '1')
+            ->set('form.description', 'Maniobra')
+            ->set('form.price', '300')
+            ->set('form.charge_type_id', '1')
+            ->set('form.account_id', '1')
+            ->call('save')
+            ->assertRedirect('/terceros/servicios?tipo=2&tercero=1');
+    }
+
+    public function test_editar_desde_la_lista_lleva_su_filtro(): void
+    {
+        DB::table('service')->insert([['service_id' => 1, 'type' => 2, 'provider_id' => 1, 'charge_type_id' => 1, 'description' => 'Maniobra', 'price' => 300, 'active' => 1]]);
+
+        $this->pantalla()
+            ->set('type', '2')
+            ->set('partyId', '1')
+            ->assertSeeHtml(e(route('parties.services.edit', [1, 'volver' => '/terceros/servicios?tipo=2&tercero=1'])));
+    }
+
     public function test_quien_no_es_administrador_no_escribe(): void
     {
-        $this->pantalla(User::ROLE_USER)->call('create')->assertForbidden();
+        $this->formulario(User::ROLE_USER)->assertForbidden();
     }
 }
