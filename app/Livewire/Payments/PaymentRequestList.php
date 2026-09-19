@@ -110,10 +110,21 @@ class PaymentRequestList extends Component
         $this->resetPage();
     }
 
-    /** La lista con su filtro: a dónde vuelve el detalle. */
+    /**
+     * La lista con su filtro: a dónde vuelve el detalle. Se arma con los filtros
+     * y no con la dirección de la petición, que tras cambiar un filtro es la de
+     * Livewire (`/livewire-…/update`) y no la de la pantalla.
+     */
     public function currentUrl(): string
     {
-        return request()->getRequestUri();
+        return route('payments.requests', array_filter([
+            'tipo' => $this->type,
+            'banco' => $this->bankId,
+            'estado' => $this->paid,
+            'f' => $this->dates,
+            'num' => $this->number,
+            'n' => $this->perPage === 50 ? null : $this->perPage,
+        ], fn ($valor) => $valor !== null && $valor !== ''), absolute: false);
     }
 
     // ------------------------------------------------------------ Acciones

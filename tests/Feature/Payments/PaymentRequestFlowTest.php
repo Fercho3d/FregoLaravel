@@ -356,6 +356,18 @@ class PaymentRequestFlowTest extends TestCase
             ->assertSet('perPage', 100000);
     }
 
+    public function test_volver_del_detalle_regresa_al_listado_con_su_filtro(): void
+    {
+        $this->actingAs($this->usuario());
+
+        $url = Livewire::test(PaymentRequestList::class)
+            ->set('type', '2')
+            ->instance()
+            ->currentUrl();
+
+        $this->assertStringStartsWith('/pagos/solicitudes?tipo=2', $url);
+    }
+
     public function test_el_importe_se_puede_ajustar_renglon_por_renglon(): void
     {
         $this->formulario([1, 2])

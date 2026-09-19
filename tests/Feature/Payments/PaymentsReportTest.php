@@ -90,6 +90,17 @@ class PaymentsReportTest extends LegacyDatabaseTestCase
      * que en el original no se cumplía: dos de los tres detalles no heredaban el
      * filtro de «pagadas» y traían de más.
      */
+    public function test_cada_solicitud_del_desglose_abre_su_detalle(): void
+    {
+        $this->actingAs($this->admin());
+
+        $componente = Livewire::test(PaymentsReport::class, ['mode' => 'general']);
+        $tipo = (string) $componente->viewData('filas')->first()->type;
+        $solicitud = $componente->call('toggle', $tipo)->viewData('detalle')->first();
+
+        $componente->assertSeeHtml('\\/pagos\\/solicitudes\\/'.$solicitud->request_id.'?volver=');
+    }
+
     public function test_el_desglose_suma_el_renglon_que_abre(): void
     {
         $this->actingAs($this->admin());

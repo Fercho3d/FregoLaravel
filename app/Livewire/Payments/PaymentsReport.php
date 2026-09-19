@@ -64,6 +64,16 @@ class PaymentsReport extends Component
         $this->reset(['dates', 'datePay', 'bankId', 'expanded']);
     }
 
+    /** Este reporte con su filtro: a dónde vuelve el detalle de una solicitud. */
+    public function currentUrl(): string
+    {
+        return route('payments.report.'.$this->mode, array_filter([
+            'f' => $this->dates,
+            'tc' => $this->datePay,
+            'banco' => $this->bankId,
+        ]), absolute: false);
+    }
+
     /** Columna que identifica cada renglón según el modo. */
     public function keyColumn(): string
     {

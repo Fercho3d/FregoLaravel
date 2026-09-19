@@ -131,8 +131,10 @@
                                             </thead>
                                             <tbody class="divide-y divide-line">
                                                 @forelse ($detalle as $renglon)
-                                                    <tr>
-                                                        <td class="whitespace-nowrap px-3 py-1.5 text-ink">{{ $renglon->number ?: $renglon->request_id }}</td>
+                                                    {{-- Abre la solicitud para ver qué documentos pagó --}}
+                                                    <tr class="cursor-pointer transition hover:bg-panel" x-data
+                                                        x-on:click="Livewire.navigate(@js(route('payments.requests.show', $renglon->request_id, absolute: false).'?volver='.urlencode($this->currentUrl())))">
+                                                        <td class="whitespace-nowrap px-3 py-1.5 font-medium text-brand hover:underline">{{ $renglon->number ?: $renglon->request_id }}</td>
                                                         <td class="whitespace-nowrap px-3 py-1.5 text-ink-muted">
                                                             {{ $renglon->date ? \Illuminate\Support\Carbon::parse($renglon->date)->format('d/m/Y') : '—' }}
                                                         </td>
