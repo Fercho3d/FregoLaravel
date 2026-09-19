@@ -460,6 +460,11 @@ class TransactionTable extends Component
             'companies' => Company::options(),
             'currencies' => Account::options(),
             'booking' => $this->bookingId ? Booking::find($this->bookingId) : null,
+            // En la pantalla de un booking la utilidad va siempre, como en el
+            // original: es una sola consulta chica.
+            'bookingProfit' => $this->screen === 'booking'
+                ? ((new ProfitByBooking($this->filters()))->summary()['rows'][0] ?? null)
+                : null,
         ])->layout('components.app-layout', ['title' => $this->title()]);
     }
 

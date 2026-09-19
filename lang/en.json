@@ -957,5 +957,10 @@
     "¿Quitar?": "Remove?",
     "Sí": "Yes",
     "No": "No",
-    ":n línea|:n líneas": ":n line|:n lines"
+    ":n línea|:n líneas": ":n line|:n lines",
+    "Subtotal facturas": "Invoices subtotal",
+    "Subtotal costos": "Costs subtotal",
+    "Profit del booking": "Booking profit",
+    "margen": "margin",
+    "sin IVA, TC documento": "before VAT, document rate"
 }

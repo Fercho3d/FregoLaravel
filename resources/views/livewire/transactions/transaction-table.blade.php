@@ -535,6 +535,22 @@
         </div>
     </div>
 
+    {{-- Utilidad del booking: facturas menos costos, sin IVA, a TC del documento. --}}
+    @if ($bookingProfit)
+        @php $margen = $bookingProfit['inv_doc'] != 0 ? $bookingProfit['profit_doc'] / $bookingProfit['inv_doc'] * 100 : 0; @endphp
+        <div class="card flex flex-wrap items-center justify-end gap-x-2 gap-y-1 px-5 py-3 text-sm text-ink-muted">
+            <span>{{ __('Subtotal facturas') }}: <b class="tabular-nums text-ink">{{ $money($bookingProfit['inv_doc']) }}</b></span>
+            <span>−</span>
+            <span>{{ __('Subtotal costos') }}: <b class="tabular-nums text-ink">{{ $money($bookingProfit['cost_doc']) }}</b></span>
+            <span>=</span>
+            <span>{{ __('Profit del booking') }}:
+                <b class="tabular-nums {{ $bookingProfit['profit_doc'] < 0 ? 'text-brand' : 'text-emerald-600' }}">{{ $money($bookingProfit['profit_doc']) }}</b>
+                <span class="text-xs">({{ __('margen') }}: {{ number_format($margen, 1) }}%)</span>
+            </span>
+            <span class="text-xs text-ink-faint">· {{ __('sin IVA, TC documento') }}</span>
+        </div>
+    @endif
+
     {{-- Totales del filtro, en móvil: el `tfoot` de la tabla no se ve ahí. --}}
     @if ($totals)
         <div class="card space-y-1.5 p-4 text-sm md:hidden">

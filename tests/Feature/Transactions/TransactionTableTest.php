@@ -211,6 +211,20 @@ class TransactionTableTest extends LegacyDatabaseTestCase
         }
     }
 
+    public function test_la_pantalla_de_un_booking_muestra_su_profit(): void
+    {
+        $this->actAsUser();
+
+        $booking = DB::table('transaction')
+            ->join('booking', 'booking.booking_id', '=', 'transaction.booking')
+            ->where('booking.mode', 10)
+            ->where('transaction.tran_type', 0)
+            ->value('transaction.booking');
+
+        Livewire::test(TransactionTable::class, ['screen' => 'booking', 'booking' => $booking])
+            ->assertSee(__('Profit del booking'));
+    }
+
     /**
      * Livewire vuelve a fijar la vista del paginador en cada render, así que la
      * propia solo se aplica si el componente la declara. Sin esto salía la vista
