@@ -233,6 +233,13 @@
 
         <main data-pantalla class="page-enter flex-1 p-4 sm:p-6 lg:p-8">
             @include('partials.session-status')
+            @if ($fallaBanxico = \App\Support\ExchangeRates::failure())
+                <div class="alert-warn mb-4" role="alert">
+                    {{ $fallaBanxico === 'token'
+                        ? __('El token de Banxico venció o no es válido y el tipo de cambio no se está registrando. Contacte a su administrador.')
+                        : __('No se pudo conectar con Banxico y el tipo de cambio no se está registrando. Contacte a su administrador.') }}
+                </div>
+            @endif
             {{ $slot }}
         </main>
     </div>

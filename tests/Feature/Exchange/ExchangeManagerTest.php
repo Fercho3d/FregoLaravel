@@ -144,6 +144,41 @@ class ExchangeManagerTest extends TestCase
         );
     }
 
+    /** Banxico rechaza el token: cualquier pantalla avisa que hay que llamar al administrador. */
+    public function test_avisa_cuando_banxico_rechaza_el_token(): void
+    {
+        Http::fake(['www.banxico.org.mx/*' => Http::response(['error' => ['mensaje' => 'Token inválido']], 400)]);
+
+        app(ExchangeRates::class)->ensureFor(Carbon::parse('2026-08-24'));
+
+        $this->actingAs($this->usuario())->get(route('dashboard'))
+            ->assertSee(__('El token de Banxico venció o no es válido y el tipo de cambio no se está registrando. Contacte a su administrador.'));
+    }
+
+    public function test_avisa_cuando_no_se_puede_conectar_con_banxico(): void
+    {
+        Http::fake(['www.banxico.org.mx/*' => Http::failedConnection()]);
+
+        app(ExchangeRates::class)->ensureFor(Carbon::parse('2026-08-24'));
+
+        $this->actingAs($this->usuario())->get(route('dashboard'))
+            ->assertSee(__('No se pudo conectar con Banxico y el tipo de cambio no se está registrando. Contacte a su administrador.'));
+    }
+
+    /** En cuanto Banxico vuelve a contestar, el aviso se quita solo. */
+    public function test_el_aviso_se_quita_cuando_banxico_contesta(): void
+    {
+        Http::fake(['www.banxico.org.mx/*' => Http::sequence()
+            ->push(['error' => ['mensaje' => 'Token inválido']], 400)
+            ->push(['bmx' => ['series' => [['datos' => [['fecha' => '24/08/2026', 'dato' => '16.9583']]]]]]),
+        ]);
+
+        app(ExchangeRates::class)->ensureFor(Carbon::parse('2026-08-24'));
+        app(ExchangeRates::class)->ensureFor(Carbon::parse('2026-08-24'));
+
+        $this->assertNull(ExchangeRates::failure());
+    }
+
     public function test_quien_no_es_administrador_no_entra(): void
     {
         $this->actingAs($this->usuario(User::ROLE_USER));

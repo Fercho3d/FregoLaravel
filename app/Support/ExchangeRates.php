@@ -3,7 +3,9 @@
 namespace App\Support;
 
 use App\Models\Core\Exchange;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -19,7 +21,8 @@ use Throwable;
  *
  * Si el servicio no responde, el error se registra y se sigue: guardar una
  * transacción no puede depender de que Banxico esté disponible, igual que en el
- * sistema original.
+ * sistema original. Lo que sí se hace es recordar la falla (`failure()`) para
+ * que el menú avise a todos hasta que Banxico vuelva a contestar.
  */
 class ExchangeRates
 {
@@ -30,6 +33,14 @@ class ExchangeRates
     private const CUENTA_USD = 2;
 
     private const TIEMPO_LIMITE = 8;
+
+    private const CLAVE_FALLA = 'banxico.falla';
+
+    /** 'token' si Banxico lo rechazó, 'conexion' si no contestó; null si todo bien. */
+    public static function failure(): ?string
+    {
+        return Cache::get(self::CLAVE_FALLA);
+    }
 
     /** @return bool Si al terminar hay un tipo de cambio registrado para la fecha. */
     public function ensureFor(Carbon $fecha): bool
@@ -44,8 +55,17 @@ class ExchangeRates
         }
 
         try {
-            return $this->fetchAndStore($fecha);
+            $registrado = $this->fetchAndStore($fecha);
+            Cache::forget(self::CLAVE_FALLA);
+
+            return $registrado;
         } catch (Throwable $e) {
+            // Banxico contesta 400 con {"error":{"mensaje":"Token inválido"}}.
+            $tokenRechazado = $e instanceof RequestException
+                && str_contains(mb_strtolower((string) $e->response->json('error.mensaje')), 'token');
+            // Caduca sola por si el token se corrige en un día que ya tenía su tipo de cambio.
+            Cache::put(self::CLAVE_FALLA, $tokenRechazado ? 'token' : 'conexion', now()->addHours(12));
+
             Log::warning('No se pudo obtener el tipo de cambio de Banxico', [
                 'fecha' => $fecha->toDateString(),
                 'error' => $e->getMessage(),

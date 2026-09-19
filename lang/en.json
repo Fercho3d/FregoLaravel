@@ -248,7 +248,6 @@
     "Egreso": "Expense",
     "Egreso del filtro": "Expense in filter",
     "El <strong>rol</strong> dice qué puede hacer; el <strong>acceso</strong>, desde dónde entra.": "The <strong>role</strong> says what they can do; the <strong>access</strong>, where they sign in from.",
-    "El DOF no devolvió un tipo de cambio para hoy. Captúralo a mano si ya lo publicaron.": "The DOF returned no exchange rate for today. Enter it by hand if it has been published.",
     "El RFC, el régimen y el código postal son los que salen en el CFDI.": "The tax ID, tax regime and ZIP code are the ones printed on the CFDI.",
     "El booking está bloqueado.": "The booking is locked.",
     "El booking lo propondrá cuando su ruta coincida con la de aquí abajo. Los campos que dejes vacíos solo empatan con bookings que tampoco los tengan.": "A booking will propose it when its route matches the one below. Fields left empty only match bookings that leave them empty too.",
@@ -979,5 +978,8 @@
     "Servicio actualizado.": "Service updated.",
     "(referencia)": "(reference)",
     "Desactivar": "Deactivate",
-    "Activar": "Activate"
+    "Activar": "Activate",
+    "Banxico no devolvió un tipo de cambio para hoy. Captúralo a mano si ya lo publicaron.": "Banxico did not return an exchange rate for today. Enter it by hand if it has already been published.",
+    "El token de Banxico venció o no es válido y el tipo de cambio no se está registrando. Contacte a su administrador.": "The Banxico token has expired or is invalid, so exchange rates are not being recorded. Please contact your administrator.",
+    "No se pudo conectar con Banxico y el tipo de cambio no se está registrando. Contacte a su administrador.": "Could not connect to Banxico, so exchange rates are not being recorded. Please contact your administrator."
 }

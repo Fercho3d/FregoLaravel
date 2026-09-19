@@ -117,14 +117,14 @@ class ExchangeManager extends Component
         $this->cancel();
     }
 
-    /** Trae del DOF el dólar del día, si aún no está. */
+    /** Trae de Banxico el dólar del día, si aún no está. */
     public function fetchToday(ExchangeRates $tipos): void
     {
         abort_unless(auth()->user()?->isAdmin() ?? false, 403);
 
         $tipos->ensureFor(Carbon::today())
             ? session()->flash('status', __('Tipo de cambio del día registrado.'))
-            : $this->addError('fetch', __('El DOF no devolvió un tipo de cambio para hoy. Captúralo a mano si ya lo publicaron.'));
+            : $this->addError('fetch', __('Banxico no devolvió un tipo de cambio para hoy. Captúralo a mano si ya lo publicaron.'));
     }
 
     public function render()
