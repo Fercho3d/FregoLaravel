@@ -67,6 +67,18 @@ class PaymentRequestList extends Component
 
         $this->highlight = is_numeric($nueva) ? (int) $nueva : null;
         $this->showTotals = request()->cookie('mostrar_totales') === '1';
+
+        // Como en transacciones: arranca en el año en curso para que «Ver todas»
+        // no traiga años de historia de golpe y se quede sin memoria.
+        if ($this->dates === '') {
+            $this->dates = $this->defaultDates();
+        }
+    }
+
+    /** Del 1 de enero de este año a hoy («dd/mm/aaaa - dd/mm/aaaa»). */
+    private function defaultDates(): string
+    {
+        return now()->startOfYear()->format('d/m/Y').' - '.now()->format('d/m/Y');
     }
 
     public function updatedShowTotals(bool $value): void
@@ -93,7 +105,8 @@ class PaymentRequestList extends Component
 
     public function clearFilters(): void
     {
-        $this->reset(['type', 'bankId', 'paid', 'dates', 'number', 'highlight']);
+        $this->reset(['type', 'bankId', 'paid', 'number', 'highlight']);
+        $this->dates = $this->defaultDates();
         $this->resetPage();
     }
 
