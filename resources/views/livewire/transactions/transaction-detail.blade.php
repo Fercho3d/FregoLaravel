@@ -246,7 +246,7 @@
 
                     <label class="block">
                         <span class="field-label">{{ __('Cantidad') }}</span>
-                        <input type="text" inputmode="decimal" wire:model="quantity" value="{{ $quantity }}"
+                        <input type="text" inputmode="decimal" x-data="campoImporte" wire:model="quantity" value="{{ $quantity }}"
                                class="field-input mt-1.5" required>
                         @error('quantity') <span class="mt-1 block text-xs text-brand">{{ $message }}</span> @enderror
                     </label>
@@ -258,7 +258,7 @@
                                 <span class="font-normal text-ink-faint">{{ __('(lo fija el servicio)') }}</span>
                             @endif
                         </span>
-                        <input type="text" inputmode="decimal" wire:model="price" value="{{ $price }}"
+                        <input type="text" inputmode="decimal" x-data="campoImporte" wire:model="price" value="{{ $price }}"
                                @disabled($this->priceIsFixed()) class="field-input mt-1.5" required>
                         @error('price') <span class="mt-1 block text-xs text-brand">{{ $message }}</span> @enderror
                     </label>

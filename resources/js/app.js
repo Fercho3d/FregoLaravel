@@ -270,3 +270,68 @@ document.addEventListener('livewire:navigated', () => {
     void pantalla.offsetWidth;
     pantalla.classList.add('page-enter');
 });
+
+/**
+ * Campo de importe: solo deja capturar números y un punto decimal, y va
+ * poniendo las comas de miles mientras se escribe («2929.91» → «2,929.91»).
+ *
+ * El servidor quita las comas antes de validar, así que a Livewire se le manda
+ * el texto tal como se ve. Se usa junto con `wire:model` en el mismo `<input>`.
+ */
+document.addEventListener('alpine:init', () => {
+    window.Alpine.data('campoImporte', () => ({
+        init() {
+            this.formatear();
+
+            // Cuando el servidor cambia el valor (p. ej. el precio del servicio
+            // elegido), llega sin comas: se vuelve a formatear al pintarse.
+            const propiedad = this.$el.getAttribute('wire:model');
+            if (propiedad) {
+                this.$wire.$watch(propiedad, () => this.$nextTick(() => this.formatear()));
+            }
+
+            this.$el.addEventListener('input', () => this.formatear(true));
+        },
+
+        formatear(avisar = false) {
+            const campo = this.$el;
+            const antes = campo.value;
+
+            // Cuántos caracteres válidos hay antes del cursor, para devolverlo
+            // al mismo lugar después de meter o quitar comas.
+            const cursor = campo.selectionStart ?? antes.length;
+            const validosAntes = antes.slice(0, cursor).replace(/[^\d.]/g, '').length;
+
+            let limpio = antes.replace(/[^\d.]/g, '');
+            const punto = limpio.indexOf('.');
+            if (punto !== -1) {
+                limpio = limpio.slice(0, punto + 1) + limpio.slice(punto + 1).replace(/\./g, '');
+            }
+
+            const [entero, decimales] = limpio.split('.');
+            const conComas = entero.replace(/^0+(?=\d)/, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            const nuevo = decimales === undefined ? conComas : `${conComas}.${decimales}`;
+
+            if (nuevo === antes) {
+                return;
+            }
+
+            campo.value = nuevo;
+
+            if (document.activeElement === campo) {
+                let posicion = 0;
+                for (let vistos = 0; posicion < nuevo.length && vistos < validosAntes; posicion++) {
+                    if (nuevo[posicion] !== ',') {
+                        vistos++;
+                    }
+                }
+                campo.setSelectionRange(posicion, posicion);
+            }
+
+            // Livewire ya leyó el valor sin formato: se le vuelve a avisar.
+            if (avisar) {
+                campo.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        },
+    }));
+});
