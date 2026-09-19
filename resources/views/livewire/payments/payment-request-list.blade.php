@@ -33,18 +33,18 @@
     <div class="card p-4">
         <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
             <label class="block">
-                <span class="field-label text-xs">{{ __('Número') }}</span>
-                <input type="text" wire:model.live.debounce.400ms="number" value="{{ $number }}"
-                       class="field-input mt-1 py-1.5 text-sm" placeholder="{{ __('exacto') }}">
-            </label>
-
-            <label class="block">
                 <span class="field-label text-xs">{{ __('Tipo') }}</span>
                 <select wire:model.live="type" class="field-input mt-1 py-1.5 text-sm">
-                    @foreach (['' => __('Todos'), '1' => __('Cobros a clientes'), '2' => __('Pagos a proveedores')] as $valor => $etiqueta)
+                    @foreach (['' => __('Todos'), '1' => 'Invoice', '2' => 'Bill'] as $valor => $etiqueta)
                         <option value="{{ $valor }}" @selected((string) $valor === $type)>{{ $etiqueta }}</option>
                     @endforeach
                 </select>
+            </label>
+
+            <label class="block">
+                <span class="field-label text-xs">{{ __('Número') }}</span>
+                <input type="text" wire:model.live.debounce.400ms="number" value="{{ $number }}"
+                       class="field-input mt-1 py-1.5 text-sm" placeholder="{{ __('exacto') }}">
             </label>
 
             <label class="block">
@@ -163,7 +163,7 @@
                             <td class="whitespace-nowrap px-3 py-2">
                                 <span class="font-medium text-brand hover:underline">{{ $this->folio($fila->request_id) }}</span>
                             </td>
-                            <td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ (int) $fila->type === 1 ? __('Cobro') : __('Pago') }}</td>
+                            <td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ (int) $fila->type === 1 ? 'Invoice' : 'Bill' }}</td>
                             <td class="max-w-[16rem] truncate px-3 py-2 text-ink-muted">
                                 {{ (int) $fila->type === 1 ? ($fila->clientName ?: '—') : ($fila->providerName ?: '—') }}
                             </td>
