@@ -2,9 +2,11 @@
 
 namespace Tests\Feature\Payments;
 
+use App\Livewire\Payments\PaymentRequestList;
 use App\Livewire\Payments\PaymentsReport;
 use App\Models\User;
 use Livewire\Livewire;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
 use Tests\LegacyDatabaseTestCase;
 
@@ -86,44 +88,56 @@ class PaymentsReportTest extends LegacyDatabaseTestCase
     }
 
     /**
-     * El desglose de un renglón tiene que sumar ese renglón. Es la comprobación
-     * que en el original no se cumplía: dos de los tres detalles no heredaban el
-     * filtro de «pagadas» y traían de más.
+     * Un renglón abre la lista de solicitudes ya filtrada, y esa lista tiene que
+     * sumar lo que dice el renglón. Es la comprobación que en el original no se
+     * cumplía: dos de los tres detalles no heredaban el filtro de «pagadas» y
+     * traían de más.
      */
-    public function test_cada_solicitud_del_desglose_abre_su_detalle(): void
+    #[DataProvider('modos')]
+    public function test_la_lista_que_abre_un_renglon_suma_lo_mismo(string $modo): void
     {
         $this->actingAs($this->admin());
 
-        $componente = Livewire::test(PaymentsReport::class, ['mode' => 'general']);
-        $tipo = (string) $componente->viewData('filas')->first()->type;
-        $solicitud = $componente->call('toggle', $tipo)->viewData('detalle')->first();
+        $reporte = Livewire::test(PaymentsReport::class, ['mode' => $modo]);
 
-        $componente->assertSeeHtml('\\/pagos\\/solicitudes\\/'.$solicitud->request_id.'?volver=');
-    }
-
-    public function test_el_desglose_suma_el_renglon_que_abre(): void
-    {
-        $this->actingAs($this->admin());
-
-        $componente = Livewire::test(PaymentsReport::class, ['mode' => 'customer']);
-
-        $renglon = $componente->viewData('filas')
+        $renglon = $reporte->viewData('filas')
             ->sortByDesc(fn ($f) => abs((float) $f->total_paid))
             ->first();
 
-        $this->assertNotNull($renglon, 'No hay renglones que desglosar.');
+        $this->assertNotNull($renglon, 'No hay renglones que abrir.');
 
-        $detalle = $componente->call('toggle', (string) $renglon->client_id)->viewData('detalle');
+        parse_str((string) parse_url($reporte->instance()->requestsUrl($renglon), PHP_URL_QUERY), $parametros);
 
-        $this->assertGreaterThan(0, $detalle->count(), 'El renglón se abrió sin solicitudes.');
+        $totales = Livewire::withQueryParams($parametros)
+            ->test(PaymentRequestList::class)
+            ->set('showTotals', true)
+            ->viewData('totals');
 
-        // El renglón viene con el signo del tipo y el desglose sin invertir, así
-        // que la comparación es en magnitud.
+        // El renglón viene con el signo del tipo y la lista puede traerlo
+        // distinto, así que la comparación es en magnitud.
         $this->assertEqualsWithDelta(
             round(abs((float) $renglon->total_paid), 2),
-            round(abs($detalle->sum(fn ($d) => (float) $d->total_paid)), 2),
+            round(abs($totales['total_paid']), 2),
             0.05,
-            'El desglose no suma lo que dice el renglón.',
+            'La lista no suma lo que dice el renglón.',
         );
+    }
+
+    /** @return array<string, array{string}> */
+    public static function modos(): array
+    {
+        return ['general' => ['general'], 'por cliente' => ['customer'], 'por proveedor' => ['vendor']];
+    }
+
+    public function test_la_lista_regresa_al_reporte_con_su_filtro(): void
+    {
+        $this->actingAs($this->admin());
+
+        $reporte = Livewire::test(PaymentsReport::class, ['mode' => 'general'])->set('bankId', '6');
+        $url = $reporte->instance()->requestsUrl($reporte->viewData('filas')->first() ?? (object) ['type' => 1]);
+
+        parse_str((string) parse_url($url, PHP_URL_QUERY), $parametros);
+
+        $this->assertSame('/pagos/reporte/general?banco=6', $parametros['volver']);
     }
 }

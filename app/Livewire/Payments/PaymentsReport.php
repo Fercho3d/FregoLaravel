@@ -5,7 +5,6 @@ namespace App\Livewire\Payments;
 use App\Models\Core\Bank;
 use App\Queries\PaymentRequestFilters;
 use App\Queries\PaymentRequestQuery;
-use Illuminate\Support\Collection;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 
@@ -17,8 +16,8 @@ use Livewire\Component;
  * y el tipo—, así que aquí son un componente con tres modos en lugar de tres
  * pantallas casi iguales.
  *
- * Cada renglón se puede desplegar para ver las solicitudes de pago que lo
- * componen; en el original eso eran tres acciones AJAX aparte.
+ * Cada renglón abre la lista de solicitudes de pago que lo componen, ya
+ * filtrada; en el original eso eran tres acciones AJAX que se desplegaban ahí.
  */
 class PaymentsReport extends Component
 {
@@ -39,9 +38,6 @@ class PaymentsReport extends Component
     #[Url(as: 'banco', except: '')]
     public string $bankId = '';
 
-    /** Clave del renglón desplegado (cliente, proveedor o tipo). */
-    public ?string $expanded = null;
-
     public float $queryMs = 0;
 
     public function mount(string $mode = 'customer'): void
@@ -49,22 +45,12 @@ class PaymentsReport extends Component
         $this->mode = $mode;
     }
 
-    public function updated(): void
-    {
-        $this->expanded = null;
-    }
-
-    public function toggle(string $clave): void
-    {
-        $this->expanded = $this->expanded === $clave ? null : $clave;
-    }
-
     public function clearFilters(): void
     {
-        $this->reset(['dates', 'datePay', 'bankId', 'expanded']);
+        $this->reset(['dates', 'datePay', 'bankId']);
     }
 
-    /** Este reporte con su filtro: a dónde vuelve el detalle de una solicitud. */
+    /** Este reporte con su filtro: a dónde vuelve la lista de solicitudes. */
     public function currentUrl(): string
     {
         return route('payments.report.'.$this->mode, array_filter([
@@ -114,33 +100,28 @@ class PaymentsReport extends Component
     }
 
     /**
-     * Solicitudes de pago que componen un renglón.
+     * Las solicitudes de pago que forman un renglón, en la lista completa de
+     * solicitudes: pagadas, con el mismo filtro y con regreso a este reporte.
      *
-     * Réplica de las acciones de detalle: agrupan por solicitud y desactivan la
-     * inversión de signo, para que el desglose se lea en positivo.
-     *
-     * Con una diferencia deliberada: aquí el desglose hereda el filtro de
-     * «pagadas» del renglón que abre. En el original solo lo llevaba el detalle
-     * general; los de cliente y proveedor traían también las no pagadas, así que
-     * el desglose no sumaba lo que decía el renglón.
+     * Sin rango de fechas el reporte abarca toda la historia; se manda uno
+     * explícito porque la lista, vacía, arranca en el año en curso. Es muy
+     * amplio a propósito: hay solicitudes con fechas mal capturadas (1984).
      */
-    private function detail(): Collection
+    public function requestsUrl(object $fila): string
     {
-        if ($this->expanded === null) {
-            return collect();
-        }
-
-        $filtros = $this->filters();
-        $filtros->groupBy = 'request';
-        $filtros->noNegative = true;
-
-        match ($this->mode) {
-            'vendor' => $filtros->provider_id = (int) $this->expanded,
-            'general' => $filtros->type = (int) $this->expanded,
-            default => $filtros->client_id = (int) $this->expanded,
+        $filtro = match ($this->mode) {
+            'vendor' => ['tipo' => 2, 'proveedor' => $fila->provider_id, 'divisa' => $fila->account_id],
+            'general' => ['tipo' => $fila->type],
+            default => ['tipo' => 1, 'cliente' => $fila->client_id],
         };
 
-        return PaymentRequestQuery::make($filtros)->get();
+        return route('payments.requests', array_filter($filtro + [
+            'estado' => 1,
+            'banco' => $this->bankId,
+            'f' => $this->dates ?: '01/01/1900 - 31/12/2099',
+            'tc' => $this->datePay,
+            'volver' => $this->currentUrl(),
+        ], fn ($valor) => $valor !== null && $valor !== ''), absolute: false);
     }
 
     public function render()
@@ -151,7 +132,6 @@ class PaymentsReport extends Component
 
         return view('livewire.payments.payments-report', [
             'filas' => $filas,
-            'detalle' => $this->detail(),
             'banks' => Bank::options(),
         ])->layout('components.app-layout', ['title' => $this->title()]);
     }

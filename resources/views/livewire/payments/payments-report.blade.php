@@ -93,10 +93,12 @@
                 <tbody class="divide-y divide-line">
                     @forelse ($filas as $fila)
                         @php $clave = (string) ($fila->{$llave} ?? ''); @endphp
-                        <tr class="cursor-pointer transition hover:bg-raised" wire:click="toggle('{{ $clave }}')">
+                        {{-- Abre las solicitudes del renglón en su propia pantalla, completa --}}
+                        <tr class="cursor-pointer transition hover:bg-raised" x-data
+                            x-on:click="Livewire.navigate(@js($this->requestsUrl($fila)))">
                             <td class="px-4 py-2">
                                 <span class="inline-flex items-center gap-2">
-                                    <svg class="h-3.5 w-3.5 shrink-0 text-ink-faint transition {{ $expanded === $clave ? 'rotate-90' : '' }}"
+                                    <svg class="h-3.5 w-3.5 shrink-0 text-ink-faint transition "
                                          fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
                                     </svg>
@@ -111,63 +113,6 @@
                             </td>
                         </tr>
 
-                        {{-- Desglose: las solicitudes de pago que forman el renglón --}}
-                        @if ($expanded === $clave)
-                            <tr>
-                                <td colspan="{{ count($columnas) + 2 }}" class="bg-raised/50 p-0">
-                                    <div class="overflow-x-auto p-4">
-                                        <table class="min-w-full text-xs">
-                                            <thead class="text-[11px] uppercase tracking-wide text-ink-faint">
-                                                <tr>
-                                                    <th class="px-3 py-1.5 text-left font-semibold">{{ __('Solicitud') }}</th>
-                                                    <th class="px-3 py-1.5 text-left font-semibold">{{ __('Fecha') }}</th>
-                                                    <th class="px-3 py-1.5 text-left font-semibold">{{ __('Banco') }}</th>
-                                                    <th class="px-3 py-1.5 text-left font-semibold">{{ __('Divisa') }}</th>
-                                                    <th class="px-3 py-1.5 text-right font-semibold">{{ __('TC') }}</th>
-                                                    <th class="px-3 py-1.5 text-right font-semibold">{{ __('Importe') }}</th>
-                                                    <th class="px-3 py-1.5 text-right font-semibold">{{ __('Total') }}</th>
-                                                    <th class="px-3 py-1.5 text-right font-semibold">{{ __('Dif. cambiaria') }}</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody class="divide-y divide-line">
-                                                @forelse ($detalle as $renglon)
-                                                    {{-- Abre la solicitud para ver qué documentos pagó --}}
-                                                    <tr class="cursor-pointer transition hover:bg-panel" x-data
-                                                        x-on:click="Livewire.navigate(@js(route('payments.requests.show', $renglon->request_id, absolute: false).'?volver='.urlencode($this->currentUrl())))">
-                                                        <td class="whitespace-nowrap px-3 py-1.5 font-medium text-brand hover:underline">{{ $renglon->number ?: $renglon->request_id }}</td>
-                                                        <td class="whitespace-nowrap px-3 py-1.5 text-ink-muted">
-                                                            {{ $renglon->date ? \Illuminate\Support\Carbon::parse($renglon->date)->format('d/m/Y') : '—' }}
-                                                        </td>
-                                                        <td class="whitespace-nowrap px-3 py-1.5 text-ink-muted">{{ $renglon->bank_name ?: '—' }}</td>
-                                                        <td class="whitespace-nowrap px-3 py-1.5 text-ink-muted">{{ $renglon->prefix ?: '—' }}</td>
-                                                        <td class="whitespace-nowrap px-3 py-1.5 text-right tabular-nums text-ink-faint">
-                                                            {{ $renglon->exchange_value === null ? '—' : number_format((float) $renglon->exchange_value, 4) }}
-                                                        </td>
-                                                        <td class="whitespace-nowrap px-3 py-1.5 text-right tabular-nums text-ink-muted">{{ $money($renglon->amount_original_paid) }}</td>
-                                                        <td class="whitespace-nowrap px-3 py-1.5 text-right tabular-nums text-ink">{{ $money($renglon->total_paid) }}</td>
-                                                        <td class="whitespace-nowrap px-3 py-1.5 text-right tabular-nums {{ (float) $renglon->diference < 0 ? 'text-brand' : 'text-ink-muted' }}">
-                                                            {{ $money($renglon->diference) }}
-                                                        </td>
-                                                    </tr>
-                                                @empty
-                                                    <tr>
-                                                        <td colspan="8" class="px-3 py-6 text-center text-ink-faint">
-                                                            {{ __('Sin solicitudes de pago en este renglón.') }}
-                                                        </td>
-                                                    </tr>
-                                                @endforelse
-                                            </tbody>
-                                        </table>
-
-                                        @if (blank($datePay))
-                                            <p class="mt-2 text-[11px] text-ink-faint">
-                                                {{ __('La diferencia cambiaria necesita una fecha de revaluación: ponla arriba para compararla contra el tipo de cambio de ese día.') }}
-                                            </p>
-                                        @endif
-                                    </div>
-                                </td>
-                            </tr>
-                        @endif
                     @empty
                         <tr>
                             <td colspan="{{ count($columnas) + 2 }}" class="px-4 py-12 text-center text-ink-faint">

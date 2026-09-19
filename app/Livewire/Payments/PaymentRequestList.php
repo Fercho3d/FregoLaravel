@@ -3,8 +3,10 @@
 namespace App\Livewire\Payments;
 
 use App\Models\Core\Bank;
+use App\Models\Core\Client;
 use App\Models\Core\PaymentByTransaction;
 use App\Models\Core\PaymentRequest;
+use App\Models\Core\Provider;
 use App\Queries\PaymentRequestFilters;
 use App\Queries\PaymentRequestQuery;
 use Livewire\Attributes\Url;
@@ -43,6 +45,28 @@ class PaymentRequestList extends Component
     #[Url(as: 'n', except: 50)]
     public int $perPage = 50;
 
+    /*
+     * Filtros que llegan desde los reportes de cobros y pagos al abrir un
+     * renglón: el cliente, el proveedor (con su divisa) y la fecha con la que
+     * el reporte revalúa lo pagado. No tienen campo propio; se quitan con
+     * «Limpiar filtros».
+     */
+    #[Url(as: 'cliente', except: '')]
+    public string $clientId = '';
+
+    #[Url(as: 'proveedor', except: '')]
+    public string $providerId = '';
+
+    #[Url(as: 'divisa', except: '')]
+    public string $currencyId = '';
+
+    #[Url(as: 'tc', except: '')]
+    public string $datePay = '';
+
+    /** Reporte del que se llegó, para regresar a él con su filtro. */
+    #[Url(as: 'volver', except: '')]
+    public string $volver = '';
+
     /**
      * La solicitud que se acaba de crear, para señalarla en verde.
      *
@@ -67,6 +91,11 @@ class PaymentRequestList extends Component
 
         $this->highlight = is_numeric($nueva) ? (int) $nueva : null;
         $this->showTotals = request()->cookie('mostrar_totales') === '1';
+
+        // Solo se regresa a direcciones propias del sistema.
+        if (! str_starts_with($this->volver, '/') || str_starts_with($this->volver, '//')) {
+            $this->volver = '';
+        }
 
         // Como en transacciones: arranca en el año en curso para que «Ver todas»
         // no traiga años de historia de golpe y se quede sin memoria.
@@ -105,7 +134,7 @@ class PaymentRequestList extends Component
 
     public function clearFilters(): void
     {
-        $this->reset(['type', 'bankId', 'paid', 'number', 'highlight']);
+        $this->reset(['type', 'bankId', 'paid', 'number', 'highlight', 'clientId', 'providerId', 'currencyId', 'datePay']);
         $this->dates = $this->defaultDates();
         $this->resetPage();
     }
@@ -124,6 +153,11 @@ class PaymentRequestList extends Component
             'f' => $this->dates,
             'num' => $this->number,
             'n' => $this->perPage === 50 ? null : $this->perPage,
+            'cliente' => $this->clientId,
+            'proveedor' => $this->providerId,
+            'divisa' => $this->currencyId,
+            'tc' => $this->datePay,
+            'volver' => $this->volver,
         ], fn ($valor) => $valor !== null && $valor !== ''), absolute: false);
     }
 
@@ -212,6 +246,10 @@ class PaymentRequestList extends Component
             'type' => $this->type !== '' ? (int) $this->type : null,
             'dates' => $this->dates ?: null,
             'number' => trim($this->number) ?: null,
+            'client_id' => $this->clientId !== '' ? (int) $this->clientId : null,
+            'provider_id' => $this->providerId !== '' ? (int) $this->providerId : null,
+            'currency_id' => $this->currencyId !== '' ? (int) $this->currencyId : null,
+            'date_pay' => $this->datePay ?: null,
         ]);
 
         if ($this->paid !== '') {
@@ -236,6 +274,12 @@ class PaymentRequestList extends Component
             'filas' => $filas,
             'totals' => $totals,
             'banks' => Bank::options(),
+            // Nombre de quien filtra el reporte de origen, para decir qué se ve.
+            'contraparte' => match (true) {
+                $this->clientId !== '' => Client::whereKey($this->clientId)->value('fullName'),
+                $this->providerId !== '' => Provider::whereKey($this->providerId)->value('fullName'),
+                default => null,
+            },
         ])->layout('components.app-layout', ['title' => __('Solicitudes de pago')]);
     }
 
