@@ -173,11 +173,15 @@
             <div class="mt-5 flex flex-wrap gap-2 border-t border-line pt-4">
                 @foreach ([['pdf', $fila->pdf_attach], ['xml', $fila->xml_attach]] as [$tipo, $archivo])
                     @if ($archivo)
-                        <a href="{{ route('transactions.file', [$fila->transc_id, $tipo]) }}" target="_blank"
-                           class="inline-flex max-w-full items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-xs text-ink-muted transition hover:bg-raised hover:text-ink">
+                        @php $url = route('transactions.file', [$fila->transc_id, $tipo]); @endphp
+                        <div class="inline-flex max-w-full items-center gap-2 rounded-lg border border-line py-1 pl-3 pr-1 text-xs text-ink-muted">
                             <span class="font-semibold uppercase text-ink-faint">{{ $tipo }}</span>
-                            <span class="max-w-[14rem] truncate">{{ $archivo }}</span>
-                        </a>
+                            <span class="max-w-[12rem] truncate" title="{{ $archivo }}">{{ $archivo }}</span>
+                            <a href="{{ $url }}" target="_blank" rel="noopener" data-navigate-ignore
+                               class="rounded-md px-2 py-1 font-medium text-ink transition hover:bg-raised">{{ __('Ver') }}</a>
+                            <a href="{{ $url }}?descargar=1" download data-navigate-ignore
+                               class="rounded-md px-2 py-1 font-medium text-ink transition hover:bg-raised">{{ __('Descargar') }}</a>
+                        </div>
                     @endif
                 @endforeach
             </div>
