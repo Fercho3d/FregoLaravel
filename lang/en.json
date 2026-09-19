@@ -953,5 +953,9 @@
     "TC pago": "Pay rate",
     "Total a pagar": "Total to pay",
     "Diferencia": "Difference",
-    "Ret. IVA": "VAT withheld"
+    "Ret. IVA": "VAT withheld",
+    "¿Quitar?": "Remove?",
+    "Sí": "Yes",
+    "No": "No",
+    ":n línea|:n líneas": ":n line|:n lines"
 }

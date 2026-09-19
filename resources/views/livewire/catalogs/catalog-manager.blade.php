@@ -111,7 +111,7 @@
                             <span class="{{ $i === 0 ? '' : 'text-ink-muted' }}">
                                 @if ($campo->isBoolean())
                                     <span class="badge {{ $fila->{$campo->name} ? 'badge-ok' : 'badge-neutral' }}">
-                                        {{ $fila->{$campo->name} ? 'Sí' : 'No' }}
+                                        {{ $fila->{$campo->name} ? __('Sí') : __('No') }}
                                     </span>
                                 @else
                                     {{ $fila->{$campo->name} ?: '—' }}
@@ -156,7 +156,7 @@
                                 <td class="px-4 py-2 {{ $campo->type === 'number' ? 'text-right tabular-nums' : '' }} text-ink-soft">
                                     @if ($campo->isBoolean())
                                         <span class="badge {{ $fila->{$campo->name} ? 'badge-ok' : 'badge-neutral' }}">
-                                            {{ $fila->{$campo->name} ? 'Sí' : 'No' }}
+                                            {{ $fila->{$campo->name} ? __('Sí') : __('No') }}
                                         </span>
                                     @else
                                         {{ $fila->{$campo->name} === null || $fila->{$campo->name} === '' ? '—' : $fila->{$campo->name} }}

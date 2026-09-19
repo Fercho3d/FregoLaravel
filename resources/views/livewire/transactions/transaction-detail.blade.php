@@ -191,7 +191,7 @@
 
             <div class="flex items-center gap-3">
                 <span class="text-xs text-ink-faint">
-                    {{ $cargos->count() }} {{ \Illuminate\Support\Str::plural('línea', $cargos->count()) }}
+                    {{ trans_choice(':n línea|:n líneas', $cargos->count(), ['n' => $cargos->count()]) }}
                 </span>
                 @unless ($candado->locked)
                     <button type="button" wire:click="addCharge" class="btn-ghost px-3 py-1.5 text-xs">
@@ -291,10 +291,22 @@
                         @if ($cargo->retention > 0) · Ret. {{ $money($cargo->retention) }} @endif
                     </p>
                     @unless ($candado->locked)
-                        <div class="flex gap-3 text-xs">
-                            <button type="button" wire:click="editCharge({{ $cargo->charge_id }})" class="text-brand hover:underline">Editar</button>
-                            <button type="button" wire:click="deleteCharge({{ $cargo->charge_id }})"
-                                    wire:confirm="¿Quitar este concepto de la transacción?" class="text-ink-muted hover:text-brand">{{ __('Quitar') }}</button>
+                        {{-- Confirmación en la misma fila y no con confirm(): si el navegador
+                             tiene bloqueados los diálogos, confirm() contesta «no» sin mostrarse. --}}
+                        <div x-data="{ seguro: false }" class="flex gap-3 text-xs">
+                            <template x-if="! seguro">
+                                <div class="flex gap-3">
+                                    <button type="button" wire:click="editCharge({{ $cargo->charge_id }})" class="text-brand hover:underline">{{ __('Editar') }}</button>
+                                    <button type="button" x-on:click="seguro = true" class="text-ink-muted hover:text-brand">{{ __('Quitar') }}</button>
+                                </div>
+                            </template>
+                            <template x-if="seguro">
+                                <div class="flex gap-3">
+                                    <span class="text-ink-muted">{{ __('¿Quitar?') }}</span>
+                                    <button type="button" wire:click="deleteCharge({{ $cargo->charge_id }})" class="font-semibold text-brand hover:underline">{{ __('Sí') }}</button>
+                                    <button type="button" x-on:click="seguro = false" class="text-ink-muted hover:text-ink">{{ __('No') }}</button>
+                                </div>
+                            </template>
                         </div>
                     @endunless
                 </li>
@@ -334,10 +346,22 @@
                             <td class="whitespace-nowrap px-4 py-2 text-right font-semibold tabular-nums text-ink">{{ $money($cargo->total) }}</td>
                             @unless ($candado->locked)
                                 <td class="whitespace-nowrap px-4 py-2 text-right">
-                                    <div class="flex justify-end gap-3 text-xs">
-                                        <button type="button" wire:click="editCharge({{ $cargo->charge_id }})" class="text-brand hover:underline">Editar</button>
-                                        <button type="button" wire:click="deleteCharge({{ $cargo->charge_id }})"
-                                                wire:confirm="¿Quitar este concepto de la transacción?" class="text-ink-muted transition hover:text-brand">{{ __('Quitar') }}</button>
+                                    {{-- Confirmación en la misma fila y no con confirm(): si el navegador
+                                         tiene bloqueados los diálogos, confirm() contesta «no» sin mostrarse. --}}
+                                    <div x-data="{ seguro: false }" class="flex justify-end gap-3 text-xs">
+                                        <template x-if="! seguro">
+                                            <div class="flex gap-3">
+                                                <button type="button" wire:click="editCharge({{ $cargo->charge_id }})" class="text-brand hover:underline">{{ __('Editar') }}</button>
+                                                <button type="button" x-on:click="seguro = true" class="text-ink-muted transition hover:text-brand">{{ __('Quitar') }}</button>
+                                            </div>
+                                        </template>
+                                        <template x-if="seguro">
+                                            <div class="flex gap-3">
+                                                <span class="text-ink-muted">{{ __('¿Quitar?') }}</span>
+                                                <button type="button" wire:click="deleteCharge({{ $cargo->charge_id }})" class="font-semibold text-brand hover:underline">{{ __('Sí') }}</button>
+                                                <button type="button" x-on:click="seguro = false" class="text-ink-muted hover:text-ink">{{ __('No') }}</button>
+                                            </div>
+                                        </template>
                                     </div>
                                 </td>
                             @endunless
