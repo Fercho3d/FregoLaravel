@@ -163,7 +163,7 @@
                             <td class="whitespace-nowrap px-3 py-2">
                                 <span class="font-medium text-brand hover:underline">{{ $this->folio($fila->request_id) }}</span>
                             </td>
-                            <td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ (int) $fila->type === 1 ? 'Cobro' : 'Pago' }}</td>
+                            <td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ (int) $fila->type === 1 ? __('Cobro') : __('Pago') }}</td>
                             <td class="max-w-[16rem] truncate px-3 py-2 text-ink-muted">
                                 {{ (int) $fila->type === 1 ? ($fila->clientName ?: '—') : ($fila->providerName ?: '—') }}
                             </td>

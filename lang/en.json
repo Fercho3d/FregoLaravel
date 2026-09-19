@@ -957,5 +957,7 @@
     "¿Quitar?": "Remove?",
     "Sí": "Yes",
     "No": "No",
-    ":n línea|:n líneas": ":n line|:n lines"
+    ":n línea|:n líneas": ":n line|:n lines",
+    "Cobro": "Collection",
+    "Pago": "Payment"
 }
