@@ -45,7 +45,7 @@
 
     {{-- Filtros --}}
     <div class="card p-4">
-        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <div class="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
             <label class="block">
                 <span class="field-label text-xs">{{ __('Tipo') }}</span>
                 <select wire:model.live="type" class="field-input mt-1 py-1.5 text-sm">
@@ -53,6 +53,12 @@
                         <option value="{{ $valor }}" @selected((string) $valor === $type)>{{ $etiqueta }}</option>
                     @endforeach
                 </select>
+            </label>
+
+            <label class="block">
+                <span class="field-label text-xs">{{ __('Folio') }}</span>
+                <input type="text" inputmode="numeric" wire:model.live.debounce.400ms="folioId" value="{{ $folioId }}"
+                       class="field-input mt-1 py-1.5 text-sm" placeholder="0012">
             </label>
 
             <label class="block">

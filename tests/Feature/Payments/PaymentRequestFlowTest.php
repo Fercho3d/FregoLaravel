@@ -347,6 +347,19 @@ class PaymentRequestFlowTest extends TestCase
             ->assertSee(__('Total del filtro completo'));
     }
 
+    /** El folio encuentra la solicitud aunque quede fuera del rango de fechas. */
+    public function test_el_listado_filtra_por_folio(): void
+    {
+        $id = $this->solicitudCreada();
+
+        $this->actingAs($this->usuario());
+
+        Livewire::test(PaymentRequestList::class)
+            ->set('dates', '01/01/2020 - 31/12/2020')
+            ->set('folioId', str_pad((string) $id, 4, '0', STR_PAD_LEFT))
+            ->assertViewHas('filas', fn ($filas) => $filas->pluck('request_id')->map(fn ($v) => (int) $v)->all() === [$id]);
+    }
+
     public function test_ver_todas_las_solicitudes_quita_la_paginacion(): void
     {
         $this->actingAs($this->usuario());

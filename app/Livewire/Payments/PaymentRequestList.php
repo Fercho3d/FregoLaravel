@@ -38,6 +38,10 @@ class PaymentRequestList extends Component
     #[Url(as: 'f', except: '')]
     public string $dates = '';
 
+    /** Folio (ID) de la solicitud: se acepta con o sin ceros a la izquierda. */
+    #[Url(as: 'folio', except: '')]
+    public string $folioId = '';
+
     /** Número de la solicitud. Coincidencia EXACTA, como el filtro del original. */
     #[Url(as: 'num', except: '')]
     public string $number = '';
@@ -134,7 +138,7 @@ class PaymentRequestList extends Component
 
     public function clearFilters(): void
     {
-        $this->reset(['type', 'bankId', 'paid', 'number', 'highlight', 'clientId', 'providerId', 'currencyId', 'datePay']);
+        $this->reset(['type', 'bankId', 'paid', 'folioId', 'number', 'highlight', 'clientId', 'providerId', 'currencyId', 'datePay']);
         $this->dates = $this->defaultDates();
         $this->resetPage();
     }
@@ -151,6 +155,7 @@ class PaymentRequestList extends Component
             'banco' => $this->bankId,
             'estado' => $this->paid,
             'f' => $this->dates,
+            'folio' => $this->folioId,
             'num' => $this->number,
             'n' => $this->perPage === 50 ? null : $this->perPage,
             'cliente' => $this->clientId,
@@ -241,10 +246,14 @@ class PaymentRequestList extends Component
 
     private function filters(): PaymentRequestFilters
     {
+        $folio = (int) ltrim($this->folioId, " 0\t");
+
         $filtros = PaymentRequestFilters::make([
+            'request_id' => $folio ?: null,
             'bank_id' => $this->bankId !== '' ? (int) $this->bankId : null,
             'type' => $this->type !== '' ? (int) $this->type : null,
-            'dates' => $this->dates ?: null,
+            // El folio es único: se busca en cualquier fecha.
+            'dates' => $folio ? null : ($this->dates ?: null),
             'number' => trim($this->number) ?: null,
             'client_id' => $this->clientId !== '' ? (int) $this->clientId : null,
             'provider_id' => $this->providerId !== '' ? (int) $this->providerId : null,
