@@ -32,6 +32,7 @@ class Settings extends Component
 
     public function mount(): void
     {
+        abort_unless(config('marca.ajustes'), 404);
         abort_unless(auth()->user()?->isSuperAdmin() ?? false, 403);
 
         $this->modalidades = Expediente::modalidades();

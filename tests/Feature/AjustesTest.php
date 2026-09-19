@@ -50,6 +50,13 @@ class AjustesTest extends TestCase
         $this->pantalla(User::ROLE_ADMIN)->assertForbidden();
     }
 
+    public function test_apagados_no_entra_ni_el_super_administrador(): void
+    {
+        config(['marca.ajustes' => false]);
+
+        $this->pantalla()->assertNotFound();
+    }
+
     public function test_la_pantalla_ofrece_las_dos_formas_de_transporte(): void
     {
         $this->pantalla()->assertSee('Marítima')->assertSee('Terrestre');

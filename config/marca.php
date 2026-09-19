@@ -165,6 +165,13 @@ return [
     'nomina' => filter_var(env('MARCA_NOMINA', true), FILTER_VALIDATE_BOOL),
 
     /**
+     * Pantalla de Ajustes. Se apaga en la instalación de un cliente cuando lo
+     * configura el dueño del producto: ni en el menú ni por dirección, aunque
+     * quien entre sea super admin. Se vuelve a encender desde el `.env`.
+     */
+    'ajustes' => filter_var(env('MARCA_AJUSTES', true), FILTER_VALIDATE_BOOL),
+
+    /**
      * Y por si hace falta afinar dentro de una modalidad: campos sueltos que
      * esta instalación no pide, aunque su modalidad esté encendida.
      */

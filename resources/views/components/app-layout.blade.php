@@ -71,7 +71,7 @@
 
     // Los ajustes van al final: se entra una vez a configurarlos y casi
     // nunca más, así que no deben competir con lo que se usa a diario.
-    $ajustes = (auth()->user()?->isSuperAdmin() ?? false)
+    $ajustes = (config('marca.ajustes') && (auth()->user()?->isSuperAdmin() ?? false))
         ? [[__('Ajustes'), route('settings'), request()->routeIs('settings'), 'ajustes']]
         : [];
 
