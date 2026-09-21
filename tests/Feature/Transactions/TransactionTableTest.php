@@ -225,6 +225,38 @@ class TransactionTableTest extends LegacyDatabaseTestCase
             ->assertSee(__('Profit del booking'));
     }
 
+    /** Como el original: un booking sin facturas también dice cuánto se lleva perdido. */
+    public function test_el_profit_sale_aunque_el_booking_solo_tenga_costos(): void
+    {
+        $this->actAsUser();
+
+        $booking = DB::table('transaction')
+            ->whereNotIn('booking', DB::table('transaction')->where('tran_type', 0)->select('booking'))
+            ->where('tran_type', 1)
+            ->value('booking');
+
+        Livewire::test(TransactionTable::class, ['screen' => 'booking', 'booking' => $booking])
+            ->assertSee(__('Profit del booking'))
+            ->assertSee(__('s/facturas'));
+    }
+
+    /** El profit del booking se reparte entre sus facturas según el subtotal de cada una. */
+    public function test_el_profit_se_prorratea_entre_las_facturas_del_booking(): void
+    {
+        $this->actAsUser();
+
+        $booking = DB::table('transaction')->where('tran_type', 0)->value('booking');
+
+        $pantalla = Livewire::test(TransactionTable::class, ['screen' => 'booking', 'booking' => $booking]);
+        $profit = $pantalla->viewData('bookingProfit');
+
+        $this->assertEqualsWithDelta(
+            $profit['profit_doc'],
+            collect($pantalla->viewData('rows')->items())->sum(fn ($row) => $pantalla->instance()->invoiceProfit($row, $profit) ?? 0),
+            0.01,
+        );
+    }
+
     /**
      * Livewire vuelve a fijar la vista del paginador en cada render, así que la
      * propia solo se aplica si el componente la declara. Sin esto salía la vista

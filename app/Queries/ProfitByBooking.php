@@ -51,17 +51,19 @@ class ProfitByBooking
         $rows = [];
         $totales = $this->emptyTotals();
 
-        foreach ($facturas as $bookingId => $factura) {
+        // También los bookings que solo tienen costos: su profit es la pérdida.
+        foreach ($facturas->keys()->merge($costos->keys())->unique() as $bookingId) {
+            $factura = $facturas->get($bookingId);
             $costo = $costos->get($bookingId);
 
             // Los costos vienen con signo negativo del motor; la utilidad se
             // calcula contra su magnitud, igual que el original.
             $fila = [
                 'booking_id' => $bookingId,
-                'booking' => trim((string) $factura->booking_number),
-                'inv_doc' => (float) $factura->doc,
+                'booking' => trim((string) ($factura ?? $costo)->booking_number),
+                'inv_doc' => (float) ($factura->doc ?? 0),
                 'cost_doc' => abs((float) ($costo->doc ?? 0)),
-                'inv_pago' => (float) $factura->pago,
+                'inv_pago' => (float) ($factura->pago ?? 0),
                 'cost_pago' => abs((float) ($costo->pago ?? 0)),
             ];
 

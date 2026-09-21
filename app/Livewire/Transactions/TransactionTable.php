@@ -135,7 +135,8 @@ class TransactionTable extends Component
     {
         $this->screen = $screen;
         $this->bookingId = $booking;
-        $this->showTotals = request()->cookie('mostrar_totales') === '1';
+        // En un booking la sumatoria va siempre, como en el original: ahí vive el profit.
+        $this->showTotals = $screen === 'booking' || request()->cookie('mostrar_totales') === '1';
 
         // Por omisión el listado arranca acotado al año en curso (del 1 de enero
         // a hoy): así no trae años de historia de golpe —las pantallas van
@@ -385,6 +386,22 @@ class TransactionTable extends Component
     public function calculateProfit(): void
     {
         $this->profit = (new ProfitByBooking($this->filters()))->summary();
+    }
+
+    /**
+     * Parte del profit del booking que le toca a esta factura, repartido según
+     * su subtotal, como la columna «Profit factura (doc)» del original. Es un
+     * prorrateo: los costos son del booking completo. Null en los costos.
+     *
+     * @param  array<string, mixed>|null  $profit
+     */
+    public function invoiceProfit(object $row, ?array $profit): ?float
+    {
+        if ($profit === null || (int) $row->tran_type !== Transaction::TYPE_INVOICE || (float) $profit['inv_doc'] == 0.0) {
+            return null;
+        }
+
+        return $profit['profit_doc'] * (float) $row->amount_original_mxn / $profit['inv_doc'];
     }
 
     /** Suma las columnas de dinero sobre el conjunto filtrado completo. */

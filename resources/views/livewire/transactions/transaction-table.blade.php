@@ -22,6 +22,7 @@
         ['tax_16_mxn', 'IVA 16 %', 'text-right'],
         ['tax_ret_mxn', 'Ret. IVA', 'text-right'],
         ['total_amount', __('Total'), 'text-right'],
+        ...($screen === 'booking' ? [[null, __('Profit factura (doc)'), 'text-right']] : []),
         ['tran_paid_amount', __('Pagado'), 'text-right'],
         ['left_to_pay', __('Estado'), 'text-left'],
         ['seal', 'CFDI', 'text-left'],
@@ -497,6 +498,12 @@
                             <td class="whitespace-nowrap px-3 py-2 text-right font-semibold tabular-nums {{ (float) $row->total_amount < 0 ? 'text-brand' : 'text-ink' }}">
                                 {{ $money($row->total_amount) }}
                             </td>
+                            @if ($screen === 'booking')
+                                @php $profitFactura = $this->invoiceProfit($row, $bookingProfit); @endphp
+                                <td class="whitespace-nowrap px-3 py-2 text-right tabular-nums {{ $profitFactura === null ? 'text-ink-faint' : ($profitFactura < 0 ? 'text-brand' : 'text-emerald-600') }}">
+                                    {{ $profitFactura === null ? '–' : $money($profitFactura) }}
+                                </td>
+                            @endif
                             <td class="whitespace-nowrap px-3 py-2 text-right tabular-nums text-ink-muted">{{ $money($row->tran_paid_amount) }}</td>
                             <td class="whitespace-nowrap px-3 py-2">
                                 <span class="{{ $status->classes() }}">{{ $status->label() }}</span>
@@ -525,6 +532,11 @@
                             <td class="px-3 py-2.5 text-right tabular-nums text-ink-soft">{{ $money($totals['tax_16_mxn']) }}</td>
                             <td class="px-3 py-2.5 text-right tabular-nums text-ink-soft">{{ $money($totals['tax_ret_mxn']) }}</td>
                             <td class="px-3 py-2.5 text-right tabular-nums text-ink">{{ $money($totals['total_amount']) }}</td>
+                            @if ($screen === 'booking')
+                                <td class="px-3 py-2.5 text-right tabular-nums {{ ($bookingProfit['profit_doc'] ?? 0) < 0 ? 'text-brand' : 'text-emerald-600' }}">
+                                    {{ $money($bookingProfit['profit_doc'] ?? 0) }}
+                                </td>
+                            @endif
                             <td colspan="3" class="px-3 py-2.5 text-right text-ink-muted">
                                 {{ __('Por cobrar/pagar') }}: {{ $money($totals['left_to_pay']) }}
                             </td>
@@ -537,7 +549,7 @@
 
     {{-- Utilidad del booking: facturas menos costos, sin IVA, a TC del documento. --}}
     @if ($bookingProfit)
-        @php $margen = $bookingProfit['inv_doc'] != 0 ? $bookingProfit['profit_doc'] / $bookingProfit['inv_doc'] * 100 : 0; @endphp
+        @php $margen = $bookingProfit['inv_doc'] != 0 ? number_format($bookingProfit['profit_doc'] / $bookingProfit['inv_doc'] * 100, 1).'%' : __('s/facturas'); @endphp
         <div class="card flex flex-wrap items-center justify-end gap-x-2 gap-y-1 px-5 py-3 text-sm text-ink-muted">
             <span>{{ __('Subtotal facturas') }}: <b class="tabular-nums text-ink">{{ $money($bookingProfit['inv_doc']) }}</b></span>
             <span>−</span>
@@ -545,7 +557,7 @@
             <span>=</span>
             <span>{{ __('Profit del booking') }}:
                 <b class="tabular-nums {{ $bookingProfit['profit_doc'] < 0 ? 'text-brand' : 'text-emerald-600' }}">{{ $money($bookingProfit['profit_doc']) }}</b>
-                <span class="text-xs">({{ __('margen') }}: {{ number_format($margen, 1) }}%)</span>
+                <span class="text-xs">({{ __('margen') }}: {{ $margen }})</span>
             </span>
             <span class="text-xs text-ink-faint">· {{ __('sin IVA, TC documento') }}</span>
         </div>

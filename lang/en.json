@@ -981,5 +981,7 @@
     "Activar": "Activate",
     "Banxico no devolvió un tipo de cambio para hoy. Captúralo a mano si ya lo publicaron.": "Banxico did not return an exchange rate for today. Enter it by hand if it has already been published.",
     "El token de Banxico venció o no es válido y el tipo de cambio no se está registrando. Contacte a su administrador.": "The Banxico token has expired or is invalid, so exchange rates are not being recorded. Please contact your administrator.",
-    "No se pudo conectar con Banxico y el tipo de cambio no se está registrando. Contacte a su administrador.": "Could not connect to Banxico, so exchange rates are not being recorded. Please contact your administrator."
+    "No se pudo conectar con Banxico y el tipo de cambio no se está registrando. Contacte a su administrador.": "Could not connect to Banxico, so exchange rates are not being recorded. Please contact your administrator.",
+    "Profit factura (doc)": "Invoice profit (doc)",
+    "s/facturas": "no invoices"
 }
