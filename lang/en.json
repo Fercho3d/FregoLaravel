@@ -983,5 +983,7 @@
     "El token de Banxico venció o no es válido y el tipo de cambio no se está registrando. Contacte a su administrador.": "The Banxico token has expired or is invalid, so exchange rates are not being recorded. Please contact your administrator.",
     "No se pudo conectar con Banxico y el tipo de cambio no se está registrando. Contacte a su administrador.": "Could not connect to Banxico, so exchange rates are not being recorded. Please contact your administrator.",
     "Profit factura (doc)": "Invoice profit (doc)",
-    "s/facturas": "no invoices"
+    "s/facturas": "no invoices",
+    "Sistema anterior": "Previous system",
+    "Abrir el sistema anterior en otra pestaña": "Open the previous system in a new tab"
 }
