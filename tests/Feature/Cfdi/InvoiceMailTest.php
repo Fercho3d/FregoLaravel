@@ -4,6 +4,7 @@ namespace Tests\Feature\Cfdi;
 
 use App\Actions\Transactions\SendInvoice;
 use App\Livewire\Transactions\TransactionDetail;
+use App\Livewire\Transactions\TransactionTable;
 use App\Mail\InvoiceMail;
 use App\Models\Core\Transaction;
 use App\Models\User;
@@ -180,5 +181,19 @@ class InvoiceMailTest extends TestCase
         $this->detalle(User::ROLE_USER)->call('resend')->assertForbidden();
 
         Mail::assertNothingSent();
+    }
+
+    /** Como el «Send Docs» del listado viejo: manda las facturas marcadas. */
+    public function test_el_listado_manda_los_documentos_de_las_marcadas(): void
+    {
+        $this->timbrada();
+        $this->actingAs($this->usuario());
+
+        Livewire::test(TransactionTable::class, ['screen' => 'invoice'])
+            ->set('selected', ['1'])
+            ->call('sendSelected')
+            ->assertSet('sendResult.sent', 1);
+
+        Mail::assertSent(InvoiceMail::class, 1);
     }
 }

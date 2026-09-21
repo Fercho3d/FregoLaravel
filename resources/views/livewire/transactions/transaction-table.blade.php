@@ -181,6 +181,22 @@
                                 <span class="rounded-full bg-white/25 px-1.5 py-0.5 tabular-nums">{{ count($selected) }}</span>
                             @endif
                         </button>
+
+                        {{-- «Send Docs» del sistema viejo: PDF y XML al cliente. --}}
+                        <button type="button" wire:click="sendSelected"
+                                wire:confirm="{{ __('Se les mandará a los clientes el PDF y el XML de las facturas seleccionadas. ¿Continuar?') }}"
+                                wire:loading.attr="disabled" wire:target="sendSelected"
+                                @disabled($selected === [])
+                                class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition
+                                       {{ $selected === []
+                                            ? 'cursor-not-allowed border-line text-ink-faint'
+                                            : 'border-line text-ink hover:bg-raised' }}">
+                            <x-spinner wire:loading wire:target="sendSelected" class="h-3.5 w-3.5" />
+                            <svg wire:loading.remove wire:target="sendSelected" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 7l9 6 9-6M5 5h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/>
+                            </svg>
+                            {{ __('Enviar documentos') }}
+                        </button>
                     @endif
 
                     {{-- Pagar: lleva a la pantalla de pago con las seleccionadas. --}}
@@ -232,6 +248,30 @@
     </div>
 
     @error('selected') <p class="alert-danger">{{ $message }}</p> @enderror
+
+    {{-- Resultado de «Enviar documentos». --}}
+    @if ($sendResult !== null)
+        <div class="card space-y-2 p-4 text-sm">
+            <div class="flex items-center justify-between gap-3">
+                <p class="font-semibold text-ink">
+                    {{ __('Envío de documentos') }}:
+                    <span class="text-emerald-600 dark:text-emerald-400">{{ $sendResult['sent'] }} {{ __('enviadas') }}</span>
+                    @if (count($sendResult['errors']) > 0)
+                        · <span class="text-brand">{{ count($sendResult['errors']) }} {{ __('sin enviar') }}</span>
+                    @endif
+                </p>
+                <button type="button" wire:click="$set('sendResult', null)" class="text-xs text-ink-faint hover:text-ink">{{ __('Cerrar') }}</button>
+            </div>
+
+            @if (count($sendResult['errors']) > 0)
+                <ul class="space-y-0.5 text-xs text-ink-muted">
+                    @foreach ($sendResult['errors'] as $factura => $motivo)
+                        <li><span class="font-medium text-ink">{{ $factura }}</span> — {{ $motivo }}</li>
+                    @endforeach
+                </ul>
+            @endif
+        </div>
+    @endif
 
     {{-- Resultado del timbrado en lote: cuántas se timbraron y cuáles no. --}}
     @if ($stampResult !== null)

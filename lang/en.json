@@ -985,5 +985,11 @@
     "Profit factura (doc)": "Invoice profit (doc)",
     "s/facturas": "no invoices",
     "Sistema anterior": "Previous system",
-    "Abrir el sistema anterior en otra pestaña": "Open the previous system in a new tab"
+    "Abrir el sistema anterior en otra pestaña": "Open the previous system in a new tab",
+    "Enviar documentos": "Send documents",
+    "Envío de documentos": "Documents sent",
+    "enviadas": "sent",
+    "sin enviar": "not sent",
+    "Marca al menos una factura para mandar.": "Select at least one invoice to send.",
+    "Se les mandará a los clientes el PDF y el XML de las facturas seleccionadas. ¿Continuar?": "The PDF and XML of the selected invoices will be emailed to the customers. Continue?"
 }

@@ -50,6 +50,12 @@ class SendInvoice
 
         try {
             Mail::to($destinatarios)->send(new InvoiceMail($transaccion, $bookingNumber));
+            // Sin esto no hay forma de saber después si a un cliente le llegó su factura.
+            Log::info('Factura enviada al cliente', [
+                'transaccion' => $transaccion->transc_id,
+                'para' => $destinatarios,
+                'copia_oculta' => config('marca.correo.copia_facturas'),
+            ]);
         } catch (Throwable $e) {
             Log::warning('No se pudo mandar la factura al cliente', [
                 'transaccion' => $transaccion->transc_id,
@@ -60,6 +66,18 @@ class SendInvoice
         }
 
         return self::ENVIADA;
+    }
+
+    /** Cómo contarle al usuario qué pasó con el correo. */
+    public static function note(?string $estado): string
+    {
+        return match ($estado) {
+            self::ENVIADA => __('La factura se le mandó al cliente.'),
+            self::SIN_DOCUMENTOS => __('No se mandó por correo: la factura todavía no tiene documentos.'),
+            self::SIN_DESTINATARIOS => __('No se mandó por correo: el cliente no tiene correos de notificación.'),
+            self::ERROR => __('No se pudo mandar por correo; quedó anotado en la bitácora.'),
+            default => '',
+        };
     }
 
     /** @return array<int, string> */

@@ -324,7 +324,7 @@ class TransactionDetail extends Component
         $this->transactionCache = null;
         $this->headerCache = null;
 
-        session()->flash('status', __('Factura timbrada. Folio fiscal: ').$uuid.' '.$this->mailNote($timbrar->mailStatus));
+        session()->flash('status', __('Factura timbrada. Folio fiscal: ').$uuid.' '.SendInvoice::note($timbrar->mailStatus));
         $this->redirectRoute('transactions.show', $this->transactionId, navigate: true);
     }
 
@@ -340,19 +340,7 @@ class TransactionDetail extends Component
 
         $estado = $enviar->handle($this->transaction(), (string) ($this->header()->booking_number ?? ''));
 
-        session()->flash('status', trim($this->mailNote($estado)));
-    }
-
-    /** Cómo contarle al usuario qué pasó con el correo. */
-    private function mailNote(?string $estado): string
-    {
-        return match ($estado) {
-            SendInvoice::ENVIADA => __('La factura se le mandó al cliente.'),
-            SendInvoice::SIN_DOCUMENTOS => __('No se mandó por correo: la factura todavía no tiene documentos.'),
-            SendInvoice::SIN_DESTINATARIOS => __('No se mandó por correo: el cliente no tiene correos de notificación.'),
-            SendInvoice::ERROR => __('No se pudo mandar por correo; quedó anotado en la bitácora.'),
-            default => '',
-        };
+        session()->flash('status', trim(SendInvoice::note($estado)));
     }
 
     public function startCancel(): void

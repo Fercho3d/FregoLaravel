@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Transactions;
 
+use App\Actions\Transactions\SendInvoice;
 use App\Actions\Transactions\StampTransaction;
 use App\Models\Core\Account;
 use App\Models\Core\Booking;
@@ -93,6 +94,9 @@ class TransactionTable extends Component
      */
     public ?array $stampResult = null;
 
+    /** Resultado de «Enviar documentos»: cuántas salieron y cuáles no, con su motivo. */
+    public ?array $sendResult = null;
+
     /**
      * Cuántas facturas se timbran por tanda. Cada una es una llamada al PAC, así
      * que se acota para no exceder el tiempo de la petición; si hay más, se
@@ -168,6 +172,7 @@ class TransactionTable extends Component
         $this->profit = null;
         $this->selected = [];
         $this->stampResult = null;
+        $this->sendResult = null;
     }
 
     public function sortBy(string $column): void
@@ -216,6 +221,7 @@ class TransactionTable extends Component
         $this->profit = null;
         $this->selected = [];
         $this->stampResult = null;
+        $this->sendResult = null;
         $this->resetPage();
     }
 
@@ -315,6 +321,41 @@ class TransactionTable extends Component
             'pending' => max(0, count($this->selected) - count($lote)),
         ];
 
+        $this->selected = [];
+    }
+
+    /**
+     * Manda al cliente el PDF y el XML de las facturas marcadas: el «Send Docs»
+     * del listado viejo (`actionReenviar`).
+     */
+    public function sendSelected(SendInvoice $enviar): void
+    {
+        abort_unless(auth()->user()?->isAdmin() ?? false, 403);
+
+        if ($this->screen !== 'invoice') {
+            return;
+        }
+
+        if ($this->selected === []) {
+            $this->addError('selected', __('Marca al menos una factura para mandar.'));
+
+            return;
+        }
+
+        $sent = 0;
+        $errors = [];
+
+        foreach (Transaction::with('bookingModel')->whereIn('transc_id', array_slice($this->selected, 0, self::STAMP_BATCH))->get() as $factura) {
+            $estado = blank($factura->seal)
+                ? SendInvoice::SIN_DOCUMENTOS
+                : $enviar->handle($factura, (string) ($factura->bookingModel?->booking_number ?? ''));
+
+            $estado === SendInvoice::ENVIADA
+                ? $sent++
+                : $errors[$factura->tran_number ?: (string) $factura->transc_id] = SendInvoice::note($estado);
+        }
+
+        $this->sendResult = ['sent' => $sent, 'errors' => $errors];
         $this->selected = [];
     }
 
