@@ -51,13 +51,13 @@ class SendInvoice
         try {
             Mail::to($destinatarios)->send(new InvoiceMail($transaccion, $bookingNumber));
             // Sin esto no hay forma de saber después si a un cliente le llegó su factura.
-            Log::info('Factura enviada al cliente', [
+            Log::channel('facturas')->info('Factura enviada al cliente', [
                 'transaccion' => $transaccion->transc_id,
                 'para' => $destinatarios,
                 'copia_oculta' => config('marca.correo.copia_facturas'),
             ]);
         } catch (Throwable $e) {
-            Log::warning('No se pudo mandar la factura al cliente', [
+            Log::channel('facturas')->error('No se pudo mandar la factura al cliente', [
                 'transaccion' => $transaccion->transc_id,
                 'error' => $e->getMessage(),
             ]);
