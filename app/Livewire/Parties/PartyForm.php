@@ -119,8 +119,9 @@ class PartyForm extends Component
                 ->all(),
         );
 
+        // `email` es NOT NULL en la base: sin correo va vacío, como lo deja el original.
         $valores = collect($this->fields())
-            ->mapWithKeys(fn ($d, $campo) => [$campo => ($this->form[$campo] ?? '') === '' ? null : $this->form[$campo]])
+            ->mapWithKeys(fn ($d, $campo) => [$campo => ($this->form[$campo] ?? '') === '' ? ($campo === 'email' ? '' : null) : $this->form[$campo]])
             ->all();
 
         if ($this->partyId === null) {

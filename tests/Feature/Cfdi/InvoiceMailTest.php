@@ -163,7 +163,7 @@ class InvoiceMailTest extends TestCase
     public function test_sin_destinatarios_no_se_manda(): void
     {
         config(['timbrado.produccion' => true]);
-        DB::table('client')->where('client_id', 1)->update(['email' => null, 'email_notification' => null]);
+        DB::table('client')->where('client_id', 1)->update(['email' => '', 'email_notification' => null]);
         $this->timbrada();
 
         $this->assertSame(

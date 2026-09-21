@@ -570,7 +570,9 @@ class CoreSchema
         Schema::create('client', function ($table) {
             $table->integer('client_id')->primary();
             $table->string('fullName');
-            $table->string('email')->nullable();
+            // En producción es NOT NULL: los clientes sin correo lo tienen vacío.
+            // El default es solo para no repetirlo en cada alta de prueba.
+            $table->string('email')->default('');
             $table->string('email_notification')->nullable();
             $table->text('notification_notes')->nullable();
             $table->string('country')->nullable();

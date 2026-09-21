@@ -61,6 +61,19 @@ class PartyManagerTest extends TestCase
         $this->assertSame('601', $cliente->regimen_fiscal_id);
     }
 
+    /** La columna `email` no acepta nulos: un cliente sin correo se guarda vacío, como en el original. */
+    public function test_editar_un_cliente_sin_correo(): void
+    {
+        DB::table('client')->insert(['client_id' => 124, 'fullName' => 'SMC GRAPHICS INC', 'email' => '']);
+
+        $this->ficha(party: 124)
+            ->set('form.city', 'VANCOUVER')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame('VANCOUVER', DB::table('client')->where('client_id', 124)->value('city'));
+    }
+
     public function test_el_nombre_es_obligatorio(): void
     {
         $this->ficha()

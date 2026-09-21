@@ -159,7 +159,7 @@ class BookingConfirmationTest extends TestCase
 
     public function test_sin_correos_de_notificacion_no_se_manda_nada(): void
     {
-        DB::table('client')->where('client_id', 1)->update(['email' => null, 'email_notification' => null]);
+        DB::table('client')->where('client_id', 1)->update(['email' => '', 'email_notification' => null]);
 
         $this->actingAs($this->usuario());
 
