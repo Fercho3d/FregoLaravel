@@ -92,7 +92,8 @@ class EnglishScreensTest extends LegacyDatabaseTestCase
     {
         // Con las dos formas de transporte encendidas: si no, los catálogos de
         // flota responden 404 y se quedarían sin vigilar justo por ser nuevos.
-        config(['marca.modalidades' => 'maritimo,terrestre']);
+        // Nómina y taller también, para no depender del `.env` de la máquina.
+        config(['marca.modalidades' => 'maritimo,terrestre', 'marca.nomina' => true, 'marca.taller' => true]);
 
         $this->actingAs($this->admin());
 

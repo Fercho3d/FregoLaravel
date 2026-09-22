@@ -45,8 +45,13 @@ cambian por `.env` (`MAIL_FROM_ADDRESS`, `MARCA_MAIL_FACTURAS_BCC`,
 
 **La factura solo le llega al cliente si el timbrado está en producción**
 (`TIMBRADO_PRODUCCION=true`). Mientras esté en pruebas, los documentos no son
-fiscales y el correo va solo a la copia interna. El original decidía lo mismo,
-pero adivinando por el nombre del servidor.
+fiscales y el correo va solo a la copia interna (como destinatario, sin
+repetirla en copia oculta). El original decidía lo mismo, pero adivinando por
+el nombre del servidor.
+
+«Reenviar al cliente» exige solo el PDF, como el original: una factura
+histórica con el PDF cargado a mano y sin sello también se reenvía, con aviso
+de que va sin sello.
 
 ### Avisos de tareas atrasadas
 

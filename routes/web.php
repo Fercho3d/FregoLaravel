@@ -32,8 +32,6 @@ use App\Livewire\Payments\PaymentRequestForm;
 use App\Livewire\Payments\PaymentRequestList;
 use App\Livewire\Payments\PaymentsReport;
 use App\Livewire\Payments\PayrollManager;
-use App\Livewire\Workshop\InventoryManager;
-use App\Livewire\Workshop\MaintenanceManager;
 use App\Livewire\Payments\SettlementManager;
 use App\Livewire\Portal\PortalDocument;
 use App\Livewire\Portal\PortalHome;
@@ -45,6 +43,8 @@ use App\Livewire\Transactions\TransactionDetail;
 use App\Livewire\Transactions\TransactionForm;
 use App\Livewire\Transactions\TransactionTable;
 use App\Livewire\Users\UserManager;
+use App\Livewire\Workshop\InventoryManager;
+use App\Livewire\Workshop\MaintenanceManager;
 use Illuminate\Support\Facades\Route;
 
 // La raíz es la página pública. Quien ya tiene sesión no la ve: `Home::mount()`

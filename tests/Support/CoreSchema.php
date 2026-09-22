@@ -30,6 +30,9 @@ class CoreSchema
         $orden = 0;
 
         foreach ([
+            // La maniobra de vacío («Empty Pass») va antes de la recolección,
+            // como en el formulario de continuidad del sistema de origen.
+            'vacuum_maneuver' => 'Maniobra de vacío',
             'pickup_date' => 'Recolección',
             'doc_cut_of' => 'Corte documental',
             'SI_date' => 'Instrucciones',
@@ -74,7 +77,11 @@ class CoreSchema
             $table->tinyInteger('status')->default(1);
             $table->string('remember_token', 100)->nullable();
             $table->text('two_factor_secret')->nullable();
+            $table->text('two_factor_recovery_codes')->nullable();
+            $table->timestamp('two_factor_confirmed_at')->nullable();
             $table->dateTime('last_login')->nullable();
+            $table->integer('created_by')->nullable();
+            $table->integer('modified_by')->nullable();
             $table->dateTime('created_at')->nullable();
             $table->dateTime('modified_at')->nullable();
         });
@@ -130,7 +137,11 @@ class CoreSchema
             // Entero como en producción: 1 = importación, 2 = exportación.
             $table->integer('booking_type')->nullable();
             $table->date('dicharge_ETA')->nullable();
-            $table->date('arrival')->nullable();
+            // La lista de verificación del booking: fecha y hora, como en
+            // producción (`Booking::LISTA_DE_VERIFICACION`).
+            foreach (['arrival', 'realeased_from_shiping', 'customs_cleared', 'truck_service_request', 'delivered_consigned'] as $paso) {
+                $table->dateTime($paso)->nullable();
+            }
             $table->integer('vessel')->nullable();
             $table->integer('loading_port')->nullable();
             $table->integer('dicharge_port_id')->nullable();
@@ -448,6 +459,12 @@ class CoreSchema
             $table->unsignedInteger('modified_by')->nullable();
             $table->dateTime('modified_at')->nullable();
             $table->unique(['booking', 'hito_id']);
+        });
+
+        // La modalidad del embarque (CY/CY, SD/SD…), que se elige en el detalle.
+        Schema::create('modality', function ($table) {
+            $table->increments('modality_id');
+            $table->string('modality_name', 15)->nullable();
         });
 
         Schema::create('booking_continuity', function ($table) {

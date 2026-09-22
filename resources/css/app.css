@@ -246,6 +246,12 @@
         box-shadow: inset 3px 0 0 0 var(--pick-line);
     }
 
+    /* Renglón con pérdida (reporte por booking): rojo, como la fila `danger` del original. */
+    .row-loss {
+        background-color: var(--danger-bg);
+        box-shadow: inset 3px 0 0 0 var(--danger-ink);
+    }
+
     /* Bloque gris animado para los estados de carga. */
     .skeleton {
         @apply animate-shimmer rounded-md bg-raised;
