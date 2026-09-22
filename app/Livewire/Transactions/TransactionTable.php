@@ -564,7 +564,17 @@ class TransactionTable extends Component
     public function unselectableReason(object $row): ?string
     {
         if ($row->cancelled) {
-            return __('Cancelada: no entra en una solicitud de pago.');
+            return __('Cancelada: no se timbra, no se envía y no entra en una solicitud de pago.');
+        }
+
+        /*
+         * Que esté saldada solo estorba para cobrar o pagar. En Facturas lo que
+         * se hace con lo marcado es timbrar y mandar documentos, y eso no tiene
+         * nada que ver con si ya se cobró: apagar ahí la casilla dejaba la
+         * pantalla entera sin poder marcar nada.
+         */
+        if ($this->screen === 'invoice') {
+            return null;
         }
 
         $saldada = round((float) $row->amount_original, 2) !== 0.0

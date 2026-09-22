@@ -143,17 +143,25 @@ class TransactionTableFixtureTest extends TestCase
     }
 
     /** El original apagaba la casilla de los documentos con importe y sin saldo. */
-    public function test_una_transaccion_saldada_no_se_puede_marcar(): void
+    /**
+     * En Costos, donde lo marcado va a una solicitud de pago, una transacción
+     * saldada no se marca. En Facturas sí: ahí se timbra y se mandan
+     * documentos, y eso no depende de si ya se cobró.
+     */
+    public function test_una_transaccion_saldada_no_se_puede_marcar_en_costos(): void
+    {
+        $pantalla = $this->pantalla('bill');
+        $saldada = (object) ['transc_id' => 2, 'cancelled' => 0, 'left_to_pay' => 0, 'amount_original' => 1160];
+
+        $this->assertNotNull($pantalla->instance()->unselectableReason($saldada));
+    }
+
+    public function test_una_transaccion_saldada_si_se_marca_en_facturas(): void
     {
         $pantalla = $this->pantalla('invoice');
         $fila = collect($pantalla->viewData('rows')->items())->firstWhere('tran_number', 'F-2');
 
-        $this->assertNotNull($pantalla->instance()->unselectableReason($fila));
-        $this->assertMatchesRegularExpression(
-            '/value="2"\s+aria-label="Seleccionar transacción F-2"\s+disabled\s+title="[^"]+"/u',
-            $pantalla->html(),
-            'La casilla de la factura saldada tiene que ir deshabilitada y con su motivo.',
-        );
+        $this->assertNull($pantalla->instance()->unselectableReason($fila));
     }
 
     public function test_una_transaccion_cancelada_no_se_puede_marcar(): void

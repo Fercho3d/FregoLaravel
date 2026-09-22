@@ -725,6 +725,14 @@
                                 @if ($insignia)
                                     <span class="badge {{ $insignia[0] }} ml-1" title="{{ $insignia[2] }}{{ $cancelacion?->verificado_at ? ' · '.__('consultado el :fecha', ['fecha' => $cancelacion->verificado_at->format('d/m/Y')]) : '' }}">{{ $insignia[1] }}</span>
                                 @endif
+
+                                {{-- Cancelar el CFDI se pide desde el detalle, donde se
+                                     elige el motivo; aquí va el atajo, como en el
+                                     listado del sistema viejo. --}}
+                                @if (filled($row->seal) && ! $row->cancelled && ! $cancelacion && auth()->user()?->isAdmin())
+                                    <a href="{{ route('transactions.show', $row->transc_id) }}" wire:navigate
+                                       class="ml-1 text-[11px] text-brand hover:underline">{{ __('Cancelar') }}</a>
+                                @endif
                             </td>
                         </tr>
                     @empty

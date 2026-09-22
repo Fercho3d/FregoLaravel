@@ -411,4 +411,59 @@ class StampingTest extends TestCase
         $this->assertSame([], collect($pantalla->viewData('rows')->items())->pluck('transc_id')->all());
         $this->assertStringContainsString('wire:model.live="cfdiEstado"', $pantalla->html());
     }
+
+    /**
+     * En Facturas una factura ya cobrada se puede marcar.
+     *
+     * La regla que apagaba la casilla es la de las solicitudes de pago (no
+     * queda nada por cobrar), y en esta pantalla lo que se hace con lo marcado
+     * es timbrar y mandar documentos. Con esa regla puesta, en producción
+     * salían las cincuenta casillas de la página apagadas y no se podía timbrar
+     * en lote.
+     */
+    public function test_en_facturas_una_saldada_si_se_puede_marcar(): void
+    {
+        $this->actingAs($this->usuario());
+
+        $pantalla = Livewire::test(TransactionTable::class, ['screen' => 'invoice']);
+        $fila = collect($pantalla->viewData('rows')->items())->firstWhere('transc_id', 1);
+        $fila->left_to_pay = 0;
+        $fila->amount_original = 2320;
+
+        $this->assertNull($pantalla->instance()->unselectableReason($fila));
+    }
+
+    /** En Costos sigue mandando la regla de cobranza: una saldada no se marca. */
+    public function test_en_costos_una_saldada_no_se_marca(): void
+    {
+        $this->actingAs($this->usuario());
+
+        $pantalla = Livewire::test(TransactionTable::class, ['screen' => 'bill']);
+        $fila = (object) ['transc_id' => 9, 'cancelled' => 0, 'left_to_pay' => 0, 'amount_original' => 1000];
+
+        $this->assertNotNull($pantalla->instance()->unselectableReason($fila));
+    }
+
+    /** Una cancelada no se marca en ninguna pantalla. */
+    public function test_una_cancelada_nunca_se_marca(): void
+    {
+        $this->actingAs($this->usuario());
+
+        $pantalla = Livewire::test(TransactionTable::class, ['screen' => 'invoice']);
+        $fila = (object) ['transc_id' => 9, 'cancelled' => 1, 'left_to_pay' => 100, 'amount_original' => 1000];
+
+        $this->assertNotNull($pantalla->instance()->unselectableReason($fila));
+    }
+
+    /** Desde el listado se llega a cancelar una factura timbrada. */
+    public function test_el_listado_ofrece_cancelar_una_factura_timbrada(): void
+    {
+        DB::table('transaction')->where('transc_id', 1)->update(['seal' => 'YA-TIMBRADA']);
+
+        $this->actingAs($this->usuario());
+
+        Livewire::test(TransactionTable::class, ['screen' => 'invoice'])
+            ->assertSee(__('Cancelar'))
+            ->assertSeeHtml(route('transactions.show', 1));
+    }
 }
