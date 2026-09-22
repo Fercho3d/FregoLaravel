@@ -44,7 +44,7 @@ class NotificationsTest extends TestCase
 
     private function usuario(): User
     {
-        return User::create([
+        return User::forceCreate([
             'username' => 'operador', 'password' => 'secreto-de-prueba',
             'role' => User::ROLE_ADMIN, 'status' => 1,
         ]);

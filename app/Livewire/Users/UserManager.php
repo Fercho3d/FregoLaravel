@@ -154,6 +154,9 @@ class UserManager extends Component
         // es la misma regla que ya protege el botón de baja del listado.
         $esMismo = ! $esNuevo && (int) $objetivo->usr_id === (int) auth()->id();
 
+        // Sin un super administrador activo nadie podría volver a entrar aquí.
+        $esUltimoSuperAdmin = ! $esNuevo && $this->esUltimoSuperAdminActivo($objetivo);
+
         $this->validate([
             'name' => ['nullable', 'string', 'max:100'],
             // `username` y `email` son únicos en la tabla heredada. El correo es
@@ -170,28 +173,37 @@ class UserManager extends Component
             // Los roles asignables dependen del acceso elegido.
             'userRole' => [
                 'required', Rule::in(array_keys($this->rolesAsignables())),
-                function (string $attribute, mixed $value, Closure $fail) use ($esMismo, $objetivo) {
+                function (string $attribute, mixed $value, Closure $fail) use ($esMismo, $esUltimoSuperAdmin, $objetivo) {
                     if ($esMismo && (int) $value !== (int) $objetivo->role) {
                         $fail(__('No puedes cambiar tu propio rol.'));
+                    } elseif ($esUltimoSuperAdmin && (int) $value !== User::ROLE_SUPER_ADMIN) {
+                        $fail(__('Es el único super administrador activo: nombra a otro antes de cambiarle el rol.'));
                     }
                 },
             ],
             'access' => ['required', Rule::in([self::ACCESS_INTERNAL, self::ACCESS_CLIENT, self::ACCESS_PROVIDER])],
-            'partyId' => [Rule::requiredIf($this->needsParty()), 'nullable'],
+            // El cliente o proveedor ligado tiene que existir en su catálogo.
+            'partyId' => [
+                Rule::requiredIf($this->needsParty()), 'nullable',
+                Rule::when($this->access === (string) self::ACCESS_CLIENT, ['exists:client,client_id']),
+                Rule::when($this->access === (string) self::ACCESS_PROVIDER, ['exists:provider,provider_id']),
+            ],
             'password' => [Rule::requiredIf($esNuevo), 'nullable', 'string', 'min:8', 'same:passwordConfirmation'],
             'active' => [
-                function (string $attribute, mixed $value, Closure $fail) use ($esMismo) {
+                function (string $attribute, mixed $value, Closure $fail) use ($esMismo, $esUltimoSuperAdmin) {
                     if ($esMismo && ! $value) {
                         $fail(__('No puedes darte de baja a ti mismo.'));
+                    } elseif ($esUltimoSuperAdmin && ! $value) {
+                        $fail(__('Es el único super administrador activo: nombra a otro antes de darlo de baja.'));
                     }
                 },
             ],
         ], attributes: [
-            'username' => 'usuario',
-            'email' => 'correo',
-            'userRole' => 'rol',
-            'access' => 'acceso',
-            'partyId' => $this->access === (string) self::ACCESS_CLIENT ? 'cliente' : 'proveedor',
+            'username' => __('usuario'),
+            'email' => __('correo'),
+            'userRole' => __('rol'),
+            'access' => __('acceso'),
+            'partyId' => $this->access === (string) self::ACCESS_CLIENT ? __('cliente') : __('proveedor'),
             'password' => __('contraseña'),
         ]);
 
@@ -222,7 +234,7 @@ class UserManager extends Component
 
         $usuario->save();
 
-        session()->flash('status', $esNuevo ? 'Usuario creado.' : 'Usuario actualizado.');
+        session()->flash('status', $esNuevo ? __('Usuario creado.') : __('Usuario actualizado.'));
         $this->cancel();
     }
 
@@ -272,13 +284,16 @@ class UserManager extends Component
 
         $usuario = User::findOrFail($id);
 
+        abort_if($usuario->status && $this->esUltimoSuperAdminActivo($usuario), 422,
+            __('Es el único super administrador activo: nombra a otro antes de darlo de baja.'));
+
         // Al dar de baja se borra también el token de «recordarme»: si no, la
         // cookie reconstruiría la sesión aunque `EnsureUserIsActive` la cierre.
         $usuario->forceFill(($usuario->status
             ? ['status' => 0, 'remember_token' => null]
             : ['status' => 1]) + ['modified_by' => auth()->id()])->save();
 
-        session()->flash('status', $usuario->status ? 'Usuario reactivado.' : __('Usuario dado de baja.'));
+        session()->flash('status', $usuario->status ? __('Usuario reactivado.') : __('Usuario dado de baja.'));
     }
 
     /**
@@ -288,6 +303,23 @@ class UserManager extends Component
     private function assertCanManageUsers(): void
     {
         abort_unless(auth()->user()?->isSuperAdmin() ?? false, 403, __('Esta sección es solo para el super administrador'));
+    }
+
+    /**
+     * ¿Es la única cuenta activa con rol de super administrador? `status` nulo
+     * cuenta como activo, igual que en `User::isActive()`.
+     */
+    private function esUltimoSuperAdminActivo(User $usuario): bool
+    {
+        if (! $usuario->isSuperAdmin() || ! $usuario->isActive()) {
+            return false;
+        }
+
+        return ! User::query()
+            ->where('role', User::ROLE_SUPER_ADMIN)
+            ->where(fn ($q) => $q->whereNull('status')->orWhere('status', '!=', 0))
+            ->whereKeyNot($usuario->usr_id)
+            ->exists();
     }
 
     /**

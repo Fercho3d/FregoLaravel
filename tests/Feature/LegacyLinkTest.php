@@ -15,7 +15,7 @@ class LegacyLinkTest extends TestCase
         CoreSchema::createUsers();
         config(['services.legacy.url' => 'http://viejo.test']);
 
-        $usuario = User::create(['username' => 'operador', 'password' => 'secreto-de-prueba', 'role' => User::ROLE_ADMIN, 'status' => 1]);
+        $usuario = User::forceCreate(['username' => 'operador', 'password' => 'secreto-de-prueba', 'role' => User::ROLE_ADMIN, 'status' => 1]);
 
         $this->actingAs($usuario)->get(route('dashboard'))
             ->assertSee('href="http://viejo.test"', false);

@@ -30,7 +30,7 @@ class UserManagerTest extends TestCase
 
     private function superAdmin(): User
     {
-        return User::create([
+        return User::forceCreate([
             'name' => 'Super', 'username' => 'super.admin', 'email' => 'super@ejemplo.com',
             'password' => 'secreto-de-prueba', 'role' => User::ROLE_SUPER_ADMIN, 'status' => 1,
         ]);
@@ -45,7 +45,7 @@ class UserManagerTest extends TestCase
 
     private function admin(): User
     {
-        return User::create([
+        return User::forceCreate([
             'name' => 'Admin', 'username' => 'admin.normal', 'password' => 'secreto-de-prueba',
             'role' => User::ROLE_ADMIN, 'status' => 1,
         ]);
@@ -53,7 +53,7 @@ class UserManagerTest extends TestCase
 
     public function test_un_usuario_normal_no_entra(): void
     {
-        $usuario = User::create([
+        $usuario = User::forceCreate([
             'name' => 'Juan', 'username' => 'juan.normal', 'password' => 'secreto-de-prueba',
             'role' => User::ROLE_USER, 'status' => 1,
         ]);
@@ -215,7 +215,7 @@ class UserManagerTest extends TestCase
 
     public function test_editar_sin_tocar_la_contrasena_la_deja_igual(): void
     {
-        $otro = User::create([
+        $otro = User::forceCreate([
             'name' => 'Karina', 'username' => 'karina', 'email' => 'karina@ejemplo.com',
             'password' => 'contrasena-original', 'role' => User::ROLE_USER, 'status' => 1,
         ]);
@@ -234,7 +234,7 @@ class UserManagerTest extends TestCase
 
     public function test_cambiar_la_contrasena(): void
     {
-        $otro = User::create([
+        $otro = User::forceCreate([
             'username' => 'karina', 'password' => 'contrasena-original',
             'role' => User::ROLE_USER, 'status' => 1,
         ]);
@@ -252,7 +252,7 @@ class UserManagerTest extends TestCase
     /** No se borran: la tabla la referencian las columnas de auditoría del sistema. */
     public function test_dar_de_baja_y_reactivar(): void
     {
-        $otro = User::create([
+        $otro = User::forceCreate([
             'username' => 'karina', 'password' => 'x', 'role' => User::ROLE_USER, 'status' => 1,
         ]);
 
@@ -276,7 +276,7 @@ class UserManagerTest extends TestCase
     /** Cuenta del portal de cliente con rol 13 (editor), como las 81 que hay en la base. */
     private function cuentaDePortal(int $rol = User::ROLE_CLIENT_EDITOR): User
     {
-        return User::create([
+        return User::forceCreate([
             'username' => 'portal.editor', 'email' => 'editor@ejemplo.com', 'password' => 'x',
             'role' => $rol, 'access' => User::ACCESS_CLIENT, 'client_id' => 1, 'status' => 1,
         ]);
@@ -336,7 +336,7 @@ class UserManagerTest extends TestCase
     public function test_los_roles_de_portal_no_son_administradores(): void
     {
         foreach (User::clientRoles() + User::providerRoles() as $rol => $etiqueta) {
-            $cuenta = new User(['role' => $rol, 'access' => User::ACCESS_CLIENT]);
+            $cuenta = (new User)->forceFill(['role' => $rol, 'access' => User::ACCESS_CLIENT]);
 
             $this->assertFalse($cuenta->isAdmin(), "El rol {$rol} ({$etiqueta}) no debe ser administrador.");
             $this->assertTrue($cuenta->isPortal());
@@ -347,7 +347,7 @@ class UserManagerTest extends TestCase
 
     public function test_dar_de_baja_limpia_el_token_de_recordar(): void
     {
-        $otro = User::create([
+        $otro = User::forceCreate([
             'username' => 'karina', 'password' => 'x', 'role' => User::ROLE_USER, 'status' => 1,
             'remember_token' => 'token-de-la-cookie',
         ]);
@@ -451,7 +451,7 @@ class UserManagerTest extends TestCase
     /** La tabla heredada guarda en `email` valores que no son correos; eso no debe bloquear la edición. */
     public function test_un_correo_heredado_sin_forma_no_impide_editar(): void
     {
-        $otro = User::create([
+        $otro = User::forceCreate([
             'username' => 'elymaersk', 'email' => 'elymaersk', 'password' => 'x',
             'role' => User::ROLE_USER, 'status' => 1,
         ]);
@@ -463,5 +463,111 @@ class UserManagerTest extends TestCase
             ->assertHasNoErrors();
 
         $this->assertSame('Ely', $otro->refresh()->name);
+    }
+
+    // ------------------------------------------------ Etapa 3 (bajas)
+
+    public function test_el_cliente_ligado_tiene_que_existir(): void
+    {
+        $this->pantalla()
+            ->call('create')
+            ->set('username', 'portal.cliente')
+            ->set('email', 'portal@ejemplo.com')
+            ->set('access', (string) UserManager::ACCESS_CLIENT)
+            ->set('userRole', (string) User::ROLE_CLIENT_READONLY)
+            ->set('partyId', '999')
+            ->set('password', 'contrasena-larga')
+            ->set('passwordConfirmation', 'contrasena-larga')
+            ->call('save')
+            ->assertHasErrors(['partyId' => 'exists']);
+    }
+
+    /** El id del cliente 1 no vale como proveedor: cada acceso mira su catálogo. */
+    public function test_el_proveedor_ligado_se_busca_entre_los_proveedores(): void
+    {
+        $this->pantalla()
+            ->call('create')
+            ->set('username', 'portal.proveedor')
+            ->set('email', 'proveedor@ejemplo.com')
+            ->set('access', (string) UserManager::ACCESS_PROVIDER)
+            ->set('userRole', (string) User::ROLE_PROVIDER_CARRIER)
+            ->set('partyId', '1')
+            ->set('password', 'contrasena-larga')
+            ->set('passwordConfirmation', 'contrasena-larga')
+            ->call('save')
+            ->assertHasErrors(['partyId' => 'exists']);
+    }
+
+    /**
+     * Quien opera es super administrador, así que el «último» solo puede ser
+     * otro cuando la sesión de quien opera ya está dada de baja (entre su baja
+     * y su siguiente clic). Se arma así para probar la regla por sí sola.
+     */
+    private function ultimoSuperAdminYOperadorDadoDeBaja(): array
+    {
+        $operador = User::forceCreate([
+            'username' => 'operador.baja', 'email' => 'baja@ejemplo.com', 'password' => 'x',
+            'role' => User::ROLE_SUPER_ADMIN, 'status' => 0,
+        ]);
+
+        return [$operador, $this->superAdmin()];
+    }
+
+    public function test_el_ultimo_super_admin_activo_no_se_da_de_baja_desde_el_formulario(): void
+    {
+        [$operador, $ultimo] = $this->ultimoSuperAdminYOperadorDadoDeBaja();
+
+        $this->pantalla($operador)
+            ->call('edit', $ultimo->usr_id)
+            ->set('active', false)
+            ->call('save')
+            ->assertHasErrors('active');
+
+        $this->assertSame(1, (int) $ultimo->refresh()->status);
+    }
+
+    public function test_el_ultimo_super_admin_activo_no_se_degrada(): void
+    {
+        [$operador, $ultimo] = $this->ultimoSuperAdminYOperadorDadoDeBaja();
+
+        $this->pantalla($operador)
+            ->call('edit', $ultimo->usr_id)
+            ->set('userRole', (string) User::ROLE_ADMIN)
+            ->call('save')
+            ->assertHasErrors('userRole');
+
+        $this->assertSame(User::ROLE_SUPER_ADMIN, (int) $ultimo->refresh()->role);
+    }
+
+    public function test_el_ultimo_super_admin_activo_no_se_da_de_baja_desde_el_listado(): void
+    {
+        [$operador, $ultimo] = $this->ultimoSuperAdminYOperadorDadoDeBaja();
+
+        $this->pantalla($operador)->call('toggleActive', $ultimo->usr_id)->assertStatus(422);
+
+        $this->assertSame(1, (int) $ultimo->refresh()->status);
+    }
+
+    public function test_con_otro_super_admin_activo_si_se_puede_dar_de_baja(): void
+    {
+        $otro = User::forceCreate([
+            'username' => 'otro.super', 'email' => 'otro@ejemplo.com', 'password' => 'x',
+            'role' => User::ROLE_SUPER_ADMIN, 'status' => 1,
+        ]);
+
+        $this->pantalla()->call('toggleActive', $otro->usr_id);
+
+        $this->assertSame(0, (int) $otro->refresh()->status);
+    }
+
+    /** Rol, acceso, estado y cliente o proveedor ligado no entran por asignación masiva. */
+    public function test_los_campos_de_permiso_no_son_asignables_en_masa(): void
+    {
+        $cuenta = new User([
+            'username' => 'colado', 'role' => User::ROLE_SUPER_ADMIN, 'access' => User::ACCESS_INTERNAL,
+            'status' => 1, 'client_id' => 1, 'provider_id' => 1,
+        ]);
+
+        $this->assertSame(['username' => 'colado'], $cuenta->getAttributes());
     }
 }

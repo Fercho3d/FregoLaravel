@@ -34,7 +34,7 @@ class AjustesTest extends TestCase
 
     private function usuario(int $rol = User::ROLE_SUPER_ADMIN): User
     {
-        return User::create([
+        return User::forceCreate([
             'username' => 'jefa'.$rol, 'password' => 'secreto-de-prueba',
             'role' => $rol, 'access' => User::ACCESS_INTERNAL, 'status' => 1,
         ]);

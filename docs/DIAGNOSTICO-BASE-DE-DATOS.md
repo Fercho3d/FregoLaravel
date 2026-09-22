@@ -108,6 +108,20 @@ En `transaction` es un `decimal(10,4)` (un valor); en `payment_request`, un
 Guarda una tasa (`0.04`) pero la columna es texto. La pantalla ya la captura y
 valida como número; cuando se migre, `decimal(6,4)` como `tax_rate`.
 
+## Bajas
+
+### 12. ✅ Tablas de roles y permisos de Spatie sin uso
+
+`permissions`, `roles`, `model_has_permissions`, `model_has_roles` y
+`role_has_permissions` las creó `laravel-permission` al arrancar la reescritura,
+pero nada las consultaba: el permiso lo deciden `users.role` y `users.access`,
+como en Yii2. El trait `HasRoles` salió de `User` y `DatabaseSeeder` ya no
+siembra roles ahí.
+
+Las tablas **se quedan**: son aditivas, ya existen en producción y no estorban
+al sistema anterior. El paquete también se queda instalado porque su migración
+lee `config/permission.php`; quitarlo pide antes una migración que las borre.
+
 ---
 
 ## Cómo aplicarlo

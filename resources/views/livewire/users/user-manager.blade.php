@@ -104,7 +104,7 @@
                 @endif
 
                 <label class="block">
-                    <span class="field-label">Contraseña {{ $editing === 0 ? '' : __('(dejar vacía para no cambiarla)') }}</span>
+                    <span class="field-label">{{ __('Contraseña') }} {{ $editing === 0 ? '' : __('(dejar vacía para no cambiarla)') }}</span>
                     <x-password-input wire:model="password" wrapper="mt-1.5" autocomplete="new-password" />
                     @error('password') <span class="mt-1 block text-xs text-brand">{{ $message }}</span> @enderror
                 </label>
@@ -162,7 +162,7 @@
     <div class="relative rounded-xl border border-line bg-panel">
         <div wire:loading.delay class="absolute inset-0 z-20 rounded-xl bg-panel/75 text-center backdrop-blur-[1px]">
             <span class="mt-14 inline-flex items-center gap-2 rounded-full border border-line bg-panel px-4 py-2 text-sm text-ink-muted shadow-lg">
-                <x-spinner class="h-4 w-4 text-brand" /> Actualizando…
+                <x-spinner class="h-4 w-4 text-brand" /> {{ __('Actualizando…') }}
             </span>
         </div>
 

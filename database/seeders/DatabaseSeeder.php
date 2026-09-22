@@ -5,10 +5,13 @@ namespace Database\Seeders;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
-use Spatie\Permission\Models\Role;
 
 /**
- * Siembra inicial de una instalación nueva: solo los roles del sistema.
+ * Siembra inicial de una instalación nueva.
+ *
+ * Ya no siembra roles de Spatie: el permiso lo deciden `users.role` y
+ * `users.access`, como en Yii2, y esas tablas quedaron sin uso (ver
+ * `docs/DIAGNOSTICO-BASE-DE-DATOS.md`).
  *
  * La cuenta de administrador **no se crea sola**. Antes venía con usuario y
  * contraseña escritos aquí y un «TODO: eliminar antes de producción»; en un
@@ -24,18 +27,6 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        foreach ([
-            'super-admin',   // acceso total
-            'admin',         // administración interna
-            'operaciones',   // expedientes y unidades
-            'facturacion',   // facturación y timbrado
-            'pagos',         // bancos y conciliación
-            'cliente',       // portal de cliente
-            'proveedor',     // portal de proveedor
-        ] as $rol) {
-            Role::findOrCreate($rol, 'web');
-        }
-
         $this->primeraCuenta();
     }
 
@@ -59,17 +50,15 @@ class DatabaseSeeder extends Seeder
         // Rol 20 = super administrador del esquema heredado. Antes decía 1, que
         // no es ninguno de los tres roles válidos (9, 10, 20), así que la cuenta
         // «de administrador» ni siquiera entraba a facturación.
-        User::updateOrCreate(
-            ['username' => $usuario],
-            [
-                'name' => 'Administrador',
-                'email' => $usuario.'@'.parse_url((string) config('app.url'), PHP_URL_HOST),
-                'password' => Hash::make($clave),
-                'status' => 1,
-                'role' => User::ROLE_SUPER_ADMIN,
-                'access' => User::ACCESS_INTERNAL,
-            ]
-        )->syncRoles(['super-admin']);
+        // Rol, acceso y estado no son asignables en masa: van con `forceFill`.
+        User::firstOrNew(['username' => $usuario])->forceFill([
+            'name' => 'Administrador',
+            'email' => $usuario.'@'.parse_url((string) config('app.url'), PHP_URL_HOST),
+            'password' => Hash::make($clave),
+            'status' => 1,
+            'role' => User::ROLE_SUPER_ADMIN,
+            'access' => User::ACCESS_INTERNAL,
+        ])->save();
 
         $this->command?->info("Cuenta inicial `{$usuario}` lista.");
     }

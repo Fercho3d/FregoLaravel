@@ -14,10 +14,6 @@
         <div class="alert-warn mb-4 rounded-lg px-3 py-2 text-sm">{{ __('Tu cuenta está dada de baja.') }}</div>
     @endif
 
-    @if (session('status'))
-        <div class="alert-ok mb-4 rounded-lg px-3 py-2 text-sm">{{ session('status') }}</div>
-    @endif
-
     <form method="POST" action="{{ route('login') }}" class="space-y-5">
         @csrf
 

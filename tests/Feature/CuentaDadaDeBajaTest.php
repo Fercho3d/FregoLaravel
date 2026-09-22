@@ -27,7 +27,7 @@ class CuentaDadaDeBajaTest extends TestCase
 
     private function usuario(): User
     {
-        return User::create([
+        return User::forceCreate([
             'username' => 'karina', 'email' => 'karina@ejemplo.com', 'password' => 'x',
             'role' => User::ROLE_USER, 'status' => 1,
         ]);

@@ -10,7 +10,6 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Sanctum\HasApiTokens;
-use Spatie\Permission\Traits\HasRoles;
 
 /**
  * Modelo de usuario mapeado sobre la tabla `users` heredada de Yii2.
@@ -22,7 +21,7 @@ use Spatie\Permission\Traits\HasRoles;
  */
 class User extends Authenticatable
 {
-    use HasApiTokens, HasFactory, HasRoles, Notifiable, TwoFactorAuthenticatable;
+    use HasApiTokens, HasFactory, Notifiable, TwoFactorAuthenticatable;
 
     protected $table = 'users';
 
@@ -32,17 +31,17 @@ class User extends Authenticatable
 
     const UPDATED_AT = 'modified_at';
 
+    /*
+     * Rol, acceso, estado y el cliente o proveedor ligado NO son asignables en
+     * masa: deciden qué ve la cuenta, y se escriben siempre con `forceFill` y
+     * campos explícitos (`UserManager::save()`).
+     */
     protected $fillable = [
         'name',
         'email',
         'username',
         'password',
         'unit',
-        'role',
-        'access',
-        'client_id',
-        'provider_id',
-        'status',
     ];
 
     protected $hidden = [
@@ -239,6 +238,20 @@ class User extends Authenticatable
     public function sinAccesoDefinido(): bool
     {
         return $this->access === null;
+    }
+
+    /**
+     * Una cuenta dada de baja no recibe el enlace de recuperación. Fortify
+     * responde lo mismo que si se hubiera enviado, así que no se delata su
+     * estado; y si el enlace ya existía, `ResetUserPassword` lo rechaza.
+     *
+     * @param  string  $token
+     */
+    public function sendPasswordResetNotification($token): void
+    {
+        if ($this->isActive()) {
+            parent::sendPasswordResetNotification($token);
+        }
     }
 
     /** Quién dio de alta la cuenta (`created_by`, como en Yii2). */
