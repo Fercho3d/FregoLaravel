@@ -403,6 +403,24 @@ class CoreSchema
             $table->unsignedInteger('liquidacion_id')->nullable();
         });
 
+        // Bitácora de cancelaciones de CFDI (migración `create_cfdi_cancelacion`).
+        Schema::create('cfdi_cancelacion', function ($table) {
+            $table->increments('id');
+            $table->unsignedInteger('transc_id')->unique();
+            $table->string('uuid', 40);
+            $table->string('motivo', 2);
+            $table->string('sustituye', 40)->nullable();
+            $table->string('estado', 12)->default('solicitada');
+            $table->string('codigo', 20)->nullable();
+            $table->string('mensaje', 255)->nullable();
+            $table->string('sat_estado', 20)->nullable();
+            $table->string('sat_estatus', 40)->nullable();
+            $table->unsignedInteger('solicitado_por')->nullable();
+            $table->dateTime('solicitado_at');
+            $table->dateTime('verificado_at')->nullable();
+            $table->index('estado');
+        });
+
         Schema::create('configuracion', function ($table) {
             $table->string('clave', 60)->primary();
             $table->text('valor')->nullable();

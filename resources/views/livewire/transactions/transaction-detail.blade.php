@@ -80,6 +80,9 @@
                 <span class="{{ $estado->classes() }}">{{ $estado->label() }}</span>
                 @if ($fila->cancelled)
                     <span class="badge badge-danger">{{ __('Cancelada') }}</span>
+                @elseif ($cancelacion?->estaPendiente())
+                    {{-- Pedida pero no consumada: ante el SAT sigue vigente. --}}
+                    <span class="badge badge-warn">{{ __('Cancelación en proceso') }}</span>
                 @endif
                 @if (filled($fila->seal))
                     <span class="badge badge-ok">{{ __('Timbrada') }}</span>
@@ -93,6 +96,41 @@
 
         @if ($avisoEmisor = $this->emisorWarning())
             <p class="alert-danger mt-4">{{ $avisoEmisor }}</p>
+        @endif
+
+        {{-- Cancelación pedida y todavía sin consumar: la factura sigue vigente
+             ante el SAT, y hasta que él lo diga no se marca como cancelada. --}}
+        @if ($cancelacion && ! $fila->cancelled)
+            <div class="mt-4 space-y-2 rounded-xl border border-line bg-raised/60 p-4">
+                <p class="text-sm font-medium text-ink">{{ __('Cancelación solicitada') }}</p>
+
+                <p class="text-sm text-ink-muted">
+                    {{ __($cancelacion->mensaje) }}
+                    @if (filled($cancelacion->codigo))
+                        <span class="text-xs text-ink-faint">({{ $cancelacion->codigo }})</span>
+                    @endif
+                </p>
+
+                <p class="text-xs text-ink-faint">
+                    {{ __('Solicitada el :fecha', ['fecha' => $cancelacion->solicitado_at?->format('d/m/Y H:i') ?: '—']) }}
+                    @if ($cancelacion->verificado_at)
+                        · {{ __('Última consulta al SAT: :fecha', ['fecha' => $cancelacion->verificado_at->format('d/m/Y H:i')]) }}
+                        · {{ trim($cancelacion->sat_estado.' '.$cancelacion->sat_estatus) }}
+                    @else
+                        · {{ __('Todavía sin consultar al SAT.') }}
+                    @endif
+                </p>
+
+                @if ($satNotice)
+                    <p class="text-sm text-ink">{{ $satNotice }}</p>
+                @endif
+
+                <button type="button" wire:click="refreshSatStatus" wire:loading.attr="disabled" wire:target="refreshSatStatus"
+                        class="btn-ghost px-3 py-1.5 text-xs">
+                    <x-spinner wire:loading wire:target="refreshSatStatus" class="h-3.5 w-3.5" />
+                    {{ __('Consultar estado en el SAT') }}
+                </button>
+            </div>
         @endif
 
         @if ($cancelling)

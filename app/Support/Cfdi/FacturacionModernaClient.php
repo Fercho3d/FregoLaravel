@@ -49,8 +49,12 @@ class FacturacionModernaClient implements PacClient
      *
      * En producción `emisorRFC` es el RFC con el que se timbró; en pruebas el
      * original manda el de la cuenta demo, y aquí igual.
+     *
+     * Lo que cambia respecto del original es que **se lee la respuesta**: el PAC
+     * contesta con un acuse (`Code`/`Message`), y salvo cancelación consumada lo
+     * que hay es una solicitud a la espera del receptor.
      */
-    public function cancel(string $uuid, string $rfcEmisor, string $motivo, ?string $sustituye = null): void
+    public function cancel(string $uuid, string $rfcEmisor, string $motivo, ?string $sustituye = null): CancelResult
     {
         $peticion = ['Motivo' => $motivo];
 
@@ -66,7 +70,65 @@ class FacturacionModernaClient implements PacClient
             $credenciales['emisorRFC'] = $rfcEmisor;
         }
 
-        $this->soap('requestCancelarCFDI', $peticion + $credenciales, $this->cancellationEndpoint());
+        try {
+            $respuesta = $this->soap('requestCancelarCFDI', $peticion + $credenciales, $this->cancellationEndpoint());
+        } catch (CfdiException $e) {
+            /*
+             * El 402 —«El UUID se encuentra en cola de solicitud de
+             * cancelacion»— NO es un error para quien factura: la solicitud ya
+             * viajó antes y sigue en pie. Enseñarlo como falla llevaba a
+             * reintentar una cancelación que ya estaba puesta.
+             */
+            if ($e->codigo === '402') {
+                return new CancelResult(
+                    CancelResult::EN_COLA,
+                    $e->codigo,
+                    'Este folio ya tenía una solicitud de cancelación en curso ante el SAT.',
+                );
+            }
+
+            throw $e;
+        }
+
+        return $this->cancellationResult($respuesta);
+    }
+
+    /**
+     * Lee el acuse de cancelación del PAC.
+     *
+     * Observado en producción: `GT11` con «Solicitud de cancelación recibida. El
+     * receptor debe autorizar la cancelación.». Con motivos que el SAT deja
+     * cancelar sin aceptación el acuse habla de cancelación consumada.
+     */
+    private function cancellationResult(object $respuesta): CancelResult
+    {
+        $codigo = isset($respuesta->Code) ? trim((string) $respuesta->Code) : null;
+        $mensaje = isset($respuesta->Message) ? trim((string) $respuesta->Message) : '';
+
+        // Con aceptación: el comprobante sigue VIGENTE hasta que conteste el receptor.
+        if ($codigo === 'GT11' || preg_match('/autoriz|acepta/i', $mensaje) === 1) {
+            return new CancelResult(
+                CancelResult::SOLICITADA,
+                $codigo,
+                'Solicitud de cancelación enviada. El receptor debe autorizarla; si no responde en 72 horas, el SAT la cancela por plazo vencido.',
+            );
+        }
+
+        // Sin aceptación: el acuse habla de un comprobante ya cancelado.
+        if (preg_match('/cancelad/i', $codigo.' '.$mensaje) === 1) {
+            return new CancelResult(CancelResult::CANCELADA, $codigo, 'El SAT canceló el comprobante.');
+        }
+
+        /*
+         * Acuse desconocido: no se inventa un estado ni se da por cancelada. Se
+         * deja como solicitada, con el código y el texto del PAC tal cual, y el
+         * comando `cfdi:revisar-cancelaciones` le preguntará al SAT.
+         */
+        return new CancelResult(
+            CancelResult::SOLICITADA,
+            $codigo,
+            $mensaje !== '' ? $mensaje : 'El PAC recibió la solicitud sin decir en qué estado quedó.',
+        );
     }
 
     /**
@@ -122,11 +184,16 @@ class FacturacionModernaClient implements PacClient
 
             return (object) $cliente->{$metodo}((object) $peticion);
         } catch (SoapFault $e) {
-            // El mensaje del PAC trae la clave del rechazo (CFDI40211, etc.) y es
-            // lo que necesita ver quien factura; las credenciales no se registran.
-            Log::warning('El PAC rechazó la operación', ['metodo' => $metodo, 'error' => $e->getMessage()]);
+            // El mensaje del PAC trae la clave del rechazo (CFDI40211, 300, 402…)
+            // y es lo que necesita ver quien factura; las credenciales no se
+            // registran. `delPac()` conserva esa clave para poder decidir con ella.
+            Log::warning('El PAC rechazó la operación', [
+                'metodo' => $metodo,
+                'codigo' => $e->faultcode ?? null,
+                'error' => $e->getMessage(),
+            ]);
 
-            throw new CfdiException('El PAC respondió: '.$e->getMessage(), previous: $e);
+            throw CfdiException::delPac($e);
         } catch (Throwable $e) {
             Log::error('No se pudo hablar con el PAC', ['metodo' => $metodo, 'error' => $e->getMessage()]);
 

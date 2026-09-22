@@ -4,6 +4,7 @@ namespace App\Livewire\Transactions;
 
 use App\Actions\Transactions\SendInvoice;
 use App\Actions\Transactions\StampTransaction;
+use App\Models\CfdiCancelacion;
 use App\Models\Core\Account;
 use App\Models\Core\Booking;
 use App\Models\Core\Company;
@@ -637,6 +638,13 @@ class TransactionTable extends Component
 
         return view('livewire.transactions.transaction-table', [
             'rows' => $rows,
+            // Columna CFDI: qué facturas de esta página tienen una cancelación
+            // pedida y aún sin consumar. Una consulta chica por los IDs de la
+            // página, en vez de meter otra unión en el motor de listados.
+            'cancelacionesPendientes' => CfdiCancelacion::pendientes()
+                ->whereIn('transc_id', collect($rows->items())->pluck('transc_id')->all())
+                ->pluck('estado', 'transc_id')
+                ->all(),
             'companies' => Company::options(),
             'currencies' => Account::options(),
             'booking' => $this->booking(),

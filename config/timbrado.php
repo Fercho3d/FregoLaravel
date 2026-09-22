@@ -58,6 +58,17 @@ return [
          * usa el endpoint de timbrado.
          */
         'cancelacion' => env('TIMBRADO_URL_CANCELACION'),
+
+        /*
+         * Consulta pública de CFDI del SAT: la misma que responde al leer el QR
+         * de una factura. Es de SOLO LECTURA y no lleva credenciales; se usa
+         * para saber si una cancelación solicitada ya se consumó, porque el PAC
+         * avisa una sola vez.
+         */
+        'consulta_sat' => env(
+            'SAT_URL_CONSULTA',
+            'https://consultaqr.facturaelectronica.sat.gob.mx/ConsultaCFDIService.svc'
+        ),
     ],
 
     /*

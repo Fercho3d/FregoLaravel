@@ -109,10 +109,56 @@ claves `Motivo`, `FolioSustitucion` (solo con el motivo 01) y `uuid`, más
 que se timbró, leído del XML guardado; en pruebas es el de la cuenta demo,
 como hacía el original.
 
-**Pendiente: probar la cancelación en el sandbox del PAC** antes de cancelar
-una factura real desde esta aplicación. Las pruebas automáticas fijan la
-petición que se arma (`FacturacionModernaClientTest`), pero nunca hablan con
-el PAC; la única comprobación de punta a punta es la del sistema viejo.
+### Cancelar no es cancelar: lo que pasa de verdad
+
+El cliente se quejaba de que «no cancela facturas con el PAC». El PAC sí las
+recibía; lo que fallaba era el sistema, que **no leía la respuesta**: en cuanto
+la llamada no tronaba marcaba `transaction.cancelled = 1`, así que el ERP decía
+«cancelada» mientras el SAT seguía diciendo «Vigente». Lo mismo hace el Yii2.
+
+Comprobado contra producción, el PAC contesta una de estas tres cosas:
+
+| Respuesta | Qué significa | Qué hace el sistema |
+|---|---|---|
+| Objeto con `Code: GT11` · «Solicitud de cancelación recibida. El receptor debe autorizar la cancelación.» | Cancelación **con aceptación**: la factura sigue vigente | queda como `solicitada`, sin tocar `cancelled` |
+| `SoapFault` **402** «El UUID se encuentra en cola de solicitud de cancelacion.» | La solicitud ya estaba puesta | queda como `en_cola`; **no** es un error para quien factura |
+| `SoapFault` **300** «Error UUID no localizado en la base de timbrados» | El PAC no encuentra el folio (casi siempre, RFC emisor equivocado) | error en pantalla, con el código y el texto del PAC |
+
+De ocho facturas canceladas en 2026, tres seguían vigentes esperando al
+receptor, dos se cancelaron por plazo vencido y tres sin aceptación. Los tres
+caminos del SAT son:
+
+- **Sin aceptación**: el SAT la cancela de inmediato (facturas de poco monto,
+  sin relacionar, a público en general…). El acuse ya habla de cancelación.
+- **Con aceptación**: el receptor tiene **72 horas** para aceptar o rechazar en
+  el buzón tributario. Mientras tanto la factura está `Vigente` con
+  `EstatusCancelacion` «En proceso».
+- **Plazo vencido**: si no contesta en 72 horas, el SAT la cancela solo.
+
+Por eso hay una bitácora, `cfdi_cancelacion` (migración aditiva; el Yii2 no la
+conoce): guarda el folio, el motivo, el acuse del PAC y lo último que dijo el
+SAT. `transaction.cancelled` solo se marca con una cancelación **confirmada**,
+que es lo que ve el sistema viejo.
+
+**Quién pregunta al SAT.** `App\Support\Cfdi\SatStatus` consulta el servicio
+público de CFDI (`SAT_URL_CONSULTA`, el mismo que responde al leer el QR de una
+factura): solo lectura, sin credenciales, con 15 segundos de tiempo límite. Los
+cuatro datos de la consulta —RFC emisor, RFC receptor, total y folio fiscal—
+salen del XML timbrado. Devuelve `Estado`, `EsCancelable`,
+`EstatusCancelacion` y `CodigoEstatus`, y si el SAT no contesta devuelve el
+motivo en vez de tronar: un servicio caído no puede dejar la factura en un
+estado inventado.
+
+Se pregunta desde dos sitios: el botón «Consultar estado en el SAT» del detalle
+de la factura, y el comando `cfdi:revisar-cancelaciones`, programado a diario a
+las 08:00 (hora de México), que recorre las solicitudes pendientes con una
+pausa entre consultas. La migración deja como `solicitada` las facturas que ya
+estaban marcadas canceladas con sello, **sin tocar su `cancelled`**, para que ese
+comando las revise y corrija solas.
+
+**Las pruebas no hablan ni con el PAC ni con el SAT**: los dos se sustituyen
+(`FakePacClient`, `FakeSatStatus`), y este último devuelve un sobre SOAP como el
+de verdad para que la lectura de la respuesta se pruebe igual que en producción.
 
 ## Dos cosas del original que no se pudieron dejar igual
 

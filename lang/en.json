@@ -1235,5 +1235,20 @@
     "Solicitud :folio guardada.": "Request :folio saved.",
     "Solicitud :folio creada.": "Request :folio created.",
     "Utilidad del booking": "Booking profit",
-    "Facturas :inv menos costos :cost del booking, a TC del documento": "Invoices :inv less costs :cost for the booking, at document exchange rate"
+    "Cancelación en proceso": "Cancellation in progress",
+    "Cancelación solicitada": "Cancellation requested",
+    "Cancelada antes de que el sistema leyera la respuesta del PAC: queda por confirmar con el SAT.": "Cancelled before the system read the PAC answer: still to be confirmed with the SAT.",
+    "Consultar estado en el SAT": "Check status with the SAT",
+    "El PAC recibió la solicitud sin decir en qué estado quedó.": "The PAC received the request without saying how it ended up.",
+    "El SAT canceló el comprobante.": "The SAT cancelled the invoice.",
+    "El SAT contestó algo que no se pudo leer.": "The SAT answered something that could not be read.",
+    "El SAT dice: ": "The SAT says: ",
+    "El servicio de consulta del SAT no contestó.": "The SAT lookup service did not answer.",
+    "Este folio ya tenía una solicitud de cancelación en curso ante el SAT.": "This folio already had a cancellation request under way with the SAT.",
+    "Facturas :inv menos costos :cost del booking, a TC del documento": "Invoices :inv less costs :cost for the booking, at document exchange rate",
+    "No se encontró el XML timbrado de esta factura, que es de donde salen los datos de la consulta.": "The stamped XML for this invoice was not found, and that is where the query data comes from.",
+    "Solicitada el :fecha": "Requested on :fecha",
+    "Solicitud de cancelación enviada. El receptor debe autorizarla; si no responde en 72 horas, el SAT la cancela por plazo vencido.": "Cancellation request sent. The recipient must authorise it; if they do not answer within 72 hours, the SAT cancels it as time expired.",
+    "Todavía sin consultar al SAT.": "Not checked with the SAT yet.",
+    "Última consulta al SAT: :fecha": "Last SAT check: :fecha"
 }

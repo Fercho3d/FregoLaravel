@@ -663,6 +663,14 @@
                             </td>
                             <td class="whitespace-nowrap px-3 py-2 font-mono text-[11px] text-ink-faint" title="{{ $row->seal }}">
                                 {{ $row->seal ? \Illuminate\Support\Str::limit($row->seal, 8, '…') : '—' }}
+
+                                {{-- Cancelada es cancelada ante el SAT; una solicitud
+                                     que espera al receptor todavía no lo es. --}}
+                                @if ($row->cancelled)
+                                    <span class="badge badge-danger ml-1">{{ __('Cancelada') }}</span>
+                                @elseif (isset($cancelacionesPendientes[$row->transc_id]))
+                                    <span class="badge badge-warn ml-1">{{ __('Cancelación en proceso') }}</span>
+                                @endif
                             </td>
                         </tr>
                     @empty

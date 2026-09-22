@@ -3,8 +3,10 @@
 namespace App\Livewire\Transactions;
 
 use App\Actions\Transactions\CancelStamp;
+use App\Actions\Transactions\RefreshCancellationStatus;
 use App\Actions\Transactions\SendInvoice;
 use App\Actions\Transactions\StampTransaction;
+use App\Models\CfdiCancelacion;
 use App\Models\Core\Charge;
 use App\Models\Core\ChargeType;
 use App\Models\Core\Service;
@@ -55,7 +57,12 @@ class TransactionDetail extends Component
 
     public string $replacementUuid = '';
 
+    /** Lo último que contestó el SAT en esta pantalla, al pulsar Consultar. */
+    public ?string $satNotice = null;
+
     private ?object $headerCache = null;
+
+    private ?CfdiCancelacion $cancelacionCache = null;
 
     private ?Transaction $transactionCache = null;
 
@@ -346,9 +353,40 @@ class TransactionDetail extends Component
         // La cancelación sí se permite con el timbrado apagado si hay sello:
         // una instalación que dejó de facturar al SAT todavía puede tener que
         // cancelar lo que timbró antes.
+        //
+        // Con una solicitud en curso no se vuelve a pedir: el PAC contestaría
+        // «el UUID se encuentra en cola» y quien factura creería que algo falló.
         return (auth()->user()?->isAdmin() ?? false)
             && filled($transaccion->seal)
-            && ! $transaccion->cancelled;
+            && ! $transaccion->cancelled
+            && ! ($this->cancelacion()?->estaPendiente() ?? false);
+    }
+
+    /** La solicitud de cancelación de esta factura, si alguna vez se pidió. */
+    public function cancelacion(): ?CfdiCancelacion
+    {
+        return $this->cancelacionCache ??= CfdiCancelacion::where('transc_id', $this->transactionId)->first();
+    }
+
+    /**
+     * Vuelve a preguntarle al SAT en qué quedó la cancelación.
+     *
+     * El resultado se pinta en la pantalla sin recargar: es una consulta de solo
+     * lectura y quien factura suele repetirla mientras espera al receptor.
+     */
+    public function refreshSatStatus(RefreshCancellationStatus $consultar): void
+    {
+        abort_unless(auth()->user()?->isAdmin() ?? false, 403);
+
+        $consulta = $consultar->handle($this->transaction());
+
+        $this->satNotice = $consulta->seConsulto()
+            ? trim(__('El SAT dice: ').$consulta->estado.' '.$consulta->estatusCancelacion)
+            : (string) $consulta->motivo;
+
+        $this->transactionCache = null;
+        $this->headerCache = null;
+        $this->cancelacionCache = null;
     }
 
     public function stamp(StampTransaction $timbrar): void
@@ -400,7 +438,7 @@ class TransactionDetail extends Component
         abort_unless($this->canCancel(), 403);
 
         try {
-            $cancelar->handle(
+            $resultado = $cancelar->handle(
                 $this->transaction(),
                 $this->cancelReason,
                 $this->replacementUuid ?: null,
@@ -411,7 +449,14 @@ class TransactionDetail extends Component
             return;
         }
 
-        session()->flash('status', __('Factura cancelada ante el SAT.'));
+        // El mensaje dice lo que de verdad pasó: casi nunca es «cancelada», y
+        // dar eso por hecho es lo que tenía al ERP diciendo una cosa y al SAT
+        // otra. El código del PAC va aparte, en letra chica.
+        session()->flash('status', $resultado->esCancelacionConfirmada()
+            ? __('Factura cancelada ante el SAT.')
+            : __($resultado->mensaje));
+        session()->flash('status_detail', $resultado->codigo);
+
         $this->redirectRoute('transactions.show', $this->transactionId, navigate: true);
     }
 
@@ -435,6 +480,7 @@ class TransactionDetail extends Component
                 auth()->user(),
             ),
             'motivosCancelacion' => CancelStamp::MOTIVOS,
+            'cancelacion' => $this->cancelacion(),
             'tiposDeCargo' => ChargeType::optionsFor($contraparte, $tipoServicio),
             'servicios' => $this->chargeType === ''
                 ? collect()

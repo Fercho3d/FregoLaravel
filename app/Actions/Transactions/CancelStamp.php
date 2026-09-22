@@ -2,13 +2,22 @@
 
 namespace App\Actions\Transactions;
 
+use App\Models\CfdiCancelacion;
 use App\Models\Core\Transaction;
+use App\Support\Cfdi\CancelResult;
 use App\Support\Cfdi\CfdiException;
 use App\Support\Cfdi\PacClient;
 use App\Support\TransactionFiles;
 
 /**
- * Cancela ante el SAT una factura ya timbrada.
+ * Solicita ante el SAT la cancelación de una factura ya timbrada.
+ *
+ * ⚠️ **Pedir la cancelación no es cancelar.** Salvo los comprobantes que el SAT
+ * deja cancelar sin aceptación, lo que devuelve el PAC es un acuse y la factura
+ * sigue vigente hasta que el receptor autorice o se le venza el plazo. Aquí solo
+ * se marca `transaction.cancelled` cuando la cancelación está confirmada; lo
+ * demás queda anotado en `cfdi_cancelacion` y lo confirma la consulta al SAT
+ * (`RefreshCancellationStatus`).
  *
  * ⚠️ El RFC que se le manda al PAC tiene que ser **aquel con el que se timbró**,
  * no el de la cuenta ni el de la compañía actual: el PAC busca el UUID dentro de
@@ -27,7 +36,7 @@ class CancelStamp
 
     public function __construct(private PacClient $pac) {}
 
-    public function handle(Transaction $transaccion, string $motivo, ?string $sustituye = null): void
+    public function handle(Transaction $transaccion, string $motivo, ?string $sustituye = null): CancelResult
     {
         if (blank($transaccion->seal)) {
             throw new CfdiException('Esta factura no está timbrada, no hay nada que cancelar.');
@@ -47,13 +56,34 @@ class CancelStamp
             $sustituye = null;
         }
 
-        $this->pac->cancel($transaccion->seal, $this->emisorRfc($transaccion), $motivo, $sustituye);
+        $resultado = $this->pac->cancel($transaccion->seal, $this->emisorRfc($transaccion), $motivo, $sustituye);
 
-        $transaccion->forceFill([
-            'cancelled' => 1,
-            'cancel_reason_id' => $motivo,
-            'new_seal' => $sustituye,
-        ])->save();
+        CfdiCancelacion::updateOrCreate(['transc_id' => $transaccion->transc_id], [
+            'uuid' => $transaccion->seal,
+            'motivo' => $motivo,
+            'sustituye' => $sustituye,
+            'estado' => $resultado->estado,
+            'codigo' => $resultado->codigo,
+            'mensaje' => $resultado->mensaje,
+            'solicitado_por' => auth()->id(),
+            'solicitado_at' => now(),
+            // Una solicitud nueva deja sin valor lo último que dijo el SAT.
+            'sat_estado' => null,
+            'sat_estatus' => null,
+            'verificado_at' => null,
+        ]);
+
+        // Solo una cancelación confirmada toca las columnas heredadas: son las
+        // que ve el sistema viejo y las que dicen «Cancelada» en la pantalla.
+        if ($resultado->esCancelacionConfirmada()) {
+            $transaccion->forceFill([
+                'cancelled' => 1,
+                'cancel_reason_id' => $motivo,
+                'new_seal' => $sustituye,
+            ])->save();
+        }
+
+        return $resultado;
     }
 
     /**

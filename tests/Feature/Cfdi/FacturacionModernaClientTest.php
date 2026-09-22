@@ -2,8 +2,10 @@
 
 namespace Tests\Feature\Cfdi;
 
+use App\Support\Cfdi\CancelResult;
 use App\Support\Cfdi\CfdiException;
 use App\Support\Cfdi\FacturacionModernaClient;
+use SoapFault;
 use Tests\TestCase;
 
 /**
@@ -94,6 +96,97 @@ class FacturacionModernaClientTest extends TestCase
         $cliente->cancel('UUID-1', 'FTM1507038V6', '02');
 
         $this->assertSame('https://otro.pac.test/wsdl', $cliente->llamadas[0]['endpoint']);
+    }
+
+    // ------------------------------------ Lo que contesta el PAC al cancelar
+
+    /**
+     * Cliente que contesta lo que se le diga: un acuse, o el rechazo ya
+     * traducido por `soap()`, que es lo único que sale a la red.
+     */
+    private function clienteQueContesta(object $respuesta): FacturacionModernaClient
+    {
+        return new class($respuesta) extends FacturacionModernaClient
+        {
+            public function __construct(private object $respuesta) {}
+
+            protected function soap(string $metodo, array $peticion, string $endpoint): object
+            {
+                if ($this->respuesta instanceof CfdiException) {
+                    throw $this->respuesta;
+                }
+
+                return $this->respuesta;
+            }
+        };
+    }
+
+    /** Observado en producción: el acuse que deja la factura vigente. */
+    public function test_el_acuse_gt11_queda_como_solicitud_a_la_espera_del_receptor(): void
+    {
+        $resultado = $this->clienteQueContesta((object) [
+            'Code' => 'GT11',
+            'Message' => 'Solicitud de cancelación recibida. El receptor debe autorizar la cancelación.',
+        ])->cancel('UUID-1', 'FTM1507038V6', '02');
+
+        $this->assertSame(
+            [CancelResult::SOLICITADA, 'GT11', false],
+            [$resultado->estado, $resultado->codigo, $resultado->esCancelacionConfirmada()],
+        );
+    }
+
+    public function test_un_acuse_de_cancelacion_consumada_si_confirma(): void
+    {
+        $resultado = $this->clienteQueContesta((object) [
+            'Code' => 'GT02',
+            'Message' => 'El comprobante ha sido cancelado.',
+        ])->cancel('UUID-1', 'FTM1507038V6', '02');
+
+        $this->assertTrue($resultado->esCancelacionConfirmada());
+    }
+
+    /** Un acuse que no se reconoce no se da por cancelado: se conserva tal cual. */
+    public function test_un_acuse_desconocido_no_se_da_por_cancelado(): void
+    {
+        $resultado = $this->clienteQueContesta((object) [
+            'Code' => 'XX99',
+            'Message' => 'Texto que nadie ha visto antes.',
+        ])->cancel('UUID-1', 'FTM1507038V6', '02');
+
+        $this->assertSame(
+            [CancelResult::SOLICITADA, 'XX99', 'Texto que nadie ha visto antes.'],
+            [$resultado->estado, $resultado->codigo, $resultado->mensaje],
+        );
+    }
+
+    /** El 402 no es un error para quien factura: la solicitud ya estaba puesta. */
+    public function test_el_folio_en_cola_no_es_un_error(): void
+    {
+        $resultado = $this->clienteQueContesta(
+            CfdiException::delPac(new SoapFault('402', 'El UUID se encuentra en cola de solicitud de cancelacion.'))
+        )->cancel('UUID-1', 'FTM1507038V6', '02');
+
+        $this->assertSame(CancelResult::EN_COLA, $resultado->estado);
+    }
+
+    /** El 300 sí lo es, y el aviso lleva el código y el texto del PAC. */
+    public function test_un_folio_que_el_pac_no_localiza_se_avisa_con_su_codigo(): void
+    {
+        $cliente = $this->clienteQueContesta(
+            CfdiException::delPac(new SoapFault('300', 'Error UUID no localizado en la base de timbrados [UUID-1]'))
+        );
+
+        $this->expectExceptionMessage('El PAC respondió: [300] Error UUID no localizado en la base de timbrados [UUID-1]');
+
+        $cliente->cancel('UUID-1', 'FTM1507038V6', '02');
+    }
+
+    /** El `faultcode` del sobre SOAP («soap:Server») no es una clave del PAC. */
+    public function test_el_espacio_de_nombres_del_sobre_no_se_toma_por_codigo(): void
+    {
+        $fallo = CfdiException::delPac(new SoapFault('soap:Server', 'El servicio no está disponible.'));
+
+        $this->assertNull($fallo->codigo);
     }
 
     /** El timbrado sí viaja con el RFC de la CUENTA: el del emisor va dentro del layout. */
