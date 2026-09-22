@@ -42,6 +42,17 @@ class BookingList extends Component
     #[Url(as: 'cerrados', except: '0')]
     public string $onlyLocked = '0';
 
+    /** 1 = importaciones, 2 = exportaciones, vacío = todas. */
+    #[Url(as: 'tipo', except: '')]
+    public string $bookingType = '';
+
+    /**
+     * Borradores: los bookings recién dados de alta que aún no se confirmaron.
+     * No se mezclan con los reales por omisión, como en el original.
+     */
+    #[Url(as: 'borradores', except: '0')]
+    public string $drafts = '0';
+
     /** 10 = bookings reales, 9 = cotizaciones. */
     #[Url(as: 'modo', except: '10')]
     public string $mode = '10';
@@ -60,8 +71,9 @@ class BookingList extends Component
 
     public function clearFilters(): void
     {
-        $this->reset(['bookingNumber', 'clientName', 'vesselName', 'commodity', 'dates', 'loadingDates']);
+        $this->reset(['bookingNumber', 'clientName', 'vesselName', 'commodity', 'dates', 'loadingDates', 'bookingType']);
         $this->onlyLocked = '0';
+        $this->drafts = '0';
         $this->resetPage();
     }
 
@@ -79,6 +91,7 @@ class BookingList extends Component
             'commodity' => $this->commodity ?: null,
             'dates' => $this->dates ?: null,
             'loading_EDT' => $this->loadingDates ?: null,
+            'booking_type' => $this->bookingType ?: null,
             // Por omisión el listado se acota al año en curso por fecha de
             // creación del booking (que SIEMPRE existe; el pickup no, y filtrar
             // por él escondía bookings recientes). Se aplica solo si el usuario
@@ -90,6 +103,7 @@ class BookingList extends Component
 
         $filtros->mode = (int) $this->mode;
         $filtros->onlyLocked = $this->onlyLocked === '1';
+        $filtros->is_draft = $this->drafts === '1' ? 1 : 0;
 
         return $filtros;
     }

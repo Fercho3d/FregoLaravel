@@ -52,6 +52,13 @@ class BookingFilters
      */
     public int $mode = 10;
 
+    /**
+     * Borradores: 0 = solo los bookings en firme (lo de siempre), 1 = solo los
+     * borradores, null = los dos. El detalle usa null porque un borrador se
+     * abre para capturarle contenedores y confirmarlo.
+     */
+    public ?int $is_draft = 0;
+
     public bool $onlyLocked = false;
 
     /** @param  array<string, mixed>  $values */

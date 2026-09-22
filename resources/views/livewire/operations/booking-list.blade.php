@@ -1,4 +1,8 @@
-@php $verBuque = \App\Support\Expediente::visible('vesselId'); @endphp
+@php
+    $verBuque = \App\Support\Expediente::visible('vesselId');
+    $verTipo = \App\Support\Expediente::visible('bookingType');
+    $tipos = \App\Models\Core\Booking::typeLabels();
+@endphp
 @php
     $fecha = fn ($v) => $v ? \Illuminate\Support\Carbon::parse($v)->format('d/m/Y') : '—';
 
@@ -14,7 +18,12 @@
 
     <header class="flex flex-wrap items-end justify-between gap-3">
         <div>
-            <h2 class="text-lg font-semibold text-ink">{{ $mode === '9' ? __('Cotizaciones') : __('Bookings') }}</h2>
+            <h2 class="text-lg font-semibold text-ink">
+                {{ $mode === '9' ? __('Cotizaciones') : __('Bookings') }}
+                @if ($drafts === '1')
+                    <span class="badge badge-neutral align-middle">{{ __('Borradores') }}</span>
+                @endif
+            </h2>
             <p class="text-sm text-ink-muted">
                 {{ __('Embarques y el avance de su lista de verificación.') }}
             </p>
@@ -23,7 +32,21 @@
             <span class="text-xs text-ink-faint">
                 {{ number_format($filas->total()) }} {{ $mode === '9' ? 'cotizaciones' : 'bookings' }} · consulta en {{ $queryMs }} ms
             </span>
-            @if (auth()->user()?->isAdmin())
+            {{-- Dar de alta es de cualquier usuario interno, como en el original.
+                 Con el tipo encendido, el alta ya llega con importación o
+                 exportación elegida; la cotización, con su modo. --}}
+            @if ($mode === '9')
+                <a href="{{ route('operations.bookings.create', ['modo' => 'cotizacion']) }}" wire:navigate class="btn-accent !px-3 !py-1.5 text-xs">
+                    {{ __('Nueva cotización') }}
+                </a>
+            @elseif ($verTipo)
+                <a href="{{ route('operations.bookings.create', ['tipo' => \App\Models\Core\Booking::TYPE_IMPORT]) }}" wire:navigate class="btn-accent !px-3 !py-1.5 text-xs">
+                    {{ __('Nueva importación') }}
+                </a>
+                <a href="{{ route('operations.bookings.create', ['tipo' => \App\Models\Core\Booking::TYPE_EXPORT]) }}" wire:navigate class="btn-accent !px-3 !py-1.5 text-xs">
+                    {{ __('Nueva exportación') }}
+                </a>
+            @else
                 <a href="{{ route('operations.bookings.create') }}" wire:navigate class="btn-accent !px-3 !py-1.5 text-xs">
                     {{ __('Nuevo booking') }}
                 </a>
@@ -78,10 +101,30 @@
             </label>
 
             <label class="block">
-                <span class="field-label text-xs">{{ __('Tipo') }}</span>
+                <span class="field-label text-xs">{{ __('Ver') }}</span>
                 <select wire:model.live="mode" class="field-input mt-1 py-1.5 text-sm">
                     @foreach (['10' => __('Bookings'), '9' => __('Cotizaciones')] as $valor => $etiqueta)
                         <option value="{{ $valor }}" @selected((string) $valor === $mode)>{{ $etiqueta }}</option>
+                    @endforeach
+                </select>
+            </label>
+
+            @if ($verTipo)
+                <label class="block">
+                    <span class="field-label text-xs">{{ __('Tipo') }}</span>
+                    <select wire:model.live="bookingType" class="field-input mt-1 py-1.5 text-sm">
+                        @foreach (['' => __('Todos'), '1' => __('Importaciones'), '2' => __('Exportaciones')] as $valor => $etiqueta)
+                            <option value="{{ $valor }}" @selected((string) $valor === $bookingType)>{{ $etiqueta }}</option>
+                        @endforeach
+                    </select>
+                </label>
+            @endif
+
+            <label class="block">
+                <span class="field-label text-xs">{{ __('Borradores') }}</span>
+                <select wire:model.live="drafts" class="field-input mt-1 py-1.5 text-sm">
+                    @foreach (['0' => __('Sin borradores'), '1' => __('Solo borradores')] as $valor => $etiqueta)
+                        <option value="{{ $valor }}" @selected((string) $valor === $drafts)>{{ $etiqueta }}</option>
                     @endforeach
                 </select>
             </label>
@@ -128,9 +171,14 @@
                                class="font-semibold text-brand hover:underline">{{ trim((string) $fila->booking_number) ?: __('Sin número') }}</a>
                             <p class="truncate text-sm text-ink-muted">{{ $fila->client_name ?: '—' }}</p>
                         </div>
-                        @if ($fila->locked)
-                            <span class="badge badge-neutral shrink-0">{{ __('Cerrado') }}</span>
-                        @endif
+                        <span class="flex shrink-0 gap-1">
+                            @if ($fila->is_draft)
+                                <span class="badge badge-neutral">{{ __('Borrador') }}</span>
+                            @endif
+                            @if ($fila->locked)
+                                <span class="badge badge-neutral">{{ __('Cerrado') }}</span>
+                            @endif
+                        </span>
                     </div>
 
                     <div class="flex items-center gap-2">
@@ -152,6 +200,12 @@
                             <dt class="text-ink-faint">{{ __('Carga') }}</dt>
                             <dd class="text-ink-soft">{{ $fecha($fila->loading_EDT) }}</dd>
                         </div>
+                        @if ($verTipo)
+                            <div class="flex justify-between gap-2">
+                                <dt class="text-ink-faint">{{ __('Tipo') }}</dt>
+                                <dd class="text-ink-soft">{{ $tipos[(int) $fila->booking_type] ?? '—' }}</dd>
+                            </div>
+                        @endif
                     </dl>
 
                     {{-- Acciones (mismas que la tabla). --}}
@@ -198,6 +252,9 @@
                     <tr>
                         <th class="px-3 py-2.5 text-left font-semibold">{{ __('Booking') }}</th>
                         <th class="px-3 py-2.5 text-left font-semibold">{{ __('Cliente') }}</th>
+                        @if ($verTipo)
+                            <th class="px-3 py-2.5 text-left font-semibold">{{ __('Tipo') }}</th>
+                        @endif
                         @if ($verBuque)
                             <th class="px-3 py-2.5 text-left font-semibold">{{ __('Buque') }}</th>
                         @endif
@@ -217,11 +274,17 @@
                             <td class="whitespace-nowrap px-3 py-2">
                                 <a href="{{ route('operations.bookings.show', $fila->booking_id) }}" wire:navigate
                                    class="font-medium text-brand hover:underline">{{ trim((string) $fila->booking_number) ?: '—' }}</a>
+                                @if ($fila->is_draft)
+                                    <span class="ml-1.5 badge badge-neutral">{{ __('Borrador') }}</span>
+                                @endif
                                 @if ($fila->locked)
                                     <span class="ml-1.5 badge badge-neutral">{{ __('Cerrado') }}</span>
                                 @endif
                             </td>
                             <td class="max-w-[14rem] truncate px-3 py-2 text-ink-muted" title="{{ $fila->client_name }}">{{ $fila->client_name ?: '—' }}</td>
+                            @if ($verTipo)
+                                <td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ $tipos[(int) $fila->booking_type] ?? '—' }}</td>
+                            @endif
                             @if ($verBuque)
                                 <td class="max-w-[12rem] truncate px-3 py-2 text-ink-muted" title="{{ $fila->vessel_name }}">{{ $fila->vessel_name ?: '—' }}</td>
                             @endif
@@ -277,7 +340,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="{{ $verBuque ? 10 : 9 }}" class="px-3 py-12 text-center text-ink-faint">{{ __('No hay embarques con estos filtros.') }}</td>
+                            <td colspan="{{ 9 + (int) $verBuque + (int) $verTipo }}" class="px-3 py-12 text-center text-ink-faint">{{ __('No hay embarques con estos filtros.') }}</td>
                         </tr>
                     @endforelse
                 </tbody>

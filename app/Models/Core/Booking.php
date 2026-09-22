@@ -12,6 +12,11 @@ class Booking extends CoreModel
 
     public const MODE_BOOKING = 10;
 
+    /** `booking_type`: el original lo guardaba como 1 = Import y 2 = Export. */
+    public const TYPE_IMPORT = 1;
+
+    public const TYPE_EXPORT = 2;
+
     protected $table = 'booking';
 
     protected $primaryKey = 'booking_id';
@@ -40,5 +45,19 @@ class Booking extends CoreModel
     public function isQuotation(): bool
     {
         return (int) $this->mode === self::MODE_QUOTATION;
+    }
+
+    /** @return array<int, string> valor de `booking_type` => etiqueta traducida */
+    public static function typeLabels(): array
+    {
+        return [
+            self::TYPE_IMPORT => __('Importación'),
+            self::TYPE_EXPORT => __('Exportación'),
+        ];
+    }
+
+    public function typeLabel(): ?string
+    {
+        return self::typeLabels()[(int) $this->booking_type] ?? null;
     }
 }

@@ -124,18 +124,24 @@ class BookingConfirmationTest extends TestCase
         $this->assertStringStartsWith('%PDF', $respuesta->getContent());
     }
 
-    public function test_quien_no_es_administrador_no_baja_el_pdf(): void
+    /** Como el `pdf` del original: para cualquier usuario interno. */
+    public function test_cualquier_usuario_interno_baja_el_pdf(): void
     {
         $this->booking();
 
         $this->actingAs($this->usuario(User::ROLE_USER))
             ->get('/operacion/bookings/1/confirmacion.pdf')
-            ->assertForbidden();
+            ->assertOk();
     }
 
     // --------------------------------------------------------------- Correo
 
-    public function test_dar_de_alta_un_booking_le_avisa_al_cliente(): void
+    /**
+     * El alta ya no avisa: nace como borrador sin contenedores, y un PDF sin
+     * carga no le sirve al cliente. El correo sale al confirmar, como el
+     * «Confirm & Save» del original.
+     */
+    public function test_dar_de_alta_un_booking_no_avisa_todavia(): void
     {
         $this->actingAs($this->usuario());
 
@@ -152,29 +158,59 @@ class BookingConfirmationTest extends TestCase
             ->call('save')
             ->assertHasNoErrors();
 
+        Mail::assertNothingSent();
+    }
+
+    public function test_confirmar_el_borrador_le_avisa_al_cliente(): void
+    {
+        $this->booking(['is_draft' => 1]);
+
+        Livewire::actingAs($this->usuario())
+            ->test(BookingDetail::class, ['booking' => 1])
+            ->assertSee('Este booking es un borrador.')
+            ->call('confirm');
+
+        $this->assertSame(0, (int) DB::table('booking')->where('booking_id', 1)->value('is_draft'));
         Mail::assertSent(BookingConfirmationMail::class, fn ($correo) => $correo->hasTo('trafico@frialsa.mx')
             && $correo->hasTo('logistica@frialsa.mx')
-            && $correo->envelope()->subject === 'Booking [FRE-2026-0200]');
+            && $correo->envelope()->subject === 'Booking [FRE-2026-0184]');
+    }
+
+    public function test_confirmar_una_cotizacion_no_manda_correo(): void
+    {
+        $this->booking(['is_draft' => 1, 'mode' => 9]);
+
+        Livewire::actingAs($this->usuario())
+            ->test(BookingDetail::class, ['booking' => 1])
+            ->call('confirm');
+
+        $this->assertSame(0, (int) DB::table('booking')->where('booking_id', 1)->value('is_draft'));
+        Mail::assertNothingSent();
+    }
+
+    /** Confirmar vivía en `update`, que era de administradores. */
+    public function test_solo_un_administrador_confirma(): void
+    {
+        $this->booking(['is_draft' => 1]);
+
+        Livewire::actingAs($this->usuario(User::ROLE_USER))
+            ->test(BookingDetail::class, ['booking' => 1])
+            ->call('confirm')
+            ->assertForbidden();
+
+        $this->assertSame(1, (int) DB::table('booking')->where('booking_id', 1)->value('is_draft'));
     }
 
     public function test_sin_correos_de_notificacion_no_se_manda_nada(): void
     {
         DB::table('client')->where('client_id', 1)->update(['email' => '', 'email_notification' => null]);
+        $this->booking(['is_draft' => 1]);
 
-        $this->actingAs($this->usuario());
+        Livewire::actingAs($this->usuario())
+            ->test(BookingDetail::class, ['booking' => 1])
+            ->call('confirm');
 
-        Livewire::test(BookingForm::class)
-            ->set('bookingNumber', 'FRE-2026-0201')
-            ->set('clientId', '1')
-            ->set('vesselId', '4')
-            ->set('loadingPort', '10')
-            ->set('loadingDate', '2026-09-01')
-            ->set('dischargePort', '20')
-            ->set('arrivalDate', '2026-09-20')
-            ->set('pickupPlace', '30')
-            ->call('save')
-            ->assertHasNoErrors();
-
+        $this->assertSame(0, (int) DB::table('booking')->where('booking_id', 1)->value('is_draft'));
         Mail::assertNothingSent();
     }
 

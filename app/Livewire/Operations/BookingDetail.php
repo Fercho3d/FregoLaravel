@@ -11,6 +11,7 @@ use App\Queries\TransactionQuery;
 use App\Support\BookingFiles;
 use App\Support\Fleet\TripExpenses;
 use App\Support\Milestones\BookingMilestones;
+use App\Support\Milestones\Checklist;
 use App\Support\Milestones\MilestoneCatalog;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -171,6 +172,9 @@ class BookingDetail extends Component
         foreach ([10, 9] as $modo) {
             $filtros = BookingFilters::make([]);
             $filtros->mode = $modo;
+            // Un borrador también se abre: aquí se le capturan los
+            // contenedores y se confirma.
+            $filtros->is_draft = null;
 
             $fila = BookingQuery::make($filtros)->query()
                 ->where('b.booking_id', $this->bookingId)
@@ -216,46 +220,107 @@ class BookingDetail extends Component
      * era de solo lectura. Ahora sale del catálogo de hitos, que cada instalación
      * ajusta desde Catálogos, y se marca aquí mismo.
      *
-     * El porcentaje de avance del listado sigue saliendo de `check_list`, que se
-     * escribe sola por el espejo de los hitos que tienen columna heredada.
+     * Cada hito trae dos capas: la fecha **planeada** (`fecha`, la que se
+     * captura) y, si tiene casilla en `check_list`, el **cumplimiento**
+     * (`cumplida`, `por`) con su «delivery time» (`retraso`). `marcada` es lo
+     * que pinta la palomita: el cumplimiento cuando hay casilla y la fecha
+     * cuando no la hay.
      *
-     * @return list<array{clave: string, etiqueta: string, fecha: ?string}>
+     * @return list<array{clave: string, etiqueta: string, fecha: ?string, casilla: bool, cumplida: ?string, por: ?string, retraso: ?array{texto: string, aTiempo: bool}, marcada: bool}>
      */
     private function hitos(): array
     {
-        $capturados = BookingMilestones::de($this->bookingId);
+        $planeadas = BookingMilestones::de($this->bookingId);
+        $cumplidas = Checklist::de($this->bookingId);
+        $autores = $this->nombresDeUsuario(array_filter(array_column($cumplidas, 'por')));
 
         return MilestoneCatalog::activos()
-            ->map(fn (object $hito) => [
-                'clave' => $hito->clave,
-                'etiqueta' => $hito->etiqueta,
-                'fecha' => $capturados[$hito->clave] ?? null,
-            ])
+            ->map(function (object $hito) use ($planeadas, $cumplidas, $autores) {
+                $fecha = $planeadas[$hito->clave] ?? null;
+                $casilla = Checklist::casilla($hito) !== null;
+                $cumplida = $cumplidas[$hito->clave]['fecha'] ?? null;
+
+                return [
+                    'clave' => $hito->clave,
+                    'etiqueta' => $hito->etiqueta,
+                    'fecha' => $fecha,
+                    'casilla' => $casilla,
+                    'cumplida' => $cumplida,
+                    'por' => $autores[$cumplidas[$hito->clave]['por'] ?? 0] ?? null,
+                    'retraso' => $casilla ? Checklist::retraso($fecha, $cumplida) : null,
+                    'marcada' => $casilla ? $cumplida !== null : $fecha !== null,
+                ];
+            })
             ->all();
     }
 
     /**
-     * Marca un hito con la fecha de hoy, o lo desmarca si ya estaba.
+     * @param  list<int>  $ids
+     * @return array<int, string>
+     */
+    private function nombresDeUsuario(array $ids): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+
+        return DB::table('users')
+            ->whereIn('usr_id', $ids)
+            ->get(['usr_id', 'name', 'username'])
+            ->mapWithKeys(fn (object $u) => [(int) $u->usr_id => (string) ($u->name ?: $u->username)])
+            ->all();
+    }
+
+    /**
+     * Marca un hito como cumplido ahora, o lo desmarca si ya estaba.
      *
-     * Un clic y ya: en la práctica se marca el día que pasa la cosa, y quien
-     * necesite otra fecha la escribe en el recuadro que sale al lado.
+     * Escribe el cumplimiento en `check_list` y NO toca la fecha planeada.
+     * Reglas del original: marcar es de cualquier usuario interno, pero quien
+     * no es administrador no puede saltarse la tarea anterior ni tocar una ya
+     * marcada; desmarcar es de administradores.
+     *
+     * Un hito sin casilla (los que añade un negocio distinto) no tiene segunda
+     * capa donde guardar el cumplimiento, así que su fecha hace de ambas y se
+     * marca con la de hoy, como hasta ahora.
      */
     public function marcaHito(string $clave): void
     {
-        $this->assertAdmin();
         $this->assertAbierto();
-        abort_unless(MilestoneCatalog::porClave($clave)?->activo ?? false, 404);
 
-        $tenia = BookingMilestones::de($this->bookingId)[$clave] ?? null;
-
-        BookingMilestones::guarda(
-            $this->bookingId,
-            $clave,
-            $tenia === null ? now()->toDateString() : null,
-            auth()->id(),
-        );
+        $hito = MilestoneCatalog::porClave($clave);
+        abort_unless($hito?->activo ?? false, 404);
 
         $this->hitoEditando = null;
+        $this->resetErrorBag('hito');
+
+        if (Checklist::casilla($hito) === null) {
+            $this->assertAdmin();
+
+            $tenia = BookingMilestones::de($this->bookingId)[$clave] ?? null;
+            BookingMilestones::guarda($this->bookingId, $clave, $tenia === null ? now()->toDateString() : null, auth()->id());
+
+            return;
+        }
+
+        $esAdmin = auth()->user()?->isAdmin() ?? false;
+        $cumplidas = Checklist::de($this->bookingId);
+
+        if (isset($cumplidas[$clave])) {
+            abort_unless($esAdmin, 403, __('Solo un administrador puede desmarcar una tarea.'));
+            Checklist::desmarca($this->bookingId, $clave, (int) auth()->id());
+
+            return;
+        }
+
+        $anterior = Checklist::anterior($clave);
+
+        if (! $esAdmin && $anterior !== null && ! isset($cumplidas[$anterior->clave])) {
+            $this->addError('hito', __('Primero hay que marcar «:hito».', ['hito' => $anterior->etiqueta]));
+
+            return;
+        }
+
+        Checklist::marca($this->bookingId, $clave, (int) auth()->id());
     }
 
     public function editaHito(string $clave): void
@@ -336,12 +401,15 @@ class BookingDetail extends Component
     {
         $this->assertEditable();
 
+        // Tipo y mercancía son obligatorios porque en la tabla `containers` son
+        // NOT NULL sin default: validarlos como opcionales hacía fallar el
+        // insert en MySQL con un error que el usuario no entendía.
         $datos = $this->validate([
             'containerNumber' => ['nullable', 'string', 'max:50'],
             'containerSeal' => ['nullable', 'string', 'max:50'],
-            'containerType' => ['nullable', Rule::exists('container_types', 'contType_id')],
+            'containerType' => ['required', Rule::exists('container_types', 'contType_id')],
             'containerQuantity' => ['required', 'integer', 'min:1'],
-            'containerCommodity' => ['nullable', 'string', 'max:25'],
+            'containerCommodity' => ['required', 'string', 'max:25'],
             'containerPickup' => ['nullable', 'date'],
         ], attributes: [
             'containerNumber' => __('número'),
@@ -352,19 +420,21 @@ class BookingDetail extends Component
             'containerPickup' => __('fecha de recolección'),
         ]);
 
+        // `created_at` y `modified_at` son de tipo DATE en la tabla, no datetime.
         $valores = [
             'booking' => $this->bookingId,
             'number' => $datos['containerNumber'] ?: null,
             'seal' => $datos['containerSeal'] ?: null,
-            'container_type' => $datos['containerType'] === '' ? null : (int) $datos['containerType'],
+            'container_type' => (int) $datos['containerType'],
             'quantity' => (int) $datos['containerQuantity'],
-            'comodity' => $datos['containerCommodity'] ?: null,
+            'comodity' => $datos['containerCommodity'],
             'pick_up_date' => $datos['containerPickup'] ?: null,
             'modified_by' => auth()->id(),
+            'modified_at' => now()->toDateString(),
         ];
 
         if ($this->containerId === null) {
-            DB::table('containers')->insert($valores + ['created_by' => auth()->id(), 'created_at' => now()]);
+            DB::table('containers')->insert($valores + ['created_by' => auth()->id(), 'created_at' => now()->toDateString()]);
         } else {
             DB::table('containers')->where('container_ID', $this->containerId)->update($valores);
         }
@@ -498,10 +568,15 @@ class BookingDetail extends Component
     {
         $this->assertEditable();
 
-        DB::table('containers')
+        $fila = DB::table('containers')
             ->where('booking', $this->bookingId)
-            ->where('container_ID', $container)
-            ->delete();
+            ->where('container_ID', $container);
+
+        // Antes de borrar se firma quién lo hace, como el original: la bitácora
+        // `containers_history` la escribe un disparador de la base a partir del
+        // renglón, y sin esto el renglón de baja quedaba sin autor.
+        $fila->update(['modified_by' => auth()->id(), 'modified_at' => now()->toDateString()]);
+        $fila->delete();
 
         $this->resetContainerForm();
     }
@@ -540,6 +615,35 @@ class BookingDetail extends Component
      * quien corresponde: los correos de notificación del cliente, los mismos que
      * reciben el aviso de alta.
      */
+    /**
+     * Confirma el booking: deja de ser borrador y, si no es cotización, le
+     * manda al cliente la confirmación en PDF, ya con sus contenedores.
+     *
+     * Es el «Confirm & Save» del original, que allá vivía en `update` y por eso
+     * era de administradores; aquí igual.
+     */
+    public function confirm(SendBookingConfirmation $enviar): void
+    {
+        $this->assertAdmin();
+        $this->assertAbierto();
+
+        $modelo = Booking::findOrFail($this->bookingId);
+
+        if (! $modelo->is_draft) {
+            return;
+        }
+
+        $modelo->forceFill(['is_draft' => 0, 'modified_by' => auth()->id()])->save();
+
+        $avisados = $modelo->isQuotation() ? [] : $enviar->handle($modelo);
+
+        session()->flash('status', match (true) {
+            $modelo->isQuotation() => __('Cotización confirmada.'),
+            $avisados === [] => __('Booking confirmado. No se mandó la confirmación: el cliente no tiene correos de notificación.'),
+            default => __('Booking confirmado. Se mandó la confirmación a ').implode(', ', $avisados).'.',
+        });
+    }
+
     public function sendConfirmation(SendBookingConfirmation $enviar): void
     {
         abort_unless(auth()->user()?->isAdmin() ?? false, 403);

@@ -6,7 +6,7 @@
             [__('HB'), 'hb', 'text', null, false],
             [__('Referencia del cliente'), 'customerReference', 'text', null, false],
             [__('Cliente'), 'clientId', 'select', $clientes, true],
-            [__('Tipo de booking'), 'bookingType', 'text', null, false],
+            [__('Tipo de booking'), 'bookingType', 'select', \App\Models\Core\Booking::typeLabels(), false],
         ],
         'Transporte' => [
             [__('Buque'), 'vesselId', 'select', $buques, true],
@@ -57,9 +57,17 @@
 
     <form wire:submit="save" class="card space-y-6 p-5 sm:p-6">
         <header>
-            <h2 class="text-lg font-semibold text-ink">{{ $bookingId ? __('Editar booking') : __('Nuevo booking') }}</h2>
+            <h2 class="text-lg font-semibold text-ink">{{ $this->titulo() }}</h2>
             @if ($bookingId)
                 <p class="mt-0.5 text-sm text-ink-muted">{{ $bookingNumber }}</p>
+            @else
+                {{-- Nace como borrador: la confirmación al cliente sale al
+                     confirmarlo desde el detalle, ya con sus contenedores. --}}
+                <p class="mt-0.5 text-sm text-ink-muted">
+                    {{ $esCotizacion
+                        ? __('Se guarda como borrador; una cotización no le manda confirmación al cliente.')
+                        : __('Se guarda como borrador. Los contenedores se capturan en el detalle y ahí se confirma para avisar al cliente.') }}
+                </p>
             @endif
         </header>
 
@@ -174,7 +182,7 @@
                wire:navigate class="btn-ghost">{{ __('Cancelar') }}</a>
             <button type="submit" wire:loading.attr="disabled" wire:target="save" @disabled($locked) class="btn-accent">
                 <x-spinner wire:loading wire:target="save" class="h-4 w-4" />
-                {{ $bookingId ? __('Guardar cambios') : 'Crear booking' }}
+                {{ $bookingId ? __('Guardar cambios') : ($esCotizacion ? __('Crear cotización') : __('Crear booking')) }}
             </button>
         </footer>
     </form>

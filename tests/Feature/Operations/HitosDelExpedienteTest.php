@@ -101,15 +101,27 @@ class HitosDelExpedienteTest extends TestCase
     }
 
     /**
-     * El hito con columna heredada la sigue escribiendo: de ahí comen todavía
-     * los avisos de tareas atrasadas y el sistema con el que convive la
-     * instalación original.
+     * La fecha planeada del hito con columna heredada la sigue escribiendo: de
+     * ahí comen todavía los avisos de tareas atrasadas y el sistema con el que
+     * convive la instalación original.
      */
-    public function test_el_hito_heredado_espeja_su_columna(): void
+    public function test_la_fecha_planeada_del_hito_heredado_espeja_su_columna(): void
     {
-        $this->pantalla()->call('marcaHito', 'cargado');
+        $this->pantalla()->call('editaHito', 'cargado')->set('hitoFecha', '2026-05-04')->call('guardaHito');
 
-        $this->assertNotNull(DB::table('booking_continuity')->where('booking', 1)->value('gated_IN'));
+        $this->assertSame('2026-05-04', substr((string) DB::table('booking_continuity')->where('booking', 1)->value('gated_IN'), 0, 10));
+    }
+
+    /**
+     * Marcarlo, en cambio, es cumplimiento: va a `check_list` y no pisa la
+     * fecha planeada. El detalle está en `ListaDeVerificacionTest`.
+     */
+    public function test_marcar_el_hito_heredado_no_toca_la_fecha_planeada(): void
+    {
+        $this->pantalla()->call('marcaHito', 'cargado')->assertHasNoErrors();
+
+        $this->assertNull(DB::table('booking_continuity')->where('booking', 1)->value('gated_IN'));
+        $this->assertNotNull(DB::table('check_list')->where('booking', 1)->value('gated_IN_chk_date'));
     }
 
     public function test_una_fecha_invalida_no_pasa(): void

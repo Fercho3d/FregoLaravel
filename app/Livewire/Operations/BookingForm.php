@@ -2,7 +2,6 @@
 
 namespace App\Livewire\Operations;
 
-use App\Actions\Bookings\SendBookingConfirmation;
 use App\Models\Core\Booking;
 use App\Models\Core\Client;
 use App\Models\Core\Provider;
@@ -88,21 +87,59 @@ class BookingForm extends Component
      */
     public array $propios = [];
 
+    /**
+     * Cotización (`mode = 9`) en vez de booking (`mode = 10`). Se decide al
+     * entrar con `?modo=cotizacion`, como el «Add Quotation» del original.
+     */
+    public bool $esCotizacion = false;
+
     public function mount(?int $booking = null): void
     {
-        abort_unless(auth()->user()?->isAdmin() ?? false, 403);
+        // Dar de alta lo puede hacer cualquier usuario interno, como en el
+        // original (`create` era para todo el que tuviera sesión); editar
+        // sigue siendo de administradores.
+        abort_unless($booking === null || (auth()->user()?->isAdmin() ?? false), 403);
 
         $this->propios = Expediente::valores($booking);
 
-        if ($booking === null) {
-            $this->loadingDate = now()->toDateString();
-            $this->arrivalDate = now()->addWeeks(3)->toDateString();
+        if ($booking !== null) {
+            $this->carga(Booking::findOrFail($booking));
 
             return;
         }
 
-        $modelo = Booking::findOrFail($booking);
+        $this->loadingDate = now()->toDateString();
+        $this->arrivalDate = now()->addWeeks(3)->toDateString();
 
+        // «Copiar» del detalle: el formulario llega lleno con los datos de otro
+        // booking salvo número, buque y candado, como el `copy_id` del original.
+        if (($origen = request()->integer('copiar')) > 0) {
+            $this->copia(Booking::findOrFail($origen));
+        }
+
+        if (request()->query('modo') === 'cotizacion') {
+            $this->esCotizacion = true;
+        }
+
+        // «Nueva importación» / «Nueva exportación» del listado.
+        if (array_key_exists($tipo = request()->integer('tipo'), Booking::typeLabels())) {
+            $this->bookingType = (string) $tipo;
+        }
+    }
+
+    private function copia(Booking $origen): void
+    {
+        $this->carga($origen);
+        $this->propios = Expediente::valores($origen->booking_id);
+
+        $this->bookingId = null;
+        $this->locked = false;
+        $this->bookingNumber = '';
+        $this->vesselId = '';
+    }
+
+    private function carga(Booking $modelo): void
+    {
         $this->bookingId = $modelo->booking_id;
         $this->locked = (bool) $modelo->locked;
         $this->bookingNumber = (string) $modelo->booking_number;
@@ -127,6 +164,7 @@ class BookingForm extends Component
         $this->operadorId = $this->asOption($modelo->operador_id);
         $this->unidadId = $this->asOption($modelo->unidad_id);
         $this->cajaId = $this->asOption($modelo->caja_id);
+        $this->esCotizacion = $modelo->isQuotation();
     }
 
     private function asOption(mixed $valor): ?string
@@ -136,7 +174,9 @@ class BookingForm extends Component
 
     public function save(): void
     {
-        abort_unless(auth()->user()?->isAdmin() ?? false, 403);
+        $esNuevo = $this->bookingId === null;
+
+        abort_unless($esNuevo || (auth()->user()?->isAdmin() ?? false), 403);
         abort_if($this->locked, 422, __('Este booking está cerrado y no se puede editar.'));
 
         $this->blanksToNull();
@@ -149,7 +189,7 @@ class BookingForm extends Component
             'hb' => ['nullable', 'string', 'max:64'],
             'customerReference' => ['nullable', 'string', 'max:64'],
             'clientId' => ['required', Rule::exists('client', 'client_id')],
-            'bookingType' => ['nullable', 'string', 'max:25'],
+            'bookingType' => ['nullable', 'integer', Rule::in(array_keys(Booking::typeLabels()))],
             'vesselId' => [Rule::requiredIf(blank($this->newVessel)), 'nullable', Rule::exists('vessel', 'vessel_id')],
             'newVessel' => ['nullable', 'string', 'max:100'],
             'carrierId' => ['nullable', Rule::exists('provider', 'provider_id')],
@@ -180,7 +220,7 @@ class BookingForm extends Component
             'hb' => $datos['hb'] ?? null,
             'customerReference' => $datos['customerReference'] ?? null,
             'clientId' => (int) $datos['clientId'],
-            'bookingType' => $datos['bookingType'] ?? null,
+            'bookingType' => $this->entero($datos['bookingType'] ?? null),
             // Solo se resuelve si el campo está encendido: si no, un alta
             // rápida de buque colada por la petición crearía un renglón fantasma.
             'vesselId' => Expediente::visible('vesselId') ? $this->resolveVessel() : null,
@@ -202,32 +242,27 @@ class BookingForm extends Component
             'cajaId' => $this->entero($datos['cajaId'] ?? null),
         ]) + ['modified_by' => auth()->id()]);
 
-        if ($this->bookingId === null) {
-            // Nace como booking real y no como borrador: el listado del sistema
-            // original solo enseña `is_draft = 0` y `mode = 10`.
+        if ($esNuevo) {
+            // Nace como borrador, como en el original: los contenedores se
+            // capturan después en el detalle, y la confirmación al cliente se
+            // manda al confirmarlo, ya con carga. Mandarla aquí le hacía llegar
+            // un PDF sin contenedores.
             $modelo->forceFill([
-                'is_draft' => 0,
-                'mode' => Booking::MODE_BOOKING,
+                'is_draft' => 1,
+                'mode' => $this->esCotizacion ? Booking::MODE_QUOTATION : Booking::MODE_BOOKING,
                 'locked' => 0,
                 'created_by' => auth()->id(),
             ]);
         }
 
-        $esNuevo = $this->bookingId === null;
-
         $modelo->save();
 
         Expediente::guardaValores((int) $modelo->booking_id, $this->propios);
 
-        // El alta de un booking en firme le avisa al cliente con la confirmación
-        // en PDF, como en el original. Allá la condición era `is_draft = 0` y
-        // `mode != 9`; aquí todo booking nuevo nace así.
-        $avisados = $esNuevo ? app(SendBookingConfirmation::class)->handle($modelo) : [];
-
         session()->flash('status', match (true) {
-            ! $esNuevo => 'Booking actualizado.',
-            $avisados !== [] => __('Booking creado. Se mandó la confirmación a ').implode(', ', $avisados).'.',
-            default => 'Booking creado.',
+            ! $esNuevo => __('Booking actualizado.'),
+            $this->esCotizacion => __('Cotización guardada como borrador.'),
+            default => __('Booking guardado como borrador. Captura sus contenedores y confírmalo para avisar al cliente.'),
         });
         $this->redirectRoute('operations.bookings.show', $modelo->booking_id, navigate: true);
     }
@@ -292,6 +327,15 @@ class BookingForm extends Component
         ];
     }
 
+    public function titulo(): string
+    {
+        return match (true) {
+            $this->bookingId !== null => $this->esCotizacion ? __('Editar cotización') : __('Editar booking'),
+            $this->esCotizacion => __('Nueva cotización'),
+            default => __('Nuevo booking'),
+        };
+    }
+
     public function render()
     {
         return view('livewire.operations.booking-form', [
@@ -311,7 +355,7 @@ class BookingForm extends Component
             'tractores' => DB::table('unidad')->where('activo', 1)->where('tipo', 'tractor')->orderBy('numero')->pluck('numero', 'unidad_id')->all(),
             'cajas' => DB::table('unidad')->where('activo', 1)->where('tipo', 'caja')->orderBy('numero')->pluck('numero', 'unidad_id')->all(),
         ])->layout('components.app-layout', [
-            'title' => $this->bookingId === null ? __('Nuevo booking') : __('Editar booking'),
+            'title' => $this->titulo(),
         ]);
     }
 }

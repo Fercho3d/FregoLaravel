@@ -69,6 +69,8 @@ class BookingQuery
                 b.dicharge_ETA,
                 b.booking_type,
                 b.locked,
+                b.is_draft,
+                b.mode,
                 b.arrival,
                 b.created_at,
                 v.vessel_name,
@@ -82,7 +84,7 @@ class BookingQuery
                 bc.cont_id,
                 IFNULL(progreso.total_completed, 0) AS total_completed
             SQL)
-            ->where('b.is_draft', 0)
+            ->when($this->filters->is_draft !== null, fn ($q) => $q->where('b.is_draft', $this->filters->is_draft))
             ->where('b.mode', $this->filters->mode);
 
         $this->applyFilters($query);

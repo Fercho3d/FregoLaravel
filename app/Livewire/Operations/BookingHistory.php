@@ -24,8 +24,7 @@ class BookingHistory extends Component
 
     public function mount(int $booking): void
     {
-        abort_unless(auth()->user()?->isAdmin() ?? false, 403);
-
+        // Para cualquier usuario interno, como el `history` del original.
         $this->bookingId = Booking::findOrFail($booking)->booking_id;
     }
 

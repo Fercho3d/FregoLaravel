@@ -254,6 +254,29 @@ el cálculo heredado —27 casillas `_chk_date` divididas entre 26, con su 103.8
 cuando están todas— y va **solo en la instalación original**, donde el cliente
 lleva años viendo ese número.
 
+#### Planeado y cumplido son dos capas
+
+En la instalación original cada hito tiene **dos fechas**, como en el sistema de
+origen: la **planeada** (`hito_por_expediente.fecha`, con espejo en su columna de
+`booking_continuity`) y el **cumplimiento** (`check_list.<casilla>_chk_date` y
+`_chk_by`: cuándo se marcó y quién). En el detalle del expediente la fecha
+planeada se captura con el recuadro «Plan» y el cumplimiento se marca con la
+palomita; debajo salen la fecha real, quién la marcó y el «delivery time»
+(`App\Support\Milestones\Checklist::retraso()`). Marcar **no toca** la fecha
+planeada: antes la pisaba con la de hoy y se perdía contra qué comparar.
+
+Reglas, heredadas del original: marcar es de cualquier usuario interno, pero
+quien no es administrador tiene que ir **en el orden del catálogo** (la anterior
+marcada) y no puede tocar una ya marcada; **desmarcar es de administradores**.
+`check_list_history` la escribe un disparador de la base, así que cada escritura
+firma `modified_by`. En el reporte de continuidad, «Ver cumplidas» enseña estas
+fechas en vez de las planeadas, de solo lectura.
+
+La casilla de cada hito es su `columna_legado`: los catorce de origen la tienen.
+Un hito **sin** columna heredada (los de la vertical terrestre, o uno añadido
+desde el catálogo) no tiene dónde guardar una segunda fecha, así que su fecha hace
+de planeada y de cumplida a la vez y se marca con la de hoy, como siempre.
+
 ### Enseñarlo con los datos del negocio que se tiene enfrente
 
 ```dotenv

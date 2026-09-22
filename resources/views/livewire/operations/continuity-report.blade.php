@@ -3,7 +3,8 @@
 @php
     $hitos = ContinuityReport::hitos();
     $fecha = fn ($v) => $v ? \Illuminate\Support\Carbon::parse($v)->format('d/m') : null;
-    $esAdmin = auth()->user()?->isAdmin() ?? false;
+    // Viendo cumplidas la rejilla es de solo lectura: se marcan en el detalle.
+    $esAdmin = (auth()->user()?->isAdmin() ?? false) && ! $verCumplidas;
 @endphp
 
 <div class="space-y-4">
@@ -12,7 +13,9 @@
         <div>
             <h2 class="text-lg font-semibold text-ink">{{ __('Continuidad') }}</h2>
             <p class="text-sm text-ink-muted">
-                {{ __('En qué punto va cada embarque. Toca una celda para capturar la fecha del hito.') }}
+                {{ $verCumplidas
+                    ? __('Cuándo se cumplió cada hito y no cuándo se planeó. Se marcan desde el detalle del booking.')
+                    : __('En qué punto va cada embarque. Toca una celda para capturar la fecha del hito.') }}
             </p>
         </div>
         <span class="text-xs text-ink-faint">{{ number_format($filas->total()) }} embarques</span>
@@ -38,8 +41,13 @@
             </label>
         </div>
 
-        <div class="mt-3">
+        <div class="mt-3 flex flex-wrap items-center gap-4">
             <button type="button" wire:click="clearFilters" class="btn-ghost !px-3 !py-1.5 text-xs">{{ __('Limpiar filtros') }}</button>
+            <label class="flex items-center gap-2 text-xs text-ink-muted">
+                <input type="checkbox" wire:model.live="verCumplidas" @checked($verCumplidas) class="h-4 w-4 rounded border-line">
+                {{ __('Ver cumplidas') }}
+                <span class="text-ink-faint">{{ __('(fechas reales en vez de planeadas)') }}</span>
+            </label>
         </div>
     </div>
 

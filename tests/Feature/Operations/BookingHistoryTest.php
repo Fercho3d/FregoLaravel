@@ -134,8 +134,9 @@ class BookingHistoryTest extends TestCase
         $this->pantalla()->assertSee('no tiene movimientos registrados');
     }
 
-    public function test_quien_no_es_administrador_no_entra(): void
+    /** Como el `history` del original: para cualquier usuario interno. */
+    public function test_cualquier_usuario_interno_entra(): void
     {
-        $this->pantalla(User::ROLE_USER)->assertForbidden();
+        $this->pantalla(User::ROLE_USER)->assertOk();
     }
 }
