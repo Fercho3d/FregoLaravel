@@ -62,7 +62,6 @@
     "Aduana, por BL": "Customs, per BL",
     "Aduana, por contenedor": "Customs, per container",
     "Administrador": "Administrator",
-    "Agente aduanal": "Customs broker",
     "Agente aduanal del cliente": "Client customs broker",
     "Agente de carga marítima": "Ocean freight forwarder",
     "Agrega los que te falten —número de serie, horas de uso— y apaga los que te sobren.": "Add the ones you are missing — serial number, hours of use — and switch off the ones you are not.",
@@ -251,7 +250,6 @@
     "Devolución de la orden": "Returned from the order",
     "Dif. cambiaria": "FX difference",
     "Dirección": "Address",
-    "Dirección 2": "Address 2",
     "Dirección de entrega del equipo": "Equipment Delivery Address",
     "Divisa": "Currency",
     "Divisa habitual": "Usual currency",
@@ -629,7 +627,6 @@
     "Panel": "Dashboard",
     "Parcial": "Partial",
     "Parciales": "Partial",
-    "País": "Country",
     "Pedimos el pago de tus documentos. Solicitud ": "We requested payment for your documents. Request ",
     "Pedir pago": "Request payment",
     "Pendiente": "Pending",
@@ -1236,5 +1233,7 @@
     "Solicitud :folio reabierta.": "Request :folio reopened.",
     "Solicitud :folio borrada.": "Request :folio deleted.",
     "Solicitud :folio guardada.": "Request :folio saved.",
-    "Solicitud :folio creada.": "Request :folio created."
+    "Solicitud :folio creada.": "Request :folio created.",
+    "Utilidad del booking": "Booking profit",
+    "Facturas :inv menos costos :cost del booking, a TC del documento": "Invoices :inv less costs :cost for the booking, at document exchange rate"
 }

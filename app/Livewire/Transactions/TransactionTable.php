@@ -642,6 +642,13 @@ class TransactionTable extends Component
             'booking' => $this->booking(),
             // Columna «Solicitud» de Costos: qué solicitud de pago pidió cada costo.
             'requestNumbers' => $this->screen === 'bill' ? Transaction::requestNumbersFor($rows->items()) : [],
+            // Columna «Utilidad del booking» de Costos: de un costo interesa si
+            // el booking al que pertenece deja dinero. Una consulta por página.
+            'bookingProfits' => $this->screen === 'bill'
+                ? (new ProfitByBooking($this->filters()))->forBookings(
+                    collect($rows->items())->pluck('booking_id')->map(fn ($id) => (int) $id)->all()
+                )
+                : [],
             // En la pantalla de un booking la utilidad va siempre, como en el
             // original: es una sola consulta chica.
             'bookingProfit' => $this->screen === 'booking'

@@ -5,6 +5,8 @@ namespace Tests\Feature\Transactions;
 use App\Livewire\Transactions\TransactionDetail;
 use App\Livewire\Transactions\TransactionTable;
 use App\Models\User;
+use App\Queries\ProfitByBooking;
+use App\Queries\TransactionFilters;
 use Illuminate\Support\Facades\DB;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
@@ -233,6 +235,38 @@ class TransactionTableFixtureTest extends TestCase
             ->assertSeeHtml(route('payments.requests.show', 2))
             ->assertSee('PR-2')
             ->assertSee('132.00');
+    }
+
+    /**
+     * Costos enseña la utilidad del booking al que pertenece cada costo: un
+     * costo por sí solo no tiene utilidad, y sin esa cifra hay que salir de la
+     * pantalla para saber si el booking deja dinero.
+     */
+    public function test_costos_trae_la_utilidad_del_booking(): void
+    {
+        $this->pantalla('bill')->assertSee(__('Utilidad del booking'));
+    }
+
+    public function test_la_utilidad_de_costos_es_facturas_menos_costos_del_booking(): void
+    {
+        $utilidades = $this->pantalla('bill')->viewData('bookingProfits');
+
+        $esperada = (new ProfitByBooking(TransactionFilters::make([])))->summary();
+        $delBooking = collect($esperada['rows'])->firstWhere('booking_id', 1);
+
+        $this->assertEqualsWithDelta($delBooking['profit_doc'], $utilidades[1]['profit_doc'], 0.01);
+    }
+
+    public function test_la_descarga_de_costos_lleva_la_utilidad(): void
+    {
+        $csv = $this->get(route('transactions.export', ['screen' => 'bill']))->assertOk()->streamedContent();
+
+        $this->assertStringContainsString(__('Utilidad del booking'), $csv);
+    }
+
+    public function test_facturas_no_trae_la_utilidad_del_booking(): void
+    {
+        $this->pantalla('invoice')->assertDontSee(__('Utilidad del booking'));
     }
 
     public function test_facturas_trae_el_pagado_a_tipo_de_cambio_de_pago(): void

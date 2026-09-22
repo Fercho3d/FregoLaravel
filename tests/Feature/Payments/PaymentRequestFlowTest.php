@@ -1204,8 +1204,9 @@ class PaymentRequestFlowTest extends TestCase
         $html = Livewire::test(TransactionTable::class, ['screen' => 'bill'])->html();
 
         $this->assertStringContainsString('columnResizer(', $html);
-        // 22 columnas: Tipo, Non Dec, PDF/XML, Solicitud, Total natural y Saldo, como el `bill.php` original.
-        $this->assertSame(22, substr_count($html, 'cursor-col-resize'), 'Cada columna necesita su tirador.');
+        // 23 columnas: las del `bill.php` original (Tipo, Non Dec, PDF/XML,
+        // Solicitud, Total natural y Saldo) más la utilidad del booking.
+        $this->assertSame(23, substr_count($html, 'cursor-col-resize'), 'Cada columna necesita su tirador.');
         $this->assertStringContainsString('truncate', $html);
     }
 

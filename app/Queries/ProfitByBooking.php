@@ -80,6 +80,48 @@ class ProfitByBooking
         return ['rows' => $rows, 'totals' => $totales];
     }
 
+    /**
+     * Utilidad de unos bookings concretos, para pintarla renglón por renglón.
+     *
+     * La usa el listado de Costos: de un costo interesa saber si el booking al
+     * que pertenece deja dinero. Se resuelve con los bookings de la página en
+     * una sola consulta, no una por renglón, y con el mismo criterio que el
+     * resumen: importes del booking completo, sin el filtro de la pantalla.
+     *
+     * @param  int[]  $bookings
+     * @return array<int, array{inv_doc: float, cost_doc: float, profit_doc: float, profit_pago: float}>
+     */
+    public function forBookings(array $bookings): array
+    {
+        $bookings = array_values(array_unique(array_filter($bookings)));
+
+        if ($bookings === []) {
+            return [];
+        }
+
+        $facturas = $this->amountsFor($bookings, [Transaction::TYPE_INVOICE]);
+        $costos = $this->amountsFor($bookings, [Transaction::TYPE_BILL, Transaction::TYPE_CREDIT_BILL]);
+
+        $utilidades = [];
+
+        foreach ($bookings as $bookingId) {
+            $factura = $facturas->get($bookingId);
+            $costo = $costos->get($bookingId);
+
+            $ingresoDoc = (float) ($factura->doc ?? 0);
+            $costoDoc = (float) ($costo->doc ?? 0);
+
+            $utilidades[$bookingId] = [
+                'inv_doc' => $ingresoDoc,
+                'cost_doc' => $costoDoc,
+                'profit_doc' => $ingresoDoc - $costoDoc,
+                'profit_pago' => (float) ($factura->pago ?? 0) - (float) ($costo->pago ?? 0),
+            ];
+        }
+
+        return $utilidades;
+    }
+
     /** @return array<string, float> */
     private function emptyTotals(): array
     {

@@ -35,6 +35,9 @@
         ...($screen === 'bill' ? [
             ['total_natural_amount', __('Total natural'), 'text-right', 'total_natural_amount'],
             ['left_to_pay', __('Saldo'), 'text-right', 'left_to_pay'],
+            // Utilidad del booking al que pertenece el costo, no del costo: un
+            // costo por sí solo no tiene utilidad.
+            [null, __('Utilidad del booking'), 'text-right', null],
         ] : []),
         // Fuera de Costos, el saldo del filtro se lee en el pie de esta columna.
         [$screen === 'bill' ? null : 'left_to_pay', __('Estado'), 'text-left', $screen === 'bill' ? null : 'estado'],
@@ -503,6 +506,15 @@
                             <dt class="text-ink-faint">{{ __('Pagado') }}</dt>
                             <dd class="tabular-nums text-ink-soft">{{ $money($row->tran_paid_amount) }}</dd>
                         </div>
+                        @if ($screen === 'bill')
+                            @php $utilidadMovil = $bookingProfits[(int) $row->booking_id]['profit_doc'] ?? null; @endphp
+                            <div class="flex justify-between gap-2">
+                                <dt class="text-ink-faint">{{ __('Utilidad del booking') }}</dt>
+                                <dd class="tabular-nums {{ $utilidadMovil === null ? 'text-ink-faint' : ($utilidadMovil < 0 ? 'text-brand' : 'text-emerald-600') }}">
+                                    {{ $utilidadMovil === null ? '—' : $money($utilidadMovil) }}
+                                </dd>
+                            </div>
+                        @endif
                     </dl>
                 </li>
             @empty
@@ -637,6 +649,11 @@
                             @if ($screen === 'bill')
                                 <td class="whitespace-nowrap px-3 py-2 text-right tabular-nums text-ink-muted">{{ $money($row->total_natural_amount) }}</td>
                                 <td class="whitespace-nowrap px-3 py-2 text-right tabular-nums {{ abs((float) $row->left_to_pay) > 0.005 ? 'text-brand' : 'text-ink-muted' }}">{{ $money($row->left_to_pay) }}</td>
+                                @php $utilidad = $bookingProfits[(int) $row->booking_id]['profit_doc'] ?? null; @endphp
+                                <td class="whitespace-nowrap px-3 py-2 text-right tabular-nums {{ $utilidad === null ? 'text-ink-faint' : ($utilidad < 0 ? 'text-brand' : 'text-emerald-600') }}"
+                                    @if ($utilidad !== null) title="{{ __('Facturas :inv menos costos :cost del booking, a TC del documento', ['inv' => $money($bookingProfits[(int) $row->booking_id]['inv_doc']), 'cost' => $money($bookingProfits[(int) $row->booking_id]['cost_doc'])]) }}" @endif>
+                                    {{ $utilidad === null ? '—' : $money($utilidad) }}
+                                </td>
                             @endif
                             <td class="whitespace-nowrap px-3 py-2">
                                 {{-- La etiqueta lleva a las solicitudes que pagan el documento. --}}

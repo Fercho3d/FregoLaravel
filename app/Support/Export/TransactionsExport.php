@@ -3,6 +3,7 @@
 namespace App\Support\Export;
 
 use App\Models\Core\Transaction;
+use App\Queries\ProfitByBooking;
 use App\Queries\TransactionFilters;
 use App\Queries\TransactionQuery;
 use App\Support\PaymentStatus;
@@ -52,7 +53,11 @@ class TransactionsExport
     /** Columnas que solo lleva Costos, como su listado: van entre «Total» y «Pagado» y tras «Pagado». */
     private const COLUMNAS_COSTOS = [
         'Total' => ['PDF' => 'pdf', 'XML' => 'xml', 'Solicitud' => 'solicitud'],
-        'Pagado' => ['Total natural' => 'total_natural_amount', 'Saldo' => 'left_to_pay'],
+        'Pagado' => [
+            'Total natural' => 'total_natural_amount',
+            'Saldo' => 'left_to_pay',
+            'Utilidad del booking' => 'utilidad_booking',
+        ],
     ];
 
     /** Columna que solo lleva Facturas. */
@@ -101,9 +106,16 @@ class TransactionsExport
             do {
                 $lote = TransactionQuery::make($filtros)->paginate(self::TROZO, $pagina);
                 $solicitudes = in_array('solicitud', $columnas, true) ? Transaction::requestNumbersFor($lote->items()) : [];
+                // La utilidad es del booking, así que se resuelve por trozo y no
+                // por renglón: una consulta cada 500 costos.
+                $utilidades = in_array('utilidad_booking', $columnas, true)
+                    ? (new ProfitByBooking($filtros))->forBookings(
+                        collect($lote->items())->pluck('booking_id')->map(fn ($id) => (int) $id)->all()
+                    )
+                    : [];
 
                 foreach ($lote as $fila) {
-                    fputcsv($salida, $this->row($fila, $columnas, $solicitudes));
+                    fputcsv($salida, $this->row($fila, $columnas, $solicitudes, $utilidades));
                 }
 
                 flush();
@@ -120,9 +132,10 @@ class TransactionsExport
     /**
      * @param  array<string, string>  $columnas
      * @param  array<int, string>  $solicitudes  número de solicitud por `request_id`
+     * @param  array<int, array<string, float>>  $utilidades  utilidad por booking
      * @return array<int, string>
      */
-    private function row(object $fila, array $columnas, array $solicitudes): array
+    private function row(object $fila, array $columnas, array $solicitudes, array $utilidades = []): array
     {
         $valores = [];
 
@@ -136,6 +149,9 @@ class TransactionsExport
                 'pdf' => filled($fila->pdf_attach) ? __('Sí') : __('No'),
                 'xml' => filled($fila->xml_attach) ? __('Sí') : __('No'),
                 'solicitud' => (string) ($solicitudes[$fila->request_id] ?? ''),
+                'utilidad_booking' => isset($utilidades[(int) $fila->booking_id])
+                    ? (string) round($utilidades[(int) $fila->booking_id]['profit_doc'], 2)
+                    : '',
                 // Los importes, en crudo: con separador de miles Excel los toma
                 // como texto y deja de poder sumarlos.
                 'amount_original', 'exchange_value', 'sub_0_mxn', 'sub_16_mxn', 'tax_16_mxn', 'non_dec',
