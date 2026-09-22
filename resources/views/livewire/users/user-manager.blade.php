@@ -11,10 +11,6 @@
         UserManager::ACCESS_PROVIDER => __('Portal de proveedor'),
     ];
 
-    // Solo el dueño (super admin) crea o edita super administradores; para el
-    // resto se oculta ese rol y no se ofrecen acciones sobre esas cuentas.
-    $esDueno = auth()->user()?->isSuperAdmin() ?? false;
-
     // El select de rol depende del acceso elegido: `access` es `.live`, así que
     // al cambiarlo la pantalla se vuelve a pintar con la lista que toca.
     $rolesForm = $this->rolesAsignables();
@@ -176,10 +172,13 @@
                     <tr>
                         <th class="px-4 py-2.5 text-left font-semibold">{{ __('Usuario') }}</th>
                         <th class="px-4 py-2.5 text-left font-semibold">{{ __('Nombre') }}</th>
+                        <th class="px-4 py-2.5 text-left font-semibold">{{ __('Correo') }}</th>
                         <th class="px-4 py-2.5 text-left font-semibold">{{ __('Rol') }}</th>
                         <th class="px-4 py-2.5 text-left font-semibold">{{ __('Acceso') }}</th>
                         <th class="px-4 py-2.5 text-left font-semibold">{{ __('Estado') }}</th>
                         <th class="px-4 py-2.5 text-left font-semibold">{{ __('Último ingreso') }}</th>
+                        <th class="px-4 py-2.5 text-left font-semibold">{{ __('Creado por / el') }}</th>
+                        <th class="px-4 py-2.5 text-left font-semibold">{{ __('Modificado por / el') }}</th>
                         <th class="px-4 py-2.5 text-right font-semibold"><span class="sr-only">{{ __('Acciones') }}</span></th>
                     </tr>
                 </thead>
@@ -189,38 +188,52 @@
                         <tr class="transition hover:bg-raised {{ $usuario->status ? '' : 'opacity-60' }}">
                             <td class="max-w-[18rem] truncate px-4 py-2 text-ink" title="{{ $usuario->username }}">{{ $usuario->username ?: '—' }}</td>
                             <td class="max-w-[14rem] truncate px-4 py-2 text-ink-muted">{{ $usuario->name ?: '—' }}</td>
+                            <td class="max-w-[16rem] truncate px-4 py-2 text-ink-muted" title="{{ $usuario->email }}">{{ $usuario->email ?: '—' }}</td>
                             <td class="whitespace-nowrap px-4 py-2 text-ink-muted">{{ $usuario->roleLabel() }}</td>
-                            <td class="whitespace-nowrap px-4 py-2 text-ink-muted">{{ $accesos[(int) $usuario->access] ?? __('Interno') }}</td>
+                            <td class="whitespace-nowrap px-4 py-2 text-ink-muted">
+                                {{-- Una cuenta heredada sin `access` entra como interna, pero se
+                                     señala para que alguien lo capture desde «Editar». --}}
+                                @if ($usuario->sinAccesoDefinido())
+                                    <span class="badge badge-warn" title="{{ __('Entra como interno hasta que se le asigne un acceso.') }}">{{ __('Sin acceso definido') }}</span>
+                                @else
+                                    {{ $accesos[(int) $usuario->access] ?? __('Interno') }}
+                                @endif
+                            </td>
                             <td class="whitespace-nowrap px-4 py-2">
                                 <span class="badge {{ $usuario->status ? 'badge-ok' : 'badge-neutral' }}">
                                     {{ $usuario->status ? __('Activo') : __('De baja') }}
                                 </span>
                             </td>
                             <td class="whitespace-nowrap px-4 py-2 text-ink-muted">
-                                {{ $usuario->last_login ? $usuario->last_login->format('d/m/Y') : '—' }}
+                                {{ $usuario->last_login ? $usuario->last_login->format('d/m/Y H:i') : '—' }}
                             </td>
-                            <td class="whitespace-nowrap px-4 py-2 text-right">
-                                {{-- A un super administrador solo lo toca otro super administrador. --}}
-                                @php $puedeTocar = $esDueno || (int) $usuario->role !== User::ROLE_SUPER_ADMIN; @endphp
-                                <div class="flex justify-end gap-3 text-xs">
-                                    @if ($puedeTocar)
-                                        <button type="button" wire:click="edit({{ $usuario->usr_id }})" class="text-brand hover:underline">{{ __('Editar') }}</button>
-                                        <button type="button" wire:click="startPasswordChange({{ $usuario->usr_id }})" class="text-ink-muted hover:text-ink">{{ __('Contraseña') }}</button>
-                                        @if ($usuario->usr_id !== auth()->id())
-                                            <button type="button" wire:click="toggleActive({{ $usuario->usr_id }})"
-                                                    wire:confirm="{{ $usuario->status ? '¿Dar de baja a este usuario?' : '¿Reactivar a este usuario?' }}"
-                                                    class="text-ink-muted transition hover:text-brand">
-                                                {{ $usuario->status ? __('Baja') : __('Reactivar') }}
-                                            </button>
-                                        @endif
+                            {{-- Auditoría, como en el grid original: quién y cuándo. --}}
+                            @foreach ([[$usuario->creador, $usuario->created_at], [$usuario->modificador, $usuario->modified_at]] as [$quien, $cuando])
+                                <td class="whitespace-nowrap px-4 py-2 text-xs text-ink-muted">
+                                    @if ($quien || $cuando)
+                                        <span class="text-ink">{{ $quien?->username ?? '—' }}</span>
+                                        <span class="text-ink-faint">{{ $cuando?->format('d/m/Y H:i') ?? '—' }}</span>
                                     @else
-                                        <span class="text-ink-faint">—</span>
+                                        —
+                                    @endif
+                                </td>
+                            @endforeach
+                            <td class="whitespace-nowrap px-4 py-2 text-right">
+                                <div class="flex justify-end gap-3 text-xs">
+                                    <button type="button" wire:click="edit({{ $usuario->usr_id }})" class="text-brand hover:underline">{{ __('Editar') }}</button>
+                                    <button type="button" wire:click="startPasswordChange({{ $usuario->usr_id }})" class="text-ink-muted hover:text-ink">{{ __('Contraseña') }}</button>
+                                    @if ($usuario->usr_id !== auth()->id())
+                                        <button type="button" wire:click="toggleActive({{ $usuario->usr_id }})"
+                                                wire:confirm="{{ $usuario->status ? '¿Dar de baja a este usuario?' : '¿Reactivar a este usuario?' }}"
+                                                class="text-ink-muted transition hover:text-brand">
+                                            {{ $usuario->status ? __('Baja') : __('Reactivar') }}
+                                        </button>
                                     @endif
                                 </div>
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="7" class="px-4 py-12 text-center text-ink-faint">{{ __('No hay usuarios con estos filtros.') }}</td></tr>
+                        <tr><td colspan="10" class="px-4 py-12 text-center text-ink-faint">{{ __('No hay usuarios con estos filtros.') }}</td></tr>
                     @endforelse
                 </tbody>
             </table>
