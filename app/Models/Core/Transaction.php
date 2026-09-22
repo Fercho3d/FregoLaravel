@@ -98,6 +98,20 @@ class Transaction extends CoreModel
     }
 
     /**
+     * Números de las solicitudes de pago que pidieron estas filas, por
+     * `request_id`, para pintar la columna «Solicitud» sin una consulta por renglón.
+     *
+     * @param  iterable<object>  $rows
+     * @return array<int, string>
+     */
+    public static function requestNumbersFor(iterable $rows): array
+    {
+        $ids = collect($rows)->pluck('request_id')->filter()->unique()->values();
+
+        return $ids->isEmpty() ? [] : PaymentRequest::whereIn('request_id', $ids)->pluck('number', 'request_id')->all();
+    }
+
+    /**
      * Etiqueta del tipo, igual que `Transaction::typeText()` en Yii2:
      * el prefijo lo pone `invoice_type` y el sustantivo `tran_type`.
      */

@@ -53,9 +53,13 @@
                         {{ __('Timbrar') }}
                     </button>
                 @endif
-                @if ($transaccion->seal && auth()->user()?->isAdmin())
+                {{-- Basta el PDF, como en el original: las facturas históricas con
+                     PDF cargado a mano y sin sello también se reenvían. --}}
+                @if ($esFactura && filled($transaccion->pdf_attach) && auth()->user()?->isAdmin())
                     <button type="button" wire:click="resend" wire:loading.attr="disabled" wire:target="resend"
-                            wire:confirm="{{ __('Se le volverá a mandar al cliente la factura con su PDF y su XML. ¿Continuar?') }}"
+                            wire:confirm="{{ filled($transaccion->seal)
+                                ? __('Se le volverá a mandar al cliente la factura con su PDF y su XML. ¿Continuar?')
+                                : __('Esta factura no tiene sello CFDI: se mandará el PDF cargado a mano. ¿Continuar?') }}"
                             class="btn-ghost px-3 py-1.5 text-xs">
                         <x-spinner wire:loading wire:target="resend" class="h-3.5 w-3.5" />
                         {{ __('Reenviar al cliente') }}
@@ -384,6 +388,57 @@
                 </tbody>
             </table>
         </div>
+    </section>
+
+    {{-- Solicitudes de pago que cobran o pagan este documento. La etiqueta de
+         estado del listado apunta aquí (#solicitudes). --}}
+    <section id="solicitudes" class="card overflow-hidden">
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-3">
+            <h3 class="text-sm font-semibold text-ink">{{ __('Solicitudes de pago') }}</h3>
+            <span class="text-xs text-ink-faint">
+                {{ trans_choice(':n solicitud|:n solicitudes', $solicitudes->count(), ['n' => $solicitudes->count()]) }}
+            </span>
+        </header>
+
+        @if ($solicitudes->isEmpty())
+            <p class="px-5 py-6 text-center text-sm text-ink-faint">{{ __('Ninguna solicitud de pago incluye esta transacción.') }}</p>
+        @else
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-sm">
+                    <thead class="border-b border-line text-xs uppercase tracking-wide text-ink-muted">
+                        <tr>
+                            <th class="px-4 py-2.5 text-left font-semibold">{{ __('Número') }}</th>
+                            <th class="px-4 py-2.5 text-left font-semibold">{{ __('Fecha') }}</th>
+                            <th class="px-4 py-2.5 text-left font-semibold">{{ __('Banco') }}</th>
+                            <th class="px-4 py-2.5 text-right font-semibold">{{ __('Aplicado') }}</th>
+                            <th class="px-4 py-2.5 text-left font-semibold">{{ __('Estado') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-line">
+                        @foreach ($solicitudes as $solicitud)
+                            <tr class="transition hover:bg-raised">
+                                <td class="whitespace-nowrap px-4 py-2">
+                                    <a href="{{ route('payments.requests.show', $solicitud->request_id) }}" wire:navigate
+                                       class="font-medium text-brand hover:underline">{{ $solicitud->number ?: $solicitud->request_id }}</a>
+                                </td>
+                                <td class="whitespace-nowrap px-4 py-2 text-ink-muted">
+                                    {{ $solicitud->date ? \Illuminate\Support\Carbon::parse($solicitud->date)->format('d/m/Y') : '—' }}
+                                </td>
+                                <td class="whitespace-nowrap px-4 py-2 text-ink-muted">{{ $solicitud->bank_name ?: '—' }}</td>
+                                <td class="whitespace-nowrap px-4 py-2 text-right tabular-nums text-ink">
+                                    {{ $money($solicitud->amount_original_paid) }} <span class="text-xs text-ink-faint">{{ $solicitud->prefix }}</span>
+                                </td>
+                                <td class="whitespace-nowrap px-4 py-2">
+                                    <span class="{{ $solicitud->paid ? 'badge badge-ok' : 'badge badge-warn' }}">
+                                        {{ $solicitud->paid ? __('Pagada') : __('Pendiente') }}
+                                    </span>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
     </section>
 
     {{-- Totales --}}

@@ -97,8 +97,13 @@
         </div>
 
         <label class="block">
-            <span class="field-label">{{ $esFactura ? __('Cliente') : __('Proveedor') }}</span>
-            <select wire:model="{{ $esFactura ? 'customerId' : 'vendorId' }}" @disabled($bloqueada)
+            <span class="field-label">
+                {{ $esFactura ? __('Cliente') : __('Proveedor') }}
+                @if ($partyIsLocked && ! $bloqueada)
+                    <span class="font-normal text-ink-faint">{{ __('(ya está en una solicitud de pago)') }}</span>
+                @endif
+            </span>
+            <select wire:model="{{ $esFactura ? 'customerId' : 'vendorId' }}" @disabled($bloqueada || $partyIsLocked)
                     class="field-input mt-1.5" required>
                 <option value="">Selecciona {{ $esFactura ? __('el cliente') : __('el proveedor') }}</option>
                 @php $seleccionado = $esFactura ? $customerId : $vendorId; @endphp

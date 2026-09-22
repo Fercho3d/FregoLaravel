@@ -41,6 +41,7 @@ class TransactionsExport
         'Sub 0 %' => 'sub_0_mxn',
         'Sub 16 %' => 'sub_16_mxn',
         'IVA 16 %' => 'tax_16_mxn',
+        'Non Dec' => 'non_dec',
         'Ret. IVA' => 'tax_ret_mxn',
         'Total' => 'total_amount',
         'Pagado' => 'tran_paid_amount',
@@ -48,23 +49,61 @@ class TransactionsExport
         'CFDI' => 'seal',
     ];
 
-    public function stream(TransactionFilters $filtros, string $nombre): StreamedResponse
+    /** Columnas que solo lleva Costos, como su listado: van entre «Total» y «Pagado» y tras «Pagado». */
+    private const COLUMNAS_COSTOS = [
+        'Total' => ['PDF' => 'pdf', 'XML' => 'xml', 'Solicitud' => 'solicitud'],
+        'Pagado' => ['Total natural' => 'total_natural_amount', 'Saldo' => 'left_to_pay'],
+    ];
+
+    /** Columna que solo lleva Facturas. */
+    private const COLUMNAS_FACTURAS = [
+        'Total' => ['Pagado (TC de pago)' => 'total_amount_paid_tc'],
+    ];
+
+    /**
+     * Las columnas de la pantalla que se descarga: las mismas que pinta la
+     * tabla, en el mismo orden.
+     *
+     * @return array<string, string>
+     */
+    private function columnsFor(string $screen): array
     {
-        return response()->streamDownload(function () use ($filtros) {
+        $extras = match ($screen) {
+            'bill' => self::COLUMNAS_COSTOS,
+            'invoice' => self::COLUMNAS_FACTURAS,
+            default => [],
+        };
+
+        $columnas = [];
+
+        foreach (self::COLUMNAS as $encabezado => $propiedad) {
+            $columnas[$encabezado] = $propiedad;
+            $columnas += $extras[$encabezado] ?? [];
+        }
+
+        return $columnas;
+    }
+
+    public function stream(TransactionFilters $filtros, string $nombre, string $screen = 'all'): StreamedResponse
+    {
+        $columnas = $this->columnsFor($screen);
+
+        return response()->streamDownload(function () use ($filtros, $columnas) {
             $salida = fopen('php://output', 'w');
 
             // Sin la marca de orden de bytes, Excel se come los acentos.
             fwrite($salida, "\xEF\xBB\xBF");
 
-            fputcsv($salida, array_map(fn (string $c) => __($c), array_keys(self::COLUMNAS)));
+            fputcsv($salida, array_map(fn (string $c) => __($c), array_keys($columnas)));
 
             $pagina = 1;
 
             do {
                 $lote = TransactionQuery::make($filtros)->paginate(self::TROZO, $pagina);
+                $solicitudes = in_array('solicitud', $columnas, true) ? Transaction::requestNumbersFor($lote->items()) : [];
 
                 foreach ($lote as $fila) {
-                    fputcsv($salida, $this->row($fila));
+                    fputcsv($salida, $this->row($fila, $columnas, $solicitudes));
                 }
 
                 flush();
@@ -78,22 +117,30 @@ class TransactionsExport
         ]);
     }
 
-    /** @return array<int, string> */
-    private function row(object $fila): array
+    /**
+     * @param  array<string, string>  $columnas
+     * @param  array<int, string>  $solicitudes  número de solicitud por `request_id`
+     * @return array<int, string>
+     */
+    private function row(object $fila, array $columnas, array $solicitudes): array
     {
         $valores = [];
 
-        foreach (self::COLUMNAS as $propiedad) {
+        foreach ($columnas as $propiedad) {
             $valores[] = match ($propiedad) {
                 'tran_date' => $fila->tran_date ? substr((string) $fila->tran_date, 0, 10) : '',
                 'tipo' => Transaction::typeLabel($fila->invoice_type, $fila->tran_type),
                 'appliedTo' => (string) ($fila->customerName ?: $fila->vendorName),
                 'estado' => PaymentStatus::for($fila)->label(),
                 'seal' => (string) $fila->seal,
+                'pdf' => filled($fila->pdf_attach) ? __('Sí') : __('No'),
+                'xml' => filled($fila->xml_attach) ? __('Sí') : __('No'),
+                'solicitud' => (string) ($solicitudes[$fila->request_id] ?? ''),
                 // Los importes, en crudo: con separador de miles Excel los toma
                 // como texto y deja de poder sumarlos.
-                'amount_original', 'exchange_value', 'sub_0_mxn', 'sub_16_mxn',
-                'tax_16_mxn', 'tax_ret_mxn', 'total_amount', 'tran_paid_amount' => $fila->{$propiedad} === null
+                'amount_original', 'exchange_value', 'sub_0_mxn', 'sub_16_mxn', 'tax_16_mxn', 'non_dec',
+                'tax_ret_mxn', 'total_amount', 'total_amount_paid_tc', 'tran_paid_amount',
+                'total_natural_amount', 'left_to_pay' => $fila->{$propiedad} === null
                     ? ''
                     : (string) round((float) $fila->{$propiedad}, 4),
                 default => trim((string) ($fila->{$propiedad} ?? '')),

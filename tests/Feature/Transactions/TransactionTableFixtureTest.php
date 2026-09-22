@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Transactions;
 
+use App\Livewire\Transactions\TransactionDetail;
 use App\Livewire\Transactions\TransactionTable;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -41,10 +42,13 @@ class TransactionTableFixtureTest extends TestCase
             // Una cotización: el motor la filtra por `booking.mode` = 9.
             ['booking_id' => 9, 'booking_number' => 'COT-9', 'client' => 1, 'mode' => 9],
         ]);
+        // Cerrado: sin altas ni timbrado.
+        DB::table('booking')->insert(['booking_id' => 2, 'booking_number' => 'BK-2', 'client' => 1, 'mode' => 10, 'locked' => 1]);
 
         $base = [
             'account' => 1, 'company_id' => 1, 'tran_date' => '2026-01-15', 'invoice_type' => 1,
             'cancelled' => 0, 'pdf_attach' => '', 'customer' => null, 'vendor' => null,
+            'request_id' => null, 'payment_request' => 0,
         ];
 
         DB::table('transaction')->insert([
@@ -52,14 +56,16 @@ class TransactionTableFixtureTest extends TestCase
             // Saldada: se cobra completa abajo.
             ['transc_id' => 2, 'booking' => 1, 'tran_type' => 0, 'customer' => 1, 'tran_number' => 'F-2'] + $base,
             ['transc_id' => 3, 'booking' => 1, 'tran_type' => 0, 'customer' => 1, 'tran_number' => 'F-3', 'cancelled' => 1] + $base,
-            ['transc_id' => 4, 'booking' => 1, 'tran_type' => 1, 'vendor' => 1, 'tran_number' => 'B-1'] + $base,
+            // Pedido en la solicitud PR-2 y pagado en parte.
+            ['transc_id' => 4, 'booking' => 1, 'tran_type' => 1, 'vendor' => 1, 'tran_number' => 'B-1', 'request_id' => 2, 'payment_request' => 1] + $base,
             ['transc_id' => 5, 'booking' => 1, 'tran_type' => 2, 'vendor' => 1, 'tran_number' => 'CB-1'] + $base,
             ['transc_id' => 6, 'booking' => 9, 'tran_type' => 0, 'customer' => 1, 'tran_number' => 'F-9'] + $base,
             ['transc_id' => 7, 'booking' => 1, 'tran_type' => 0, 'customer' => 1, 'tran_number' => 'HIST-1', 'invoice_type' => 2] + $base,
             ['transc_id' => 8, 'booking' => 1, 'tran_type' => 0, 'customer' => 1, 'tran_number' => 'NC-1', 'invoice_type' => 3] + $base,
+            ['transc_id' => 9, 'booking' => 2, 'tran_type' => 0, 'customer' => 1, 'tran_number' => 'F-90'] + $base,
         ]);
 
-        foreach ([1 => 1000, 2 => 500, 3 => 100, 4 => 200, 5 => 50, 6 => 300, 7 => 10, 8 => 20] as $transaccion => $precio) {
+        foreach ([1 => 1000, 2 => 500, 3 => 100, 4 => 200, 5 => 50, 6 => 300, 7 => 10, 8 => 20, 9 => 40] as $transaccion => $precio) {
             DB::table('charge')->insert([
                 'charge_id' => $transaccion, 'transaction' => $transaccion, 'type' => 1, 'quantity' => 1, 'price' => $precio,
             ]);
@@ -71,6 +77,14 @@ class TransactionTableFixtureTest extends TestCase
             'client_id' => 1, 'currency_id' => 1, 'type' => 1, 'date' => '2026-01-15',
         ]);
         DB::table('payments_by_transaction')->insert(['request_id' => 1, 'transc_id' => 2, 'amount' => 580, 'paid' => 1]);
+
+        // B-1 (200 + 16 % = 232) pagado en parte: 100.
+        DB::table('bank')->insert(['bank_id' => 1, 'bank_name' => 'Banco Uno']);
+        DB::table('payment_request')->insert([
+            'request_id' => 2, 'number' => 'PR-2', 'amount' => 100, 'paid' => 0, 'bank_id' => 1,
+            'provider_id' => 1, 'currency_id' => 1, 'type' => 2, 'date' => '2026-01-20',
+        ]);
+        DB::table('payments_by_transaction')->insert(['request_id' => 2, 'transc_id' => 4, 'amount' => 100, 'paid' => 0]);
     }
 
     private function admin(): User
@@ -205,5 +219,131 @@ class TransactionTableFixtureTest extends TestCase
         $this->pantalla('booking', 1)
             ->assertSee(__('Nueva nota de crédito'))
             ->assertSeeHtml('tipo=nota-credito');
+    }
+
+    // ------------------------------------------- Columnas de cada listado
+
+    public function test_costos_trae_documentos_solicitud_total_natural_y_saldo(): void
+    {
+        $this->pantalla('bill')
+            ->assertSee('Non Dec')
+            ->assertSee(__('Solicitud'))
+            ->assertSee(__('Total natural'))
+            ->assertSee(__('Saldo'))
+            ->assertSeeHtml(route('payments.requests.show', 2))
+            ->assertSee('PR-2')
+            ->assertSee('132.00');
+    }
+
+    public function test_facturas_trae_el_pagado_a_tipo_de_cambio_de_pago(): void
+    {
+        $this->pantalla('invoice')
+            ->assertSee('Non Dec')
+            ->assertSee(__('Pagado (TC de pago)'))
+            ->assertDontSee(__('Total natural'));
+    }
+
+    /** El pie de totales sigue a las columnas de cada pantalla, sin desalinearse. */
+    public function test_el_pie_de_totales_lleva_una_celda_por_columna(): void
+    {
+        $html = $this->pantalla('bill')->set('showTotals', true)->html();
+
+        preg_match('/<tfoot.*?<\/tfoot>/su', $html, $pie);
+        preg_match_all('/<th\b/u', $html, $cabeceras);
+
+        $this->assertSame(
+            count($cabeceras[0]),
+            substr_count($pie[0], '<td') - 1 + 8,
+            'El pie debe cubrir todas las columnas: una celda que abarca 8 y una por cada columna restante.',
+        );
+    }
+
+    public function test_la_descarga_de_costos_lleva_sus_columnas(): void
+    {
+        $csv = $this->get(route('transactions.export', ['screen' => 'bill']))->assertOk()->streamedContent();
+
+        $this->assertStringContainsString('Non Dec', $csv);
+        $this->assertStringContainsString(__('Solicitud'), $csv);
+        $this->assertStringContainsString('PR-2', $csv);
+        $this->assertStringContainsString(__('Saldo'), $csv);
+    }
+
+    // ----------------------------------------------- Rango por omisión
+
+    public function test_ver_todos_los_anios_quita_el_rango_de_un_clic(): void
+    {
+        $pantalla = $this->pantalla('invoice');
+
+        $this->assertNotSame('', $pantalla->get('dates'), 'El listado arranca acotado al año en curso.');
+
+        $pantalla->assertSee(__('Ver todos los años'))
+            ->call('showAllYears')
+            ->assertSet('dates', '')
+            ->assertSee(__('todos los años'));
+    }
+
+    public function test_limpiar_filtros_deja_la_pantalla_sin_rango(): void
+    {
+        $this->pantalla('invoice')->call('clearFilters')->assertSet('dates', '');
+    }
+
+    // ------------------------------------------- Pantalla de un booking
+
+    public function test_en_un_booking_real_se_marca_timbra_y_solicita_pago(): void
+    {
+        $pantalla = $this->pantalla('booking', 1);
+
+        $this->assertTrue($pantalla->instance()->allowsSelection());
+        $this->assertTrue($pantalla->instance()->allowsStamping());
+
+        $pantalla->assertSee(__('Timbrar seleccionadas'))->assertSee(__('Pagar'));
+    }
+
+    public function test_en_una_cotizacion_no_se_marca_nada(): void
+    {
+        $this->assertFalse($this->pantalla('booking', 9)->instance()->allowsSelection());
+    }
+
+    public function test_un_booking_cerrado_no_ofrece_altas_ni_timbrado(): void
+    {
+        $pantalla = $this->pantalla('booking', 2);
+
+        $this->assertFalse($pantalla->instance()->allowsStamping());
+
+        $pantalla->assertSee(__('Booking cerrado'))
+            ->assertDontSee(__('Nueva factura'))
+            ->assertDontSee(__('Timbrar seleccionadas'));
+    }
+
+    public function test_no_se_mezclan_facturas_y_costos_en_una_solicitud(): void
+    {
+        $this->pantalla('booking', 1)
+            ->set('selected', ['1', '4'])
+            ->call('createPaymentRequest')
+            ->assertHasErrors('selected');
+    }
+
+    // ------------------------------------------------ Solicitudes de pago
+
+    public function test_la_etiqueta_de_estado_lleva_a_las_solicitudes_del_documento(): void
+    {
+        $this->pantalla('bill')->assertSeeHtml(route('transactions.show', 4).'#solicitudes');
+    }
+
+    public function test_el_detalle_lista_las_solicitudes_que_pagan_la_transaccion(): void
+    {
+        Livewire::test(TransactionDetail::class, ['transaction' => 4])
+            ->assertSeeHtml('id="solicitudes"')
+            ->assertSee('PR-2')
+            ->assertSee('Banco Uno')
+            ->assertSee('20/01/2026')
+            ->assertSee('100.00')
+            ->assertSeeHtml(route('payments.requests.show', 2));
+    }
+
+    public function test_el_detalle_avisa_cuando_ninguna_solicitud_incluye_la_transaccion(): void
+    {
+        Livewire::test(TransactionDetail::class, ['transaction' => 1])
+            ->assertSee(__('Ninguna solicitud de pago incluye esta transacción.'));
     }
 }

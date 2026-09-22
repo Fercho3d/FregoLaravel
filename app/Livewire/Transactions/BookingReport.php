@@ -81,11 +81,31 @@ class BookingReport extends Component
         $this->totals = null;
     }
 
+    /** Limpiar deja el reporte sin rango, no de vuelta al año en curso. */
     public function clearFilters(): void
     {
         $this->reset(['bookingNumber', 'tranNumber', 'dates', 'paid']);
         $this->totals = null;
         $this->resetPage();
+    }
+
+    /** «Ver todos los años»: quita el rango por omisión de un clic. */
+    public function showAllYears(): void
+    {
+        $this->dates = '';
+        $this->updated('dates');
+    }
+
+    /** Texto del rango vigente para la cabecera. */
+    public function datesLabel(): string
+    {
+        if ($this->dates === '') {
+            return __('todos los años');
+        }
+
+        [$desde, $hasta] = array_pad(explode(' - ', $this->dates, 2), 2, '');
+
+        return __('del :desde al :hasta', ['desde' => $desde, 'hasta' => $hasta]);
     }
 
     /**

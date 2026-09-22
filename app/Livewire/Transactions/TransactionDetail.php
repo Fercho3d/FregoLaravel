@@ -9,6 +9,8 @@ use App\Models\Core\Charge;
 use App\Models\Core\ChargeType;
 use App\Models\Core\Service;
 use App\Models\Core\Transaction;
+use App\Queries\PaymentRequestFilters;
+use App\Queries\PaymentRequestQuery;
 use App\Queries\TransactionFilters;
 use App\Queries\TransactionQuery;
 use App\Support\Cfdi\CfdiException;
@@ -115,6 +117,23 @@ class TransactionDetail extends Component
             ->where('transaction', $this->transactionId)
             ->orderBy('charge_id')
             ->get();
+    }
+
+    /**
+     * Solicitudes de pago en las que aparece esta transacción, con lo que cada
+     * una le aplicó en la moneda del documento (`transaction_payments.php` del
+     * original). Sin tipo de cambio ni signo: aquí se lee cuánto se pagó, no
+     * cuánto vale en pesos.
+     *
+     * @return Collection<int, object>
+     */
+    private function paymentRequests(): Collection
+    {
+        $filtros = PaymentRequestFilters::make(['transc_id' => $this->transactionId]);
+        $filtros->noExchange = true;
+        $filtros->noNegative = true;
+
+        return PaymentRequestQuery::make($filtros)->get();
     }
 
     /**
@@ -393,6 +412,7 @@ class TransactionDetail extends Component
             'fila' => $this->header(),
             'transaccion' => $transaccion,
             'cargos' => $this->charges(),
+            'solicitudes' => $this->paymentRequests(),
             'candado' => $this->lock(),
             'sePuedeBorrar' => TransactionLock::canDelete(
                 $this->header(),

@@ -9,26 +9,39 @@
     $activos = collect([$tranNumber, $bookingNumber, $appliedTo, $dates, $companyId, $accountId, $paid, $docType])
         ->filter(fn ($v) => filled($v))
         ->count() + ($showCancelled !== '0' ? 1 : 0);
+    // [clave de orden, etiqueta, alineación, clave del pie de totales]. Las
+    // columnas extra siguen a los listados del original: Costos lleva PDF/XML,
+    // Solicitud, Total natural y Saldo; Facturas, el pagado a TC de pago.
     $columns = [
-        ['booking', 'Booking', 'text-left'],
-        ['tran_date', __('Fecha'), 'text-left'],
-        ['tran_number', __('Número'), 'text-left'],
-        ['tran_type', __('Tipo'), 'text-left'],
-        ['applied_to', __('Aplicado a'), 'text-left'],
-        ['company', __('Compañía'), 'text-left'],
-        ['currency', 'Ccy', 'text-left'],
-        ['amount_original', __('Importe'), 'text-right'],
-        ['exchange_value', 'TC', 'text-right'],
-        ['sub_0_mxn', 'Sub 0 %', 'text-right'],
-        ['sub_16_mxn', 'Sub 16 %', 'text-right'],
-        ['tax_16_mxn', 'IVA 16 %', 'text-right'],
-        ['tax_ret_mxn', 'Ret. IVA', 'text-right'],
-        ['total_amount', __('Total'), 'text-right'],
-        ...($screen === 'booking' ? [[null, __('Profit factura (doc)'), 'text-right']] : []),
-        ['tran_paid_amount', __('Pagado'), 'text-right'],
-        ['left_to_pay', __('Estado'), 'text-left'],
-        ['seal', 'CFDI', 'text-left'],
+        ['booking', 'Booking', 'text-left', null],
+        ['tran_date', __('Fecha'), 'text-left', null],
+        ['tran_number', __('Número'), 'text-left', null],
+        ['tran_type', __('Tipo'), 'text-left', null],
+        ['applied_to', __('Aplicado a'), 'text-left', null],
+        ['company', __('Compañía'), 'text-left', null],
+        ['currency', 'Ccy', 'text-left', null],
+        ['amount_original', __('Importe'), 'text-right', 'amount_original'],
+        ['exchange_value', 'TC', 'text-right', null],
+        ['sub_0_mxn', 'Sub 0 %', 'text-right', 'sub_0_mxn'],
+        ['sub_16_mxn', 'Sub 16 %', 'text-right', 'sub_16_mxn'],
+        ['tax_16_mxn', 'IVA 16 %', 'text-right', 'tax_16_mxn'],
+        ['non_dec', 'Non Dec', 'text-right', 'non_dec'],
+        ['tax_ret_mxn', 'Ret. IVA', 'text-right', 'tax_ret_mxn'],
+        ['total_amount', __('Total'), 'text-right', 'total_amount'],
+        ...($screen === 'booking' ? [[null, __('Profit factura (doc)'), 'text-right', 'profit']] : []),
+        ...($screen === 'bill' ? [[null, 'PDF / XML', 'text-left', null], [null, __('Solicitud'), 'text-left', null]] : []),
+        ...($screen === 'invoice' ? [['total_amount_paid_tc', __('Pagado (TC de pago)'), 'text-right', 'total_amount_paid_tc']] : []),
+        ['tran_paid_amount', __('Pagado'), 'text-right', 'tran_paid_amount'],
+        ...($screen === 'bill' ? [
+            ['total_natural_amount', __('Total natural'), 'text-right', 'total_natural_amount'],
+            ['left_to_pay', __('Saldo'), 'text-right', 'left_to_pay'],
+        ] : []),
+        // Fuera de Costos, el saldo del filtro se lee en el pie de esta columna.
+        [$screen === 'bill' ? null : 'left_to_pay', __('Estado'), 'text-left', $screen === 'bill' ? null : 'estado'],
+        ['seal', 'CFDI', 'text-left', null],
     ];
+    // Cuántas columnas de texto abren la tabla: el pie las cubre con una sola celda.
+    $columnasDeTexto = 7;
 @endphp
 
 <div class="space-y-4">
@@ -52,14 +65,21 @@
             </span>
 
             {{-- El alta necesita saber a qué booking pertenece; por eso solo se
-                 ofrece desde esta pantalla. --}}
-            @foreach ([['factura', __('Nueva factura')], ['costo', __('Nuevo costo')], ['nota-credito', __('Nueva nota de crédito')]] as [$tipo, $etiqueta])
-                <a href="{{ route('transactions.create', ['booking' => $booking->booking_id, 'tipo' => $tipo]) }}"
-                   wire:navigate class="btn-ghost px-3 py-1.5 text-xs">{{ $etiqueta }}</a>
-            @endforeach
+                 ofrece desde esta pantalla, y no en un booking cerrado. --}}
+            @if ($booking->locked)
+                <span class="px-2 text-xs text-ink-faint">{{ __('Booking cerrado') }}</span>
+            @else
+                @foreach ([['factura', __('Nueva factura')], ['costo', __('Nuevo costo')], ['nota-credito', __('Nueva nota de crédito')]] as [$tipo, $etiqueta])
+                    <a href="{{ route('transactions.create', ['booking' => $booking->booking_id, 'tipo' => $tipo]) }}"
+                       wire:navigate class="btn-ghost px-3 py-1.5 text-xs">{{ $etiqueta }}</a>
+                @endforeach
+            @endif
         @endif
 
         <span class="ml-auto px-3 text-xs text-ink-faint" title="{{ __('Tiempo de la consulta que alimenta esta tabla') }}">
+            @if ($screen !== 'booking')
+                <span class="text-ink-muted">{{ $this->datesLabel() }}</span> ·
+            @endif
             {{ number_format($rows->total()) }} registros · consulta en {{ $queryMs }} ms
         </span>
     </nav>
@@ -108,10 +128,16 @@
             {{-- El calendario lo maneja flatpickr (ver `dateRangePicker` en app.js);
                  va en `wire:ignore` para que el repintado de Livewire no lo pise. --}}
             <div class="block" wire:ignore x-data="dateRangePicker(@js($dates))">
-                <span class="field-label text-xs">{{ __('Fechas') }}</span>
+                <span class="field-label flex items-center justify-between text-xs">
+                    {{ __('Fechas') }}
+                    {{-- El listado arranca en el año en curso por rendimiento; este
+                         enlace quita el rango de un clic. --}}
+                    <button type="button" wire:click="showAllYears" x-show="$wire.dates !== ''"
+                            class="font-normal text-brand hover:underline">{{ __('Ver todos los años') }}</button>
+                </span>
                 <input type="text" x-ref="input" readonly value="{{ $dates }}"
                        class="field-input mt-1 py-1.5 text-sm cursor-pointer bg-panel"
-                       placeholder="{{ __('Elegir rango…') }}">
+                       placeholder="{{ __('Todos los años') }}">
             </div>
 
             <label class="block">
@@ -181,8 +207,8 @@
 
                 <x-totals-switch />
                 @if ($this->allowsSelection() && auth()->user()?->isAdmin())
-                    {{-- Timbrar en lote (solo Facturas): equivale al «Seal» del sistema viejo. --}}
-                    @if ($screen === 'invoice')
+                    {{-- Timbrar en lote (Facturas y booking abierto): el «Seal» del sistema viejo. --}}
+                    @if ($this->allowsStamping())
                         <button type="button" wire:click="stampSelected"
                                 wire:confirm="{{ __('Se timbrarán ante el SAT las facturas seleccionadas. No se puede deshacer sin cancelarlas. ¿Continuar?') }}"
                                 wire:loading.attr="disabled" wire:target="stampSelected"
@@ -197,8 +223,10 @@
                                 <span class="rounded-full bg-white/25 px-1.5 py-0.5 tabular-nums">{{ count($selected) }}</span>
                             @endif
                         </button>
+                    @endif
 
-                        {{-- «Send Docs» del sistema viejo: PDF y XML al cliente. --}}
+                    {{-- «Send Docs» del sistema viejo: PDF y XML al cliente. --}}
+                    @if ($screen === 'invoice')
                         <button type="button" wire:click="sendSelected"
                                 wire:confirm="{{ __('Se les mandará a los clientes el PDF y el XML de las facturas seleccionadas. ¿Continuar?') }}"
                                 wire:loading.attr="disabled" wire:target="sendSelected"
@@ -285,6 +313,12 @@
                         <li><span class="font-medium text-ink">{{ $factura }}</span> — {{ $motivo }}</li>
                     @endforeach
                 </ul>
+            @endif
+
+            @if (($sendResult['unsealed'] ?? []) !== [])
+                <p class="text-xs text-ink-faint">
+                    {{ __('Sin sello CFDI (se mandó el PDF cargado a mano): :facturas', ['facturas' => implode(', ', $sendResult['unsealed'])]) }}
+                </p>
             @endif
         </div>
     @endif
@@ -560,6 +594,7 @@
                             <td class="whitespace-nowrap px-3 py-2 text-right tabular-nums text-ink-muted">{{ $money($row->sub_0_mxn) }}</td>
                             <td class="whitespace-nowrap px-3 py-2 text-right tabular-nums text-ink-muted">{{ $money($row->sub_16_mxn) }}</td>
                             <td class="whitespace-nowrap px-3 py-2 text-right tabular-nums text-ink-muted">{{ $money($row->tax_16_mxn) }}</td>
+                            <td class="whitespace-nowrap px-3 py-2 text-right tabular-nums text-ink-muted">{{ $money($row->non_dec) }}</td>
                             <td class="whitespace-nowrap px-3 py-2 text-right tabular-nums text-ink-muted">{{ $money($row->tax_ret_mxn) }}</td>
                             <td class="whitespace-nowrap px-3 py-2 text-right font-semibold tabular-nums {{ (float) $row->total_amount < 0 ? 'text-brand' : 'text-ink' }}">
                                 {{ $money($row->total_amount) }}
@@ -570,9 +605,44 @@
                                     {{ $profitFactura === null ? '–' : $money($profitFactura) }}
                                 </td>
                             @endif
+                            @if ($screen === 'bill')
+                                {{-- Los documentos del costo: cada uno abre su archivo si está cargado. --}}
+                                <td class="whitespace-nowrap px-3 py-2 text-[11px]">
+                                    @foreach ([['pdf', $row->pdf_attach], ['xml', $row->xml_attach]] as [$tipo, $archivo])
+                                        @if (filled($archivo))
+                                            <a href="{{ route('transactions.file', [$row->transc_id, $tipo]) }}" target="_blank" rel="noopener" data-navigate-ignore
+                                               title="{{ $archivo }}" class="badge badge-ok uppercase">{{ $tipo }}</a>
+                                        @else
+                                            <span class="badge badge-neutral uppercase opacity-60" title="{{ __('Sin archivo') }}">{{ $tipo }}</span>
+                                        @endif
+                                    @endforeach
+                                </td>
+                                {{-- «Requested» del original: la solicitud de pago que pidió este costo. --}}
+                                <td class="whitespace-nowrap px-3 py-2 text-ink-muted">
+                                    @if ($row->request_id && isset($requestNumbers[$row->request_id]))
+                                        <a href="{{ route('payments.requests.show', $row->request_id) }}" wire:navigate
+                                           class="text-brand hover:underline">{{ $requestNumbers[$row->request_id] ?: $row->request_id }}</a>
+                                    @else
+                                        —
+                                    @endif
+                                </td>
+                            @endif
+                            @if ($screen === 'invoice')
+                                {{-- Vacío hasta que se cobra: el TC de pago es 0. --}}
+                                <td class="whitespace-nowrap px-3 py-2 text-right tabular-nums text-ink-muted">
+                                    {{ (float) $row->total_amount_paid_tc == 0.0 ? '—' : $money($row->total_amount_paid_tc) }}
+                                </td>
+                            @endif
                             <td class="whitespace-nowrap px-3 py-2 text-right tabular-nums text-ink-muted">{{ $money($row->tran_paid_amount) }}</td>
+                            @if ($screen === 'bill')
+                                <td class="whitespace-nowrap px-3 py-2 text-right tabular-nums text-ink-muted">{{ $money($row->total_natural_amount) }}</td>
+                                <td class="whitespace-nowrap px-3 py-2 text-right tabular-nums {{ abs((float) $row->left_to_pay) > 0.005 ? 'text-brand' : 'text-ink-muted' }}">{{ $money($row->left_to_pay) }}</td>
+                            @endif
                             <td class="whitespace-nowrap px-3 py-2">
-                                <span class="{{ $status->classes() }}">{{ $status->label() }}</span>
+                                {{-- La etiqueta lleva a las solicitudes que pagan el documento. --}}
+                                <a href="{{ route('transactions.show', $row->transc_id) }}#solicitudes" wire:navigate
+                                   title="{{ __('Ver las solicitudes de pago de esta transacción') }}"
+                                   class="{{ $status->classes() }} hover:underline">{{ $status->label() }}</a>
                             </td>
                             <td class="whitespace-nowrap px-3 py-2 font-mono text-[11px] text-ink-faint" title="{{ $row->seal }}">
                                 {{ $row->seal ? \Illuminate\Support\Str::limit($row->seal, 8, '…') : '—' }}
@@ -588,24 +658,25 @@
                 </tbody>
 
                 @if ($totals)
+                    {{-- El pie sigue a `$columns`: cada columna con clave de total
+                         pinta su suma y las demás quedan vacías, así las celdas
+                         no se desalinean al cambiar de pantalla. --}}
                     <tfoot class="border-t border-line bg-panel text-sm font-semibold">
                         <tr>
-                            <td colspan="{{ 7 + ($this->allowsSelection() ? 1 : 0) }}" class="px-3 py-2.5 text-ink-muted">{{ __('Total del filtro completo') }}</td>
-                            <td class="px-3 py-2.5 text-right tabular-nums text-ink">{{ $money($totals['amount_original']) }}</td>
-                            <td></td>
-                            <td class="px-3 py-2.5 text-right tabular-nums text-ink-soft">{{ $money($totals['sub_0_mxn']) }}</td>
-                            <td class="px-3 py-2.5 text-right tabular-nums text-ink-soft">{{ $money($totals['sub_16_mxn']) }}</td>
-                            <td class="px-3 py-2.5 text-right tabular-nums text-ink-soft">{{ $money($totals['tax_16_mxn']) }}</td>
-                            <td class="px-3 py-2.5 text-right tabular-nums text-ink-soft">{{ $money($totals['tax_ret_mxn']) }}</td>
-                            <td class="px-3 py-2.5 text-right tabular-nums text-ink">{{ $money($totals['total_amount']) }}</td>
-                            @if ($screen === 'booking')
-                                <td class="px-3 py-2.5 text-right tabular-nums {{ ($bookingProfit['profit_doc'] ?? 0) < 0 ? 'text-brand' : 'text-emerald-600' }}">
-                                    {{ $money($bookingProfit['profit_doc'] ?? 0) }}
-                                </td>
-                            @endif
-                            <td colspan="3" class="px-3 py-2.5 text-right text-ink-muted">
-                                {{ __('Por cobrar/pagar') }}: {{ $money($totals['left_to_pay']) }}
-                            </td>
+                            <td colspan="{{ $columnasDeTexto + ($this->allowsSelection() ? 1 : 0) }}" class="px-3 py-2.5 text-ink-muted">{{ __('Total del filtro completo') }}</td>
+                            @foreach (array_slice($columns, $columnasDeTexto) as [$sortKey, $label, $align, $totalKey])
+                                @if ($totalKey === 'profit')
+                                    <td class="px-3 py-2.5 text-right tabular-nums {{ ($bookingProfit['profit_doc'] ?? 0) < 0 ? 'text-brand' : 'text-emerald-600' }}">
+                                        {{ $money($bookingProfit['profit_doc'] ?? 0) }}
+                                    </td>
+                                @elseif ($totalKey === 'estado')
+                                    <td class="whitespace-nowrap px-3 py-2.5 text-ink-muted">{{ __('Por cobrar/pagar') }}: {{ $money($totals['left_to_pay']) }}</td>
+                                @elseif ($totalKey !== null)
+                                    <td class="px-3 py-2.5 text-right tabular-nums {{ in_array($totalKey, ['amount_original', 'total_amount'], true) ? 'text-ink' : 'text-ink-soft' }}">{{ $money($totals[$totalKey]) }}</td>
+                                @else
+                                    <td></td>
+                                @endif
+                            @endforeach
                         </tr>
                     </tfoot>
                 @endif

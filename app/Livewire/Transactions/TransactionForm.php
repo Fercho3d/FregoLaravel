@@ -11,6 +11,7 @@ use App\Models\Core\Provider;
 use App\Models\Core\Transaction;
 use App\Queries\TransactionFilters;
 use App\Queries\TransactionQuery;
+use App\Support\ExchangeRates;
 use App\Support\TransactionFiles;
 use App\Support\TransactionLock;
 use Illuminate\Support\Carbon;
@@ -74,6 +75,13 @@ class TransactionForm extends Component
      */
     public bool $dateIsEditable = false;
 
+    /**
+     * El cliente o proveedor ya no se cambia cuando el documento entró en una
+     * solicitud de pago: la solicitud se armó a nombre de esa contraparte
+     * (`_form.php` del original deshabilitaba el selector con `payment_request`).
+     */
+    public bool $partyIsLocked = false;
+
     /*
      * Adjuntos. Los dos van a la MISMA subcarpeta `pdf` de la transacción, igual
      * que en el sistema original; la columna guarda solo el nombre del archivo.
@@ -105,9 +113,15 @@ class TransactionForm extends Component
 
     private function mountForCreate(?int $booking, string $tipo): void
     {
-        if ($booking === null || ! Booking::whereKey($booking)->exists()) {
+        $modelo = $booking === null ? null : Booking::find($booking);
+
+        if ($modelo === null) {
             throw new NotFoundHttpException(__('Falta el booking al que pertenece la transacción.'));
         }
+
+        // El original no ofrecía los botones de alta en un booking cerrado; aquí
+        // además se rechaza la dirección escrita a mano.
+        abort_if($modelo->locked, 422, __('El booking está cerrado: no se le pueden agregar transacciones.'));
 
         $this->bookingId = $booking;
         // Los tres botones de la pantalla del booking en el original: Invoice,
@@ -141,6 +155,7 @@ class TransactionForm extends Component
         $this->xmlAttached = $modelo->xml_attach ?: null;
 
         $this->lockReason = $this->lockFor($modelo)->reason;
+        $this->partyIsLocked = (bool) $modelo->payment_request || $modelo->payments()->exists();
         $this->dateIsEditable = TransactionLock::canChangeDate(
             (bool) ($modelo->bookingModel?->locked ?? false),
             auth()->user(),
@@ -272,6 +287,9 @@ class TransactionForm extends Component
             if ($this->dateIsEditable) {
                 $this->validateOnly('tranDate');
                 $modelo->tran_date = Carbon::parse($this->tranDate)->toDateString();
+                // Como el `beforeSave` del original: la fecha nueva necesita su
+                // tipo de cambio para que existan los importes en pesos.
+                app(ExchangeRates::class)->ensureFor(Carbon::parse($this->tranDate));
             }
 
             $modelo->save();
@@ -338,6 +356,12 @@ class TransactionForm extends Component
         // conserva el que ya tenía, en lugar de borrarlo.
         if ($this->numberIsEditable()) {
             $datos['tran_number'] = $this->tranNumber;
+        }
+
+        // Con la contraparte bloqueada se conserva la guardada aunque la
+        // petición traiga otra: el selector va deshabilitado en pantalla.
+        if ($this->partyIsLocked) {
+            unset($datos['customer'], $datos['vendor']);
         }
 
         return $datos;

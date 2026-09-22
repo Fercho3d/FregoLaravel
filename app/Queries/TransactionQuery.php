@@ -531,8 +531,11 @@ class TransactionQuery
         'sub_0_mxn' => ['row' => null, 'agg' => 'sub_0_mxn'],
         'sub_16_mxn' => ['row' => null, 'agg' => 'sub_16_mxn'],
         'tax_16_mxn' => ['row' => null, 'agg' => 'tax_16_mxn'],
+        'non_dec' => ['row' => null, 'agg' => 'non_dec'],
         'tax_ret_mxn' => ['row' => null, 'agg' => 'tax_ret_mxn'],
         'total_amount' => ['row' => null, 'agg' => 'total_amount'],
+        'total_amount_paid_tc' => ['row' => null, 'agg' => 'total_amount_paid_tc'],
+        'total_natural_amount' => ['row' => null, 'agg' => 'total_natural_amount'],
         'tran_paid_amount' => ['row' => null, 'agg' => 'tran_paid_amount'],
         // El «Estado» del renglón se deriva del saldo, así que se ordena por él.
         'left_to_pay' => ['row' => null, 'agg' => 'left_to_pay'],

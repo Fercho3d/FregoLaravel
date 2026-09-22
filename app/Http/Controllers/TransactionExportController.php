@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Core\Booking;
 use App\Queries\TransactionFilters;
+use App\Support\Export\BookingReportExport;
 use App\Support\Export\TransactionsExport;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -54,6 +55,12 @@ class TransactionExportController extends Controller
 
         $nombre = 'transacciones-'.$screen.'-'.now()->format('Ymd-His').'.csv';
 
-        return $exportacion->stream($filtros, $nombre);
+        // El reporte por booking tiene sus propias columnas (ingreso, egreso y
+        // utilidad por booking), no las del listado de transacciones.
+        if ($screen === 'report') {
+            return app(BookingReportExport::class)->stream($filtros, 'reporte-por-booking-'.now()->format('Ymd-His').'.csv');
+        }
+
+        return $exportacion->stream($filtros, $nombre, $screen);
     }
 }

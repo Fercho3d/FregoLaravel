@@ -56,15 +56,15 @@ class ProfitByBooking
             $factura = $facturas->get($bookingId);
             $costo = $costos->get($bookingId);
 
-            // Los costos vienen con signo negativo del motor; la utilidad se
-            // calcula contra su magnitud, igual que el original.
+            // Los importes ya vienen en magnitud renglón por renglón (ver
+            // `amountsFor`): las notas de crédito de proveedor restan del costo.
             $fila = [
                 'booking_id' => $bookingId,
                 'booking' => trim((string) ($factura ?? $costo)->booking_number),
                 'inv_doc' => (float) ($factura->doc ?? 0),
-                'cost_doc' => abs((float) ($costo->doc ?? 0)),
+                'cost_doc' => (float) ($costo->doc ?? 0),
                 'inv_pago' => (float) ($factura->pago ?? 0),
-                'cost_pago' => abs((float) ($costo->pago ?? 0)),
+                'cost_pago' => (float) ($costo->pago ?? 0),
             ];
 
             $fila['profit_doc'] = $fila['inv_doc'] - $fila['cost_doc'];
@@ -118,6 +118,11 @@ class ProfitByBooking
     /**
      * Importes sin IVA por booking, ya con el respaldo por transacción aplicado.
      *
+     * Sigue el criterio de la pantalla del booking del original
+     * (`views/transaction/index.php`): cada renglón entra por su magnitud
+     * (`ABS`), las notas de crédito al cliente (`invoice_type` 3) quedan fuera
+     * del ingreso y las de proveedor (`tran_type` 2) restan del costo.
+     *
      * @param  int[]  $bookings
      * @param  int[]  $tipos
      * @return Collection<int, object>
@@ -136,13 +141,14 @@ class ProfitByBooking
         return collect(
             DB::table(DB::raw('('.$inner->toSql().') AS agg'))
                 ->mergeBindings($inner)
+                ->whereRaw('NOT (agg.tran_type = ? AND IFNULL(agg.invoice_type, 0) = ?)', [Transaction::TYPE_INVOICE, Transaction::INVOICE_TYPE_CREDIT])
                 ->selectRaw(<<<'SQL'
                     agg.booking_id,
                     agg.booking_number,
-                    SUM(agg.amount_original_mxn) AS doc,
-                    SUM(CASE WHEN agg.amount_original_paid_mxn <> 0
+                    SUM((CASE WHEN agg.tran_type = 2 THEN -1 ELSE 1 END) * ABS(agg.amount_original_mxn)) AS doc,
+                    SUM((CASE WHEN agg.tran_type = 2 THEN -1 ELSE 1 END) * ABS(CASE WHEN agg.amount_original_paid_mxn <> 0
                              THEN agg.amount_original_paid_mxn
-                             ELSE agg.amount_original_mxn END) AS pago
+                             ELSE agg.amount_original_mxn END)) AS pago
                 SQL)
                 ->groupBy('agg.booking_id', 'agg.booking_number')
                 // El orden del original lo dictaba el de la pantalla; aquí se fija

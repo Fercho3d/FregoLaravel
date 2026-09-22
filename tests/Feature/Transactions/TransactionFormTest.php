@@ -400,4 +400,53 @@ class TransactionFormTest extends TestCase
             ->get(route('transactions.create'))
             ->assertNotFound();
     }
+
+    /** El original escondía los botones de alta en un booking cerrado; aquí además se rechaza la dirección. */
+    public function test_un_booking_cerrado_rechaza_el_alta(): void
+    {
+        DB::table('booking')->insert(['booking_id' => 3, 'booking_number' => 'BK-3', 'client' => 1, 'mode' => 10, 'locked' => 1]);
+
+        $this->actingAs($this->usuario())
+            ->get(route('transactions.create', ['booking' => 3, 'tipo' => 'factura']))
+            ->assertStatus(422);
+    }
+
+    /**
+     * `_form.php` del original deshabilitaba el cliente o proveedor en cuanto el
+     * documento entraba en una solicitud de pago: la solicitud se armó a su nombre.
+     */
+    public function test_la_contraparte_no_cambia_si_ya_esta_en_una_solicitud(): void
+    {
+        $this->actingAs($this->usuario());
+
+        DB::table('transaction')->insert([
+            'transc_id' => 1, 'booking' => 1, 'tran_type' => 1, 'vendor' => 1, 'company_id' => 1,
+            'tran_number' => 'C-1', 'tran_date' => '2026-01-15', 'account' => 1, 'payment_request' => 1,
+        ]);
+
+        $formulario = $this->formulario(['transaction' => 1], ['vendorId' => '2']);
+
+        $this->assertTrue($formulario->get('partyIsLocked'));
+        $formulario->assertSee(__('(ya está en una solicitud de pago)'))
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame(1, (int) Transaction::find(1)->vendor, 'El proveedor guardado se conserva.');
+    }
+
+    /**
+     * Como el `beforeSave` del original: al mover la fecha de un documento
+     * bloqueado se registra el tipo de cambio de la fecha nueva, para que
+     * existan sus importes en pesos.
+     */
+    public function test_corregir_la_fecha_de_una_bloqueada_pide_su_tipo_de_cambio(): void
+    {
+        $this->actingAs($this->usuario());
+
+        $this->transaccionTimbrada();
+
+        $this->formulario(['transaction' => 1], ['tranDate' => '2026-02-01'])->call('save')->assertHasNoErrors();
+
+        Http::assertSent(fn ($peticion) => str_contains($peticion->url(), 'banxico.org.mx') && str_contains($peticion->url(), '2026-02-01'));
+    }
 }

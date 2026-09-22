@@ -216,13 +216,31 @@ class TransactionTable extends Component
         $this->resetPage();
     }
 
+    /**
+     * «Ver todos los años»: quita el rango por omisión de un clic. Y «Limpiar
+     * filtros» deja la pantalla sin rango: limpiar es limpiar, no volver al año.
+     */
+    public function showAllYears(): void
+    {
+        $this->dates = '';
+        $this->updated('dates');
+    }
+
+    /** Texto del rango vigente para la cabecera. */
+    public function datesLabel(): string
+    {
+        if ($this->dates === '') {
+            return __('todos los años');
+        }
+
+        [$desde, $hasta] = array_pad(explode(' - ', $this->dates, 2), 2, '');
+
+        return __('del :desde al :hasta', ['desde' => $desde, 'hasta' => $hasta]);
+    }
+
     public function clearFilters(): void
     {
         $this->reset(['tranNumber', 'bookingNumber', 'appliedTo', 'dates', 'companyId', 'accountId', 'paid', 'docType']);
-        // Limpiar vuelve al default (año en curso), no a «toda la historia».
-        if ($this->screen !== 'booking') {
-            $this->dates = $this->defaultDates();
-        }
         $this->showCancelled = '0';
         $this->totals = null;
         $this->profit = null;
@@ -263,7 +281,7 @@ class TransactionTable extends Component
      */
     private function selectionIsGroupable(): bool
     {
-        $marcadas = Transaction::whereIn('transc_id', $this->selected)->get(['account', 'customer', 'vendor']);
+        $marcadas = Transaction::whereIn('transc_id', $this->selected)->get(['tran_type', 'account', 'customer', 'vendor']);
 
         if ($marcadas->pluck('account')->unique()->count() > 1) {
             $this->addError('selected', __('No se pueden agrupar transacciones de distinta divisa en la misma solicitud.'));
@@ -271,7 +289,18 @@ class TransactionTable extends Component
             return false;
         }
 
-        $esCobro = $this->screen === 'invoice';
+        // En la pantalla del booking conviven facturas y costos: el tipo lo
+        // dicen las marcadas, y no se mezclan (el original tenía un botón para
+        // cada uno: «Pay Invoice» y «Pay Bill»).
+        $tipos = $marcadas->pluck('tran_type')->map(fn ($tipo) => (int) $tipo === Transaction::TYPE_INVOICE)->unique();
+
+        if ($tipos->count() > 1) {
+            $this->addError('selected', __('No se pueden mezclar facturas y costos en la misma solicitud.'));
+
+            return false;
+        }
+
+        $esCobro = $tipos->first() ?? $this->screen === 'invoice';
 
         if ($marcadas->pluck($esCobro ? 'customer' : 'vendor')->unique()->count() > 1) {
             $this->addError('selected', __($esCobro
@@ -294,18 +323,21 @@ class TransactionTable extends Component
     {
         abort_unless(auth()->user()?->isAdmin() ?? false, 403);
 
-        // Solo se timbran facturas al cliente, no costos de proveedor.
-        if ($this->screen !== 'invoice') {
+        if (! $this->allowsStamping()) {
             return;
         }
 
-        if ($this->selected === []) {
+        // Solo se timbran facturas al cliente: en la pantalla del booking los
+        // costos marcados se dejan de lado.
+        $facturas = Transaction::whereIn('transc_id', $this->selected)->where('tran_type', Transaction::TYPE_INVOICE);
+        $totalFacturas = (clone $facturas)->count();
+        $lote = $facturas->limit(self::STAMP_BATCH)->get();
+
+        if ($lote->isEmpty()) {
             $this->addError('selected', __('Marca al menos una factura para timbrar.'));
 
             return;
         }
-
-        $lote = array_slice($this->selected, 0, self::STAMP_BATCH);
 
         // Cada factura es una llamada al PAC; puede tardar.
         set_time_limit(0);
@@ -313,7 +345,7 @@ class TransactionTable extends Component
         $done = 0;
         $errors = [];
 
-        foreach (Transaction::whereIn('transc_id', $lote)->get() as $factura) {
+        foreach ($lote as $factura) {
             try {
                 $stamp->handle($factura);
                 $done++;
@@ -325,7 +357,7 @@ class TransactionTable extends Component
         $this->stampResult = [
             'done' => $done,
             'errors' => $errors,
-            'pending' => max(0, count($this->selected) - count($lote)),
+            'pending' => max(0, $totalFacturas - $lote->count()),
         ];
 
         $this->selected = [];
@@ -351,18 +383,29 @@ class TransactionTable extends Component
 
         $sent = 0;
         $errors = [];
+        $unsealed = [];
 
+        // Como el original, basta con que haya PDF: las facturas históricas
+        // llevan el suyo cargado a mano y sin sello, y también se reenvían.
+        // Se avisa cuáles salieron sin sello, pero no se detienen.
         foreach (Transaction::with('bookingModel')->whereIn('transc_id', array_slice($this->selected, 0, self::STAMP_BATCH))->get() as $factura) {
-            $estado = blank($factura->seal)
-                ? SendInvoice::SIN_DOCUMENTOS
-                : $enviar->handle($factura, (string) ($factura->bookingModel?->booking_number ?? ''));
+            $estado = $enviar->handle($factura, (string) ($factura->bookingModel?->booking_number ?? ''));
+            $numero = $factura->tran_number ?: (string) $factura->transc_id;
 
-            $estado === SendInvoice::ENVIADA
-                ? $sent++
-                : $errors[$factura->tran_number ?: (string) $factura->transc_id] = SendInvoice::note($estado);
+            if ($estado !== SendInvoice::ENVIADA) {
+                $errors[$numero] = SendInvoice::note($estado);
+
+                continue;
+            }
+
+            $sent++;
+
+            if (blank($factura->seal)) {
+                $unsealed[] = $numero;
+            }
         }
 
-        $this->sendResult = ['sent' => $sent, 'errors' => $errors];
+        $this->sendResult = ['sent' => $sent, 'errors' => $errors, 'unsealed' => $unsealed];
         $this->selected = [];
     }
 
@@ -425,10 +468,25 @@ class TransactionTable extends Component
         return route('transactions.export', ['screen' => $this->screen] + $parametros);
     }
 
-    /** ¿Esta pantalla permite agrupar en solicitudes de pago? */
+    /**
+     * ¿Esta pantalla permite marcar renglones para timbrar o solicitar pago?
+     * También la de un booking real, como el `index.php` del original con
+     * `mode == 10`; las cotizaciones no se cobran ni se timbran.
+     */
     public function allowsSelection(): bool
     {
-        return in_array($this->screen, ['invoice', 'bill'], true);
+        return match ($this->screen) {
+            'invoice', 'bill' => true,
+            'booking' => ! ($this->booking()?->isQuotation() ?? true),
+            default => false,
+        };
+    }
+
+    /** ¿Se ofrece «Timbrar» aquí? En un booking, solo mientras siga abierto. */
+    public function allowsStamping(): bool
+    {
+        return $this->screen === 'invoice'
+            || ($this->screen === 'booking' && $this->allowsSelection() && ! ($this->booking()?->locked ?? true));
     }
 
     /**
@@ -483,24 +541,29 @@ class TransactionTable extends Component
     /**
      * Parte del profit del booking que le toca a esta factura, repartido según
      * su subtotal, como la columna «Profit factura (doc)» del original. Es un
-     * prorrateo: los costos son del booking completo. Null en los costos.
+     * prorrateo: los costos son del booking completo. Null en los costos y en
+     * las notas de crédito al cliente, que no entran en el ingreso.
      *
      * @param  array<string, mixed>|null  $profit
      */
     public function invoiceProfit(object $row, ?array $profit): ?float
     {
-        if ($profit === null || (int) $row->tran_type !== Transaction::TYPE_INVOICE || (float) $profit['inv_doc'] == 0.0) {
+        $esIngreso = (int) $row->tran_type === Transaction::TYPE_INVOICE
+            && (int) $row->invoice_type !== Transaction::INVOICE_TYPE_CREDIT;
+
+        if ($profit === null || ! $esIngreso || (float) $profit['inv_doc'] == 0.0) {
             return null;
         }
 
-        return $profit['profit_doc'] * (float) $row->amount_original_mxn / $profit['inv_doc'];
+        return $profit['profit_doc'] * abs((float) $row->amount_original_mxn) / $profit['inv_doc'];
     }
 
     /** Suma las columnas de dinero sobre el conjunto filtrado completo. */
     private function calculateTotals(): void
     {
         $this->totals = $this->query()->totals([
-            'amount_original', 'sub_16_mxn', 'sub_0_mxn', 'tax_16_mxn', 'tax_ret_mxn', 'total_amount', 'left_to_pay',
+            'amount_original', 'sub_16_mxn', 'sub_0_mxn', 'tax_16_mxn', 'non_dec', 'tax_ret_mxn', 'total_amount',
+            'total_amount_paid_tc', 'total_natural_amount', 'tran_paid_amount', 'left_to_pay',
         ]);
     }
 
@@ -577,6 +640,8 @@ class TransactionTable extends Component
             'companies' => Company::options(),
             'currencies' => Account::options(),
             'booking' => $this->booking(),
+            // Columna «Solicitud» de Costos: qué solicitud de pago pidió cada costo.
+            'requestNumbers' => $this->screen === 'bill' ? Transaction::requestNumbersFor($rows->items()) : [],
             // En la pantalla de un booking la utilidad va siempre, como en el
             // original: es una sola consulta chica.
             'bookingProfit' => $this->screen === 'booking'

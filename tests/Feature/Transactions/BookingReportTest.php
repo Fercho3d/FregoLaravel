@@ -62,6 +62,18 @@ class BookingReportTest extends LegacyDatabaseTestCase
             ->assertSee(__('Reporte por booking'));
     }
 
+    public function test_ver_todos_los_anios_y_limpiar_dejan_el_reporte_sin_rango(): void
+    {
+        $this->actingAs($this->admin());
+
+        $reporte = Livewire::test(BookingReport::class);
+
+        $this->assertNotSame('', $reporte->get('dates'), 'El reporte arranca acotado al año en curso.');
+
+        $reporte->call('showAllYears')->assertSet('dates', '')->assertSee(__('todos los años'));
+        $reporte->set('dates', self::RANGO)->call('clearFilters')->assertSet('dates', '');
+    }
+
     public function test_hay_una_sola_fila_por_booking(): void
     {
         $this->actingAs($this->admin());
