@@ -75,6 +75,18 @@ class TransactionFilters
 
     public ?int $cancelled = null;
 
+    /**
+     * Estado de la cancelación ante el SAT: una de las `CfdiCancelacion::VISTA_*`
+     * o null. Es lo que separa una factura cancelada de verdad de una que el
+     * sistema da por cancelada y el SAT sigue viendo vigente.
+     */
+    public ?string $cfdiEstado = null;
+
+    /** Valores de `$cfdiEstado` que miran el sello y no la bitácora de cancelaciones. */
+    public const CFDI_SIN_TIMBRAR = 'sin_timbrar';
+
+    public const CFDI_TIMBRADA = 'timbrada';
+
     public bool $onlyUndpaid = false;
 
     // --- Solicitud de pago ---

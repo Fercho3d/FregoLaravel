@@ -6,7 +6,7 @@
 
     // Cuántos filtros trae puestos: se muestra en el botón cuando el panel está
     // plegado, para que no se pierda de vista que la lista viene acotada.
-    $activos = collect([$tranNumber, $bookingNumber, $appliedTo, $dates, $companyId, $accountId, $paid, $docType])
+    $activos = collect([$tranNumber, $bookingNumber, $appliedTo, $dates, $companyId, $accountId, $paid, $docType, $cfdiEstado])
         ->filter(fn ($v) => filled($v))
         ->count() + ($showCancelled !== '0' ? 1 : 0);
     // [clave de orden, etiqueta, alineación, clave del pie de totales]. Las
@@ -29,7 +29,10 @@
         ['tax_ret_mxn', __('Ret. IVA'), 'text-right', 'tax_ret_mxn'],
         ['total_amount', __('Total'), 'text-right', 'total_amount'],
         ...($screen === 'booking' ? [[null, __('Profit factura (doc)'), 'text-right', 'profit']] : []),
-        ...($screen === 'bill' ? [[null, 'PDF / XML', 'text-left', null], [null, __('Solicitud'), 'text-left', null]] : []),
+        // Los archivos del CFDI se consultan desde cualquier listado: antes solo
+        // estaban en Costos y había que entrar al detalle para abrirlos.
+        [null, 'PDF / XML', 'text-left', null],
+        ...($screen === 'bill' ? [[null, __('Solicitud'), 'text-left', null]] : []),
         ...($screen === 'invoice' ? [['total_amount_paid_tc', __('Pagado (TC de pago)'), 'text-right', 'total_amount_paid_tc']] : []),
         ['tran_paid_amount', __('Pagado'), 'text-right', 'tran_paid_amount'],
         ...($screen === 'bill' ? [
@@ -193,6 +196,26 @@
                 <select wire:model="showCancelled" class="field-input mt-1 py-1.5 text-sm">
                     @foreach (['0' => __('Solo vigentes'), '1' => __('Vigentes y canceladas'), '2' => __('Solo canceladas')] as $valor => $etiqueta)
                         <option value="{{ $valor }}" @selected((string) $valor === $showCancelled)>{{ $etiqueta }}</option>
+                    @endforeach
+                </select>
+            </label>
+
+            {{-- Estado ante el SAT: separa la cancelación consumada de la que
+                 espera al receptor, de la que rechazaron y de la que quedó
+                 marcada aquí pero sigue vigente allá. --}}
+            <label class="block">
+                <span class="field-label text-xs">{{ __('Estado del CFDI') }}</span>
+                <select wire:model="cfdiEstado" class="field-input mt-1 py-1.5 text-sm">
+                    <option value="">{{ __('Cualquiera') }}</option>
+                    @foreach ([
+                        \App\Queries\TransactionFilters::CFDI_SIN_TIMBRAR => __('Sin timbrar'),
+                        \App\Queries\TransactionFilters::CFDI_TIMBRADA => __('Timbradas'),
+                        \App\Models\CfdiCancelacion::VISTA_CANCELADA => __('Canceladas ante el SAT'),
+                        \App\Models\CfdiCancelacion::VISTA_PROCESO => __('Cancelación en proceso'),
+                        \App\Models\CfdiCancelacion::VISTA_RECHAZADA => __('Cancelación rechazada'),
+                        \App\Models\CfdiCancelacion::VISTA_VIGENTE => __('Vigentes ante el SAT pese a estar marcadas'),
+                    ] as $valor => $etiqueta)
+                        <option value="{{ $valor }}" @selected($valor === $cfdiEstado)>{{ $etiqueta }}</option>
                     @endforeach
                 </select>
             </label>
@@ -533,7 +556,14 @@
                 <thead class="border-b border-line bg-panel text-xs uppercase tracking-wide text-ink-muted">
                     <tr>
                         @if ($this->allowsSelection())
-                            <th class="w-8 px-3 py-2.5"><span class="sr-only">{{ __('Selección') }}</span></th>
+                            <th class="w-8 px-3 py-2.5">
+                                {{-- Marcar todas las de la página: timbrar o cobrar en lote
+                                     no puede empezar por cincuenta clics. --}}
+                                <input type="checkbox" wire:click="toggleAll({{ Js::from(collect($rows->items())->map(fn ($r) => ['transc_id' => $r->transc_id, 'cancelled' => $r->cancelled, 'amount_original' => $r->amount_original, 'left_to_pay' => $r->left_to_pay])) }})"
+                                       title="{{ __('Marcar o desmarcar todas las de esta página') }}"
+                                       aria-label="{{ __('Marcar todas las de esta página') }}"
+                                       class="h-4 w-4 rounded border-line bg-panel text-accent-500 focus:ring-accent-500">
+                            </th>
                         @endif
                         @foreach ($columns as [$sortKey, $label, $align])
                             @php $nth = $loop->iteration + ($this->allowsSelection() ? 1 : 0); @endphp
@@ -617,18 +647,18 @@
                                     {{ $profitFactura === null ? '–' : $money($profitFactura) }}
                                 </td>
                             @endif
+                            {{-- Los archivos del documento: cada uno abre el suyo si está cargado. --}}
+                            <td class="whitespace-nowrap px-3 py-2 text-[11px]">
+                                @foreach ([['pdf', $row->pdf_attach], ['xml', $row->xml_attach]] as [$tipo, $archivo])
+                                    @if (filled($archivo))
+                                        <a href="{{ route('transactions.file', [$row->transc_id, $tipo]) }}" target="_blank" rel="noopener" data-navigate-ignore
+                                           title="{{ __('Abrir :archivo', ['archivo' => $archivo]) }}" class="badge badge-ok uppercase">{{ $tipo }}</a>
+                                    @else
+                                        <span class="badge badge-neutral uppercase opacity-60" title="{{ __('Sin archivo') }}">{{ $tipo }}</span>
+                                    @endif
+                                @endforeach
+                            </td>
                             @if ($screen === 'bill')
-                                {{-- Los documentos del costo: cada uno abre su archivo si está cargado. --}}
-                                <td class="whitespace-nowrap px-3 py-2 text-[11px]">
-                                    @foreach ([['pdf', $row->pdf_attach], ['xml', $row->xml_attach]] as [$tipo, $archivo])
-                                        @if (filled($archivo))
-                                            <a href="{{ route('transactions.file', [$row->transc_id, $tipo]) }}" target="_blank" rel="noopener" data-navigate-ignore
-                                               title="{{ $archivo }}" class="badge badge-ok uppercase">{{ $tipo }}</a>
-                                        @else
-                                            <span class="badge badge-neutral uppercase opacity-60" title="{{ __('Sin archivo') }}">{{ $tipo }}</span>
-                                        @endif
-                                    @endforeach
-                                </td>
                                 {{-- «Requested» del original: la solicitud de pago que pidió este costo. --}}
                                 <td class="whitespace-nowrap px-3 py-2 text-ink-muted">
                                     @if ($row->request_id && isset($requestNumbers[$row->request_id]))
@@ -664,12 +694,23 @@
                             <td class="whitespace-nowrap px-3 py-2 font-mono text-[11px] text-ink-faint" title="{{ $row->seal }}">
                                 {{ $row->seal ? \Illuminate\Support\Str::limit($row->seal, 8, '…') : '—' }}
 
-                                {{-- Cancelada es cancelada ante el SAT; una solicitud
-                                     que espera al receptor todavía no lo es. --}}
-                                @if ($row->cancelled)
-                                    <span class="badge badge-danger ml-1">{{ __('Cancelada') }}</span>
-                                @elseif (isset($cancelacionesPendientes[$row->transc_id]))
-                                    <span class="badge badge-warn ml-1">{{ __('Cancelación en proceso') }}</span>
+                                {{-- Cancelada es cancelada ANTE EL SAT. Una solicitud que
+                                     espera al receptor no lo es, una que el receptor
+                                     rechazó tampoco, y hay facturas viejas marcadas
+                                     aquí que el SAT sigue viendo vigentes. --}}
+                                @php
+                                    $cancelacion = $cancelaciones[$row->transc_id] ?? null;
+                                    $vista = $cancelacion?->estadoVisible()
+                                        ?? ($row->cancelled ? \App\Models\CfdiCancelacion::VISTA_CANCELADA : null);
+                                    $insignia = [
+                                        \App\Models\CfdiCancelacion::VISTA_CANCELADA => ['badge-danger', __('Cancelada'), __('Cancelada ante el SAT')],
+                                        \App\Models\CfdiCancelacion::VISTA_PROCESO => ['badge-warn', __('Cancelación en proceso'), __('Solicitud enviada: el receptor tiene 72 horas para autorizarla')],
+                                        \App\Models\CfdiCancelacion::VISTA_RECHAZADA => ['badge-warn', __('Cancelación rechazada'), __('El receptor rechazó la cancelación: la factura sigue vigente')],
+                                        \App\Models\CfdiCancelacion::VISTA_VIGENTE => ['badge-warn', __('Vigente ante el SAT'), __('Marcada como cancelada aquí, pero el SAT la sigue viendo vigente')],
+                                    ][$vista] ?? null;
+                                @endphp
+                                @if ($insignia)
+                                    <span class="badge {{ $insignia[0] }} ml-1" title="{{ $insignia[2] }}{{ $cancelacion?->verificado_at ? ' · '.__('consultado el :fecha', ['fecha' => $cancelacion->verificado_at->format('d/m/Y')]) : '' }}">{{ $insignia[1] }}</span>
                                 @endif
                             </td>
                         </tr>

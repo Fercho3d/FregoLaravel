@@ -45,6 +45,8 @@ class TransactionsExport
         'Non Dec' => 'non_dec',
         'Ret. IVA' => 'tax_ret_mxn',
         'Total' => 'total_amount',
+        'PDF' => 'pdf',
+        'XML' => 'xml',
         'Pagado' => 'tran_paid_amount',
         'Estado' => 'estado',
         'CFDI' => 'seal',
@@ -52,7 +54,7 @@ class TransactionsExport
 
     /** Columnas que solo lleva Costos, como su listado: van entre «Total» y «Pagado» y tras «Pagado». */
     private const COLUMNAS_COSTOS = [
-        'Total' => ['PDF' => 'pdf', 'XML' => 'xml', 'Solicitud' => 'solicitud'],
+        'Total' => ['Solicitud' => 'solicitud'],
         'Pagado' => [
             'Total natural' => 'total_natural_amount',
             'Saldo' => 'left_to_pay',

@@ -61,6 +61,14 @@ class TransactionTable extends Component
     #[Url(as: 'canc', except: '0')]
     public string $showCancelled = '0';
 
+    /**
+     * Estado de la cancelación ante el SAT (claves de `CfdiCancelacion::VISTA_*`);
+     * '' = sin filtrar. Enseña también las canceladas, sin tener que tocar el
+     * otro filtro.
+     */
+    #[Url(as: 'cfdi', except: '')]
+    public string $cfdiEstado = '';
+
     /** Tipo de documento (clave de `TransactionFilters::documentTypes()`); '' = todos. */
     #[Url(as: 'tipo', except: '')]
     public string $docType = '';
@@ -125,6 +133,7 @@ class TransactionTable extends Component
         'paid',
         'showCancelled',
         'docType',
+        'cfdiEstado',
         'perPage',
     ];
 
@@ -241,7 +250,7 @@ class TransactionTable extends Component
 
     public function clearFilters(): void
     {
-        $this->reset(['tranNumber', 'bookingNumber', 'appliedTo', 'dates', 'companyId', 'accountId', 'paid', 'docType']);
+        $this->reset(['tranNumber', 'bookingNumber', 'appliedTo', 'dates', 'companyId', 'accountId', 'paid', 'docType', 'cfdiEstado']);
         $this->showCancelled = '0';
         $this->totals = null;
         $this->profit = null;
@@ -426,6 +435,7 @@ class TransactionTable extends Component
             'ccy' => $this->accountId,
             'pago' => $this->paid,
             'canc' => $this->showCancelled,
+            'cfdi' => $this->cfdiEstado,
             'tipo' => $this->docType,
             'ord' => $this->sort,
             'dir' => $this->direction,
@@ -496,6 +506,28 @@ class TransactionTable extends Component
      * saldados (con importe y sin saldo); aquí también la de los cancelados,
      * que no tienen nada que cobrar ni pagar.
      */
+    /**
+     * Marca o desmarca todas las de la página, sin tocar las que no se pueden
+     * marcar. Timbrar cincuenta facturas no puede empezar por cincuenta clics:
+     * la rejilla del sistema original traía esta casilla en la cabecera.
+     *
+     * @param  iterable<object>  $rows
+     */
+    public function toggleAll(iterable $rows): void
+    {
+        $marcables = collect($rows)
+            ->filter(fn ($row) => $this->unselectableReason($row) === null)
+            ->pluck('transc_id')
+            ->map(intval(...))
+            ->all();
+
+        $todasMarcadas = $marcables !== [] && array_diff($marcables, $this->selected) === [];
+
+        $this->selected = $todasMarcadas
+            ? array_values(array_diff($this->selected, $marcables))
+            : array_values(array_unique([...$this->selected, ...$marcables]));
+    }
+
     public function unselectableReason(object $row): ?string
     {
         if ($row->cancelled) {
@@ -593,6 +625,7 @@ class TransactionTable extends Component
             'account' => $this->accountId !== '' ? (int) $this->accountId : null,
             'paid' => $this->paid !== '' ? (int) $this->paid : null,
             'showCancelled' => (int) $this->showCancelled,
+            'cfdiEstado' => $this->cfdiEstado ?: null,
             'sort' => $this->sort,
             'direction' => $this->direction,
         ]);
@@ -641,10 +674,10 @@ class TransactionTable extends Component
             // Columna CFDI: qué facturas de esta página tienen una cancelación
             // pedida y aún sin consumar. Una consulta chica por los IDs de la
             // página, en vez de meter otra unión en el motor de listados.
-            'cancelacionesPendientes' => CfdiCancelacion::pendientes()
+            'cancelaciones' => CfdiCancelacion::query()
                 ->whereIn('transc_id', collect($rows->items())->pluck('transc_id')->all())
-                ->pluck('estado', 'transc_id')
-                ->all(),
+                ->get()
+                ->keyBy('transc_id'),
             'companies' => Company::options(),
             'currencies' => Account::options(),
             'booking' => $this->booking(),

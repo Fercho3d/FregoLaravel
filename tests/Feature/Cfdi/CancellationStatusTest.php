@@ -10,12 +10,14 @@ use App\Models\User;
 use App\Support\Cfdi\CancelResult;
 use App\Support\Cfdi\PacClient;
 use App\Support\Cfdi\SatStatus;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\CoreSchema;
 use Tests\Support\FakePacClient;
 use Tests\Support\FakeSatStatus;
@@ -326,5 +328,98 @@ class CancellationStatusTest extends TestCase
         $this->artisan('cfdi:revisar-cancelaciones', ['--pausa' => 0])->assertSuccessful();
 
         $this->assertSame([], $sat->consultas);
+    }
+
+    // ------------------------------------- Estado en el listado y su filtro
+
+    /**
+     * Cada factura enseña en qué punto va su cancelación.
+     *
+     * Antes todas las que tenían `cancelled = 1` decían «Cancelada», incluidas
+     * las que el SAT sigue viendo vigentes porque el receptor las rechazó o
+     * porque la solicitud nunca llegó. En producción había once así.
+     */
+    public static function estadosEnElListado(): array
+    {
+        return [
+            'confirmada por el SAT' => [CancelResult::CANCELADA, 'Cancelado', 'Cancelado sin aceptación', 1, 'Cancelada'],
+            'esperando al receptor' => [CancelResult::SOLICITADA, null, null, 0, 'Cancelación en proceso'],
+            'rechazada por el receptor' => [CancelResult::RECHAZADA, 'Vigente', 'Solicitud rechazada', 1, 'Cancelación rechazada'],
+            'marcada aquí y vigente allá' => [CancelResult::SOLICITADA, 'Vigente', null, 1, 'Vigente ante el SAT'],
+        ];
+    }
+
+    #[DataProvider('estadosEnElListado')]
+    public function test_el_listado_dice_en_que_va_la_cancelacion(
+        string $estado, ?string $satEstado, ?string $satEstatus, int $cancelled, string $insignia
+    ): void {
+        $this->anotaCancelacion($estado, $satEstado, $satEstatus, $cancelled);
+
+        $this->actingAs($this->usuario());
+
+        Livewire::test(TransactionTable::class, ['screen' => 'invoice'])
+            ->set('showCancelled', '1')
+            ->assertSee(__($insignia));
+    }
+
+    #[DataProvider('estadosEnElListado')]
+    public function test_el_filtro_trae_las_facturas_de_ese_estado(
+        string $estado, ?string $satEstado, ?string $satEstatus, int $cancelled, string $insignia, ?string $vista = null
+    ): void {
+        $this->anotaCancelacion($estado, $satEstado, $satEstatus, $cancelled);
+
+        $this->actingAs($this->usuario());
+
+        $vistas = [
+            'Cancelada' => CfdiCancelacion::VISTA_CANCELADA,
+            'Cancelación en proceso' => CfdiCancelacion::VISTA_PROCESO,
+            'Cancelación rechazada' => CfdiCancelacion::VISTA_RECHAZADA,
+            'Vigente ante el SAT' => CfdiCancelacion::VISTA_VIGENTE,
+        ];
+
+        $pantalla = Livewire::test(TransactionTable::class, ['screen' => 'invoice'])
+            ->set('cfdiEstado', $vistas[$insignia]);
+
+        $this->assertSame([1], collect($pantalla->viewData('rows')->items())->pluck('transc_id')->map(intval(...))->all());
+    }
+
+    /** El filtro de un estado deja fuera a las facturas de los otros. */
+    public function test_el_filtro_deja_fuera_las_de_otro_estado(): void
+    {
+        $this->anotaCancelacion(CancelResult::RECHAZADA, 'Vigente', 'Solicitud rechazada', 1);
+
+        $this->actingAs($this->usuario());
+
+        $pantalla = Livewire::test(TransactionTable::class, ['screen' => 'invoice'])
+            ->set('cfdiEstado', CfdiCancelacion::VISTA_CANCELADA);
+
+        $this->assertSame([], collect($pantalla->viewData('rows')->items())->pluck('transc_id')->all());
+    }
+
+    /** Una solicitud dentro del plazo sigue «en proceso» aunque el SAT diga vigente. */
+    public function test_dentro_del_plazo_la_solicitud_sigue_en_proceso(): void
+    {
+        $this->anotaCancelacion(CancelResult::SOLICITADA, 'Vigente', null, 1, now()->subHours(2));
+
+        $this->assertSame(CfdiCancelacion::VISTA_PROCESO, CfdiCancelacion::first()->estadoVisible());
+    }
+
+    private function anotaCancelacion(
+        string $estado, ?string $satEstado, ?string $satEstatus, int $cancelled, ?Carbon $solicitado = null
+    ): void {
+        DB::table('transaction')->where('transc_id', 1)->update([
+            'cancelled' => $cancelled,
+            'seal' => '3ECE3E47-7242-44E9-B6DB-355091F891C2',
+        ]);
+
+        CfdiCancelacion::create([
+            'transc_id' => 1,
+            'uuid' => '3ECE3E47-7242-44E9-B6DB-355091F891C2',
+            'motivo' => '02',
+            'estado' => $estado,
+            'sat_estado' => $satEstado,
+            'sat_estatus' => $satEstatus,
+            'solicitado_at' => $solicitado ?? now()->subDays(10),
+        ]);
     }
 }

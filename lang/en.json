@@ -1250,5 +1250,20 @@
     "Solicitada el :fecha": "Requested on :fecha",
     "Solicitud de cancelación enviada. El receptor debe autorizarla; si no responde en 72 horas, el SAT la cancela por plazo vencido.": "Cancellation request sent. The recipient must authorise it; if they do not answer within 72 hours, the SAT cancels it as time expired.",
     "Todavía sin consultar al SAT.": "Not checked with the SAT yet.",
-    "Última consulta al SAT: :fecha": "Last SAT check: :fecha"
+    "Última consulta al SAT: :fecha": "Last SAT check: :fecha",
+    "Estado del CFDI": "CFDI status",
+    "Canceladas ante el SAT": "Cancelled at the SAT",
+    "Cancelación rechazada": "Cancellation rejected",
+    "Vigentes ante el SAT pese a estar marcadas": "Still valid at the SAT despite being marked",
+    "Vigente ante el SAT": "Valid at the SAT",
+    "Cancelada ante el SAT": "Cancelled at the SAT",
+    "Solicitud enviada: el receptor tiene 72 horas para autorizarla": "Request sent: the recipient has 72 hours to authorise it",
+    "El receptor rechazó la cancelación: la factura sigue vigente": "The recipient rejected the cancellation: the invoice is still valid",
+    "Marcada como cancelada aquí, pero el SAT la sigue viendo vigente": "Marked as cancelled here, but the SAT still sees it as valid",
+    "consultado el :fecha": "checked on :fecha",
+    "Sin timbrar": "Not stamped",
+    "Timbradas": "Stamped",
+    "Marcar o desmarcar todas las de esta página": "Select or clear every row on this page",
+    "Marcar todas las de esta página": "Select every row on this page",
+    "Abrir :archivo": "Open :archivo"
 }

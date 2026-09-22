@@ -39,4 +39,41 @@ class CfdiCancelacion extends Model
     {
         return in_array($this->estado, CancelResult::PENDIENTES, true);
     }
+
+    /** Horas que el SAT le da al receptor para contestar antes de cancelar por plazo vencido. */
+    public const PLAZO_HORAS = 72;
+
+    /*
+     * Cómo se ve la cancelación en pantalla. Son cuatro y no tres porque hay
+     * facturas que el sistema da por canceladas y el SAT sigue viendo vigentes:
+     * unas porque el receptor rechazó la solicitud y otras porque la solicitud
+     * nunca llegó. Decirles «cancelada» es justo lo que confundía a quien
+     * factura.
+     */
+    public const VISTA_CANCELADA = 'cancelada';
+
+    public const VISTA_PROCESO = 'proceso';
+
+    public const VISTA_RECHAZADA = 'rechazada';
+
+    public const VISTA_VIGENTE = 'vigente';
+
+    /** @return self::VISTA_* */
+    public function estadoVisible(): string
+    {
+        if ($this->estado === CancelResult::CANCELADA || $this->sat_estado === 'Cancelado') {
+            return self::VISTA_CANCELADA;
+        }
+
+        if ($this->estado === CancelResult::RECHAZADA) {
+            return self::VISTA_RECHAZADA;
+        }
+
+        // Pedida hace más del plazo y el SAT sigue sin saber de ella: no está en
+        // proceso, está sin registrar.
+        $vencio = $this->solicitado_at !== null
+            && $this->solicitado_at->diffInHours(now()) > self::PLAZO_HORAS;
+
+        return $this->sat_estado === 'Vigente' && $vencio ? self::VISTA_VIGENTE : self::VISTA_PROCESO;
+    }
 }

@@ -6,6 +6,7 @@ use App\Livewire\Transactions\TransactionDetail;
 use App\Livewire\Transactions\TransactionTable;
 use App\Models\Core\Transaction;
 use App\Models\User;
+use App\Queries\TransactionFilters;
 use App\Support\Cfdi\PacClient;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -293,5 +294,78 @@ class StampingTest extends TestCase
             ->assertForbidden();
 
         $this->assertNull(Transaction::find(1)->seal);
+    }
+
+    // ------------------------------------------- Marcar todas y filtros
+
+    /**
+     * Timbrar en lote empieza por marcar, y marcar de una en una no es marcar.
+     * La rejilla del sistema original traía la casilla en la cabecera.
+     */
+    public function test_la_cabecera_marca_todas_las_de_la_pagina(): void
+    {
+        $this->actingAs($this->usuario());
+
+        $pantalla = Livewire::test(TransactionTable::class, ['screen' => 'invoice']);
+        $marcables = collect($pantalla->viewData('rows')->items())
+            ->reject(fn ($fila) => $pantalla->instance()->unselectableReason($fila) !== null)
+            ->pluck('transc_id')
+            ->map(intval(...))
+            ->all();
+
+        $pantalla->call('toggleAll', $pantalla->viewData('rows')->items());
+
+        $this->assertSame($marcables, $pantalla->get('selected'));
+    }
+
+    public function test_volver_a_pulsarla_desmarca_todas(): void
+    {
+        $this->actingAs($this->usuario());
+
+        $pantalla = Livewire::test(TransactionTable::class, ['screen' => 'invoice']);
+        $filas = $pantalla->viewData('rows')->items();
+
+        $pantalla->call('toggleAll', $filas)->call('toggleAll', $filas);
+
+        $this->assertSame([], $pantalla->get('selected'));
+    }
+
+    /** Lo que falta por timbrar se encuentra con un filtro, no a ojo. */
+    public function test_el_filtro_sin_timbrar_trae_las_que_no_tienen_sello(): void
+    {
+        $this->actingAs($this->usuario());
+
+        $pantalla = Livewire::test(TransactionTable::class, ['screen' => 'invoice'])
+            ->set('cfdiEstado', TransactionFilters::CFDI_SIN_TIMBRAR);
+
+        foreach ($pantalla->viewData('rows')->items() as $fila) {
+            $this->assertEmpty($fila->seal);
+        }
+    }
+
+    public function test_el_filtro_timbradas_solo_trae_las_selladas(): void
+    {
+        DB::table('transaction')->where('transc_id', 1)->update(['seal' => '3ECE3E47-7242-44E9-B6DB-355091F891C2']);
+
+        $this->actingAs($this->usuario());
+
+        $pantalla = Livewire::test(TransactionTable::class, ['screen' => 'invoice'])
+            ->set('cfdiEstado', TransactionFilters::CFDI_TIMBRADA);
+
+        $this->assertSame([1], collect($pantalla->viewData('rows')->items())->pluck('transc_id')->map(intval(...))->all());
+    }
+
+    /** Los archivos del CFDI se abren desde cualquier listado, no solo desde Costos. */
+    public function test_el_listado_de_facturas_ofrece_el_pdf_y_el_xml(): void
+    {
+        DB::table('transaction')->where('transc_id', 1)->update([
+            'pdf_attach' => 'factura.pdf', 'xml_attach' => 'factura.xml',
+        ]);
+
+        $this->actingAs($this->usuario());
+
+        Livewire::test(TransactionTable::class, ['screen' => 'invoice'])
+            ->assertSeeHtml(route('transactions.file', [1, 'pdf']))
+            ->assertSeeHtml(route('transactions.file', [1, 'xml']));
     }
 }
