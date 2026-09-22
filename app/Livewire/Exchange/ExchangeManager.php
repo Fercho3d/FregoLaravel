@@ -5,6 +5,7 @@ namespace App\Livewire\Exchange;
 use App\Models\Core\Account;
 use App\Models\Core\Exchange;
 use App\Support\ExchangeRates;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Url;
@@ -102,7 +103,7 @@ class ExchangeManager extends Component
             'date' => ['required', 'date'],
             'value' => ['required', 'numeric', 'gt:0'],
             'account' => ['required', Rule::exists('account', 'account_id')],
-        ], attributes: ['date' => 'fecha', 'value' => __('tipo de cambio'), 'account' => 'moneda']);
+        ], attributes: ['date' => __('fecha'), 'value' => __('tipo de cambio'), 'account' => __('moneda')]);
 
         // El índice único de la tabla es (fecha, moneda): no puede haber dos.
         $repetido = Exchange::whereDate('date_exchange', $this->date)
@@ -116,18 +117,27 @@ class ExchangeManager extends Component
             return;
         }
 
+        // `created_at`/`modified_at` son columnas `date` en la base: solo la fecha.
         $valores = [
             'date_exchange' => $this->date,
             'exchange_value' => (float) $this->value,
             'account' => (int) $this->account,
             'modified_by' => auth()->id(),
+            'modified_at' => now()->toDateString(),
         ];
 
         // `taken_date` es la fecha de publicación que trae Banxico; una captura a
         // mano no la tiene, igual que en el original.
-        $this->editing === 0
-            ? Exchange::create($valores + ['created_by' => auth()->id()])
-            : Exchange::findOrFail($this->editing)->forceFill($valores)->save();
+        try {
+            $this->editing === 0
+                ? Exchange::create($valores + ['created_by' => auth()->id(), 'created_at' => now()->toDateString()])
+                : Exchange::findOrFail($this->editing)->forceFill($valores)->save();
+        } catch (UniqueConstraintViolationException) {
+            // Otro lo guardó entre la revisión de arriba y este alta (`uq_date`).
+            $this->addError('date', __('Ya hay un tipo de cambio para esa moneda en esa fecha.'));
+
+            return;
+        }
 
         session()->flash('status', __('Tipo de cambio guardado.'));
         $this->cancel();

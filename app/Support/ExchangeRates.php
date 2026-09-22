@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\Core\Exchange;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -98,13 +99,21 @@ class ExchangeRates
             return false;
         }
 
-        Exchange::create([
-            'exchange_value' => $dato['dato'],
-            'date_exchange' => $fecha->toDateString(),
-            'taken_date' => Carbon::createFromFormat('d/m/Y', $dato['fecha'])->toDateString(),
-            'account' => self::CUENTA_USD,
-            'url' => $url,
-        ]);
+        try {
+            // `created_at`/`modified_at` son `date` en la base; el alta es del sistema, sin usuario.
+            Exchange::create([
+                'exchange_value' => $dato['dato'],
+                'date_exchange' => $fecha->toDateString(),
+                'taken_date' => Carbon::createFromFormat('d/m/Y', $dato['fecha'])->toDateString(),
+                'account' => self::CUENTA_USD,
+                'url' => $url,
+                'created_at' => now()->toDateString(),
+                'modified_at' => now()->toDateString(),
+            ]);
+        } catch (UniqueConstraintViolationException) {
+            // Otra petición lo registró mientras se consultaba a Banxico (`uq_date`):
+            // ya está, que es lo que se buscaba. No es una falla de Banxico.
+        }
 
         return true;
     }

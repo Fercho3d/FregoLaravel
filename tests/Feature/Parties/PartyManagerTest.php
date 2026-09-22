@@ -41,7 +41,7 @@ class PartyManagerTest extends TestCase
 
     private function usuario(int $rol = User::ROLE_ADMIN): User
     {
-        return User::create([
+        return User::forceCreate([
             'username' => 'operador'.$rol, 'password' => 'secreto-de-prueba', 'role' => $rol, 'status' => 1,
         ]);
     }
@@ -357,6 +357,16 @@ class PartyManagerTest extends TestCase
 
         $this->assertCount(1, $filas->items());
         $this->assertSame('Star Juice', $filas->items()[0]->fullName);
+    }
+
+    /** La tabla guarda contraseña y llaves del portal: el listado no las trae. */
+    public function test_el_listado_solo_trae_las_columnas_que_pinta(): void
+    {
+        DB::table('client')->insert([['client_id' => 1, 'fullName' => 'Star Juice']]);
+
+        $fila = (array) $this->pantalla()->viewData('filas')->items()[0];
+
+        $this->assertEqualsCanonicalizing(['client_id', 'fullName', 'rfc', 'email', 'city', 'phone'], array_keys($fila));
     }
 
     public function test_quien_no_es_administrador_no_escribe(): void

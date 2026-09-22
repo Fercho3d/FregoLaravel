@@ -29,7 +29,7 @@
         @endif
 
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            @foreach ($this->fields() as $campo => [$etiqueta, $tipo, $reglas])
+            @foreach ($this->campos as $campo => [$etiqueta, $tipo, $reglas])
                 @php $obligatorio = in_array('required', $reglas, true); @endphp
                 <label class="block {{ in_array($tipo, ['checkbox', 'textarea'], true) ? 'sm:col-span-2 lg:col-span-3' : '' }}">
                     @if ($tipo === 'checkbox')
@@ -71,7 +71,7 @@
                 </p>
 
                 <div class="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                    @foreach ($this->documentCatalog() as $id => $etiqueta)
+                    @foreach ($this->documentCatalog as $id => $etiqueta)
                         <label class="flex items-center gap-2 text-sm text-ink-soft">
                             <input type="checkbox" wire:model="documentFields" value="{{ $id }}"
                                    class="h-4 w-4 rounded border-line bg-panel text-accent-500 focus:ring-accent-500">

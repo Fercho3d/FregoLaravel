@@ -53,10 +53,28 @@ class PartyManager extends Component
         ]), absolute: false);
     }
 
-    /** La lista con su búsqueda, tal como se ve. */
-    private function query(): Builder
+    /**
+     * Columnas que pinta el listado. El tipo del proveedor decide en qué
+     * selector del booking aparece, así que se ve.
+     *
+     * @return array<string, array{0: string, 1: string, 2: array<int, mixed>}>
+     */
+    public function listFields(): array
+    {
+        return array_intersect_key($this->fields(), array_flip(['fullName', 'rfc', 'email', 'city', 'phone', 'type_id']));
+    }
+
+    /**
+     * La lista con su búsqueda, tal como se ve, con solo las columnas pedidas y
+     * la llave: la tabla guarda también la contraseña y las llaves del portal,
+     * que no tienen por qué salir de la base.
+     *
+     * @param  array<int, string>  $columnas
+     */
+    private function query(array $columnas): Builder
     {
         return DB::table($this->table())
+            ->select(array_values(array_unique([$this->key(), ...$columnas])))
             ->when($this->search !== '', function ($q) {
                 $q->where(function ($w) {
                     foreach (['fullName', 'rfc', 'email', 'city'] as $columna) {
@@ -75,7 +93,7 @@ class PartyManager extends Component
         $campos = $this->fields();
 
         return $exportacion->stream(
-            $this->query(),
+            $this->query(array_keys($campos)),
             ['ID' => $this->key()] + collect($campos)->mapWithKeys(fn ($d, $campo) => [$d[0] => $campo])->all(),
             collect($campos)->filter(fn ($d) => $d[1] === 'select')->mapWithKeys(fn ($d, $campo) => [$campo => $this->optionsFor($campo)])->all(),
             ($this->isClient() ? 'clientes' : 'proveedores').'-'.now()->format('Ymd-His').'.csv',
@@ -85,7 +103,7 @@ class PartyManager extends Component
     public function render()
     {
         return view('livewire.parties.party-manager', [
-            'filas' => $this->query()->paginate(25, ['*'], 'page', $this->getPage()),
+            'filas' => $this->query(array_keys($this->listFields()))->paginate(25, ['*'], 'page', $this->getPage()),
         ])->layout('components.app-layout', ['title' => $this->title()]);
     }
 }

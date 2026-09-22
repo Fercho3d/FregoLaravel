@@ -6,6 +6,8 @@ use App\Livewire\Parties\Concerns\PartyFields;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
+use Livewire\Attributes\Computed;
 use Livewire\Component;
 
 /**
@@ -40,6 +42,19 @@ class PartyForm extends Component
     /** A dónde regresa: la lista con su búsqueda y su página. */
     public string $volver = '';
 
+    /**
+     * Los campos del modo, calculados una vez por petición: `fields()` arma
+     * reglas y consulta los catálogos del SAT, y la ficha lo pide al montar,
+     * al guardar y al pintar.
+     *
+     * @return array<string, array{0: string, 1: string, 2: array<int, mixed>}>
+     */
+    #[Computed]
+    public function campos(): array
+    {
+        return $this->fields();
+    }
+
     public function mount(string $mode = 'client', ?int $party = null): void
     {
         $this->assertAdmin();
@@ -53,7 +68,7 @@ class PartyForm extends Component
             : route($this->listRoute(), absolute: false);
 
         if ($party === null) {
-            $this->form = collect($this->fields())->map(fn ($d) => $d[1] === 'checkbox' ? false : '')->all();
+            $this->form = collect($this->campos)->map(fn ($d) => $d[1] === 'checkbox' ? false : '')->all();
             // Un cliente nuevo pide de entrada los documentos marcados como «por
             // omisión» en el catálogo, como `Client::generateFields()` en Yii2.
             $this->documentFields = $this->isClient()
@@ -67,7 +82,7 @@ class PartyForm extends Component
 
         abort_if($fila === null, 404);
 
-        $this->form = collect($this->fields())
+        $this->form = collect($this->campos)
             ->mapWithKeys(fn ($d, $campo) => [
                 $campo => $d[1] === 'checkbox' ? (bool) ($fila->{$campo} ?? false) : trim((string) ($fila->{$campo} ?? '')),
             ])
@@ -79,6 +94,7 @@ class PartyForm extends Component
     }
 
     /** El catálogo de documentos, para las casillas. @return array<int, string> */
+    #[Computed]
     public function documentCatalog(): array
     {
         return DB::table('file_fields')->orderBy('label')
@@ -120,7 +136,7 @@ class PartyForm extends Component
     {
         $this->assertAdmin();
 
-        $campos = $this->fields();
+        $campos = $this->campos;
 
         // Se normaliza antes de validar: el RFC va en mayúsculas y el teléfono
         // se captura como se lee («(55) 1234-5678») pero la columna es un entero.
@@ -133,11 +149,17 @@ class PartyForm extends Component
             }
         }
 
+        // `fields_by_client` no tiene llave foránea: sin esta regla, un id
+        // manipulado dejaría pedido un documento que no existe.
+        $documentos = $this->isClient()
+            ? ['documentFields' => ['array'], 'documentFields.*' => ['integer', Rule::exists('file_fields', 'field_id')]]
+            : [];
+
         $this->validate(
-            collect($campos)->mapWithKeys(fn ($d, $campo) => ["form.{$campo}" => $d[2]])->all(),
+            collect($campos)->mapWithKeys(fn ($d, $campo) => ["form.{$campo}" => $d[2]])->all() + $documentos,
             attributes: collect($campos)
                 ->mapWithKeys(fn ($d, $campo) => ["form.{$campo}" => mb_strtolower($d[0])])
-                ->all(),
+                ->all() + ['documentFields.*' => __('documento')],
         );
 
         $valores = collect($campos)

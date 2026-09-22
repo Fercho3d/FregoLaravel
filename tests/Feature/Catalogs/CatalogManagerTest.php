@@ -256,19 +256,76 @@ class CatalogManagerTest extends TestCase
 
     public function test_un_error_de_la_base_al_guardar_se_avisa_en_pantalla(): void
     {
-        // Lo que pase la validación pero la base rechace (aquí, un nombre
-        // repetido con índice único) se avisa en pantalla en vez de reventar.
-        Schema::table('company', fn ($table) => $table->unique('name'));
-        DB::table('company')->insert(['company_id' => 1, 'name' => 'FTM', 'active' => 1]);
+        // Lo que pase la validación pero la base rechace (aquí, una razón social
+        // repetida con índice único que la pantalla no valida) se avisa en
+        // pantalla en vez de reventar.
+        Schema::table('company', fn ($table) => $table->unique('business_name'));
+        DB::table('company')->insert(['company_id' => 1, 'name' => 'FTM', 'business_name' => 'FTM SA', 'active' => 1]);
 
         $this->pantalla('companias')
             ->call('create')
-            ->set('form.name', 'FTM')
+            ->set('form.name', 'Otra')
+            ->set('form.business_name', 'FTM SA')
             ->call('save')
             ->assertHasErrors('form')
             ->assertSet('editing', 0);
 
         $this->assertSame(1, DB::table('company')->count());
+    }
+
+    public function test_no_se_edita_un_renglon_dado_de_baja_aunque_se_mande_su_id(): void
+    {
+        DB::table('loading_ports')->insert(['port_id' => 1, 'port_name' => 'BUSAN', 'deleted' => 1]);
+
+        $this->pantalla('puertos-carga')->call('edit', 1)->assertStatus(404);
+    }
+
+    public function test_tampoco_se_guarda_sobre_un_renglon_dado_de_baja(): void
+    {
+        DB::table('loading_ports')->insert(['port_id' => 1, 'port_name' => 'BUSAN', 'deleted' => 1]);
+
+        $this->pantalla('puertos-carga')
+            ->call('create')
+            ->set('editing', 1)
+            ->set('form.port_name', 'Cambiado')
+            ->call('save');
+
+        $this->assertSame('BUSAN', DB::table('loading_ports')->where('port_id', 1)->value('port_name'));
+    }
+
+    public function test_el_nombre_no_se_repite_donde_la_base_no_tiene_duplicados(): void
+    {
+        DB::table('modality')->insert(['modality_id' => 1, 'modality_name' => 'FCL']);
+
+        $this->pantalla('modalidades')
+            ->call('create')
+            ->set('form.modality_name', 'FCL')
+            ->call('save')
+            ->assertHasErrors(['form.modality_name' => 'unique']);
+    }
+
+    public function test_al_editar_el_nombre_propio_no_cuenta_como_repetido(): void
+    {
+        DB::table('modality')->insert(['modality_id' => 1, 'modality_name' => 'FCL']);
+
+        $this->pantalla('modalidades')
+            ->call('edit', 1)
+            ->call('save')
+            ->assertHasNoErrors();
+    }
+
+    /** `pickup_place.created_at` y `modified_at` son `date`: ahí va solo el día. */
+    public function test_la_auditoria_en_columnas_date_guarda_solo_la_fecha(): void
+    {
+        CatalogSchema::create(CatalogRegistry::find('lugares-recoleccion'), auditoria: 'date');
+
+        $this->pantalla('lugares-recoleccion')
+            ->call('create')
+            ->set('form.name', 'Bodega norte')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame(now()->toDateString(), DB::table('pickup_place')->value('created_at'));
     }
 
     /**

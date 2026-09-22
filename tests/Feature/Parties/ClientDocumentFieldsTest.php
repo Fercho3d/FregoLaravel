@@ -39,7 +39,7 @@ class ClientDocumentFieldsTest extends TestCase
 
     private function pantalla(int $party = 5, int $rol = User::ROLE_ADMIN): Testable
     {
-        $this->actingAs(User::create([
+        $this->actingAs(User::forceCreate([
             'username' => 'operador'.$rol, 'password' => 'secreto-de-prueba', 'role' => $rol, 'status' => 1,
         ]));
 
@@ -58,6 +58,17 @@ class ClientDocumentFieldsTest extends TestCase
             DB::table('fields_by_client')->where('client_id', 5)->orderBy('field_id')
                 ->pluck('field_id')->map(fn ($id) => (int) $id)->all(),
         );
+    }
+
+    /** `fields_by_client` no tiene llave foránea: un id que no existe se rechaza aquí. */
+    public function test_un_documento_inexistente_no_se_acepta(): void
+    {
+        $this->pantalla()
+            ->set('documentFields', ['1', '99'])
+            ->call('save')
+            ->assertHasErrors(['documentFields.1' => 'exists']);
+
+        $this->assertSame(0, DB::table('fields_by_client')->count());
     }
 
     public function test_desmarcar_los_quita_y_no_toca_los_demas(): void
@@ -88,7 +99,7 @@ class ClientDocumentFieldsTest extends TestCase
     /** Como `Client::generateFields()` en Yii2: los marcados «por omisión» vienen elegidos. */
     public function test_un_cliente_nuevo_trae_marcados_los_documentos_por_omision(): void
     {
-        $this->actingAs(User::create([
+        $this->actingAs(User::forceCreate([
             'username' => 'admin3', 'password' => 'secreto-de-prueba', 'role' => User::ROLE_ADMIN, 'status' => 1,
         ]));
 
@@ -106,7 +117,7 @@ class ClientDocumentFieldsTest extends TestCase
     {
         DB::table('provider')->insert([['provider_id' => 3, 'fullName' => 'Naviera', 'type_id' => 1]]);
 
-        $this->actingAs(User::create([
+        $this->actingAs(User::forceCreate([
             'username' => 'admin2', 'password' => 'secreto-de-prueba', 'role' => User::ROLE_ADMIN, 'status' => 1,
         ]));
 

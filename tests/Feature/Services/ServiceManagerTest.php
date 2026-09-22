@@ -45,7 +45,7 @@ class ServiceManagerTest extends TestCase
     /** Super administrador: en Yii2 el `ServiceController` no dejaba entrar a nadie más. */
     private function usuario(int $rol = User::ROLE_SUPER_ADMIN): User
     {
-        return User::create([
+        return User::forceCreate([
             'username' => 'operador'.$rol, 'password' => 'secreto-de-prueba', 'role' => $rol, 'status' => 1,
         ]);
     }
@@ -323,6 +323,54 @@ class ServiceManagerTest extends TestCase
         $compra = $this->pantalla()->set('type', '2')->viewData('servicios');
         $this->assertCount(1, $compra->items());
         $this->assertSame('De compra', $compra->items()[0]->description);
+    }
+
+    /** Un `tipo` desconocido en la URL no deja la lista vacía: se entiende como sin filtro. */
+    public function test_un_tipo_desconocido_lista_venta_y_compra(): void
+    {
+        DB::table('service')->insert([
+            'service_id' => 1, 'description' => 'De venta', 'price' => 1,
+            'charge_type_id' => 1, 'client_id' => 1, 'type' => 1, 'active' => 1,
+        ]);
+        DB::table('service')->insert([
+            'service_id' => 2, 'description' => 'De compra', 'price' => 1,
+            'charge_type_id' => 1, 'provider_id' => 1, 'type' => 2, 'active' => 1,
+        ]);
+
+        $this->actingAs($this->usuario());
+
+        $servicios = Livewire::withQueryParams(['tipo' => '9'])->test(ServiceManager::class)->viewData('servicios');
+
+        $this->assertCount(2, $servicios->items());
+    }
+
+    /** Sin vigencia, el esquema heredado guarda `0000-00-00`: no se pinta como fecha. */
+    public function test_una_vigencia_en_ceros_no_se_pinta(): void
+    {
+        DB::table('service')->insert([
+            'service_id' => 1, 'description' => 'Flete', 'price' => 1, 'charge_type_id' => 1,
+            'client_id' => 1, 'type' => 1, 'active' => 1, 'start_date' => '2026-01-01', 'end_date' => '0000-00-00',
+        ]);
+
+        $this->pantalla()->assertSee('01/01/2026 – …')->assertDontSee('-0001');
+    }
+
+    /** El combo no ofrece lo dado de baja; mandarlo a mano tampoco pasa. */
+    public function test_un_tipo_de_cargo_dado_de_baja_no_se_acepta(): void
+    {
+        DB::table('charge_type')->insert([[
+            'charge_type_id' => 2, 'charge_type_name' => 'Viejo', 'tax_rate' => 0.16,
+            'tax_retention' => 0, 'non_deductible' => 0, 'deleted' => 1,
+        ]]);
+
+        $this->formulario()
+            ->set('form.description', 'Flete')
+            ->set('form.price', '850')
+            ->set('form.charge_type_id', '2')
+            ->set('form.account_id', '1')
+            ->set('form.party_id', '1')
+            ->call('save')
+            ->assertHasErrors(['form.charge_type_id' => 'exists']);
     }
 
     public function test_el_precio_acepta_separador_de_miles(): void

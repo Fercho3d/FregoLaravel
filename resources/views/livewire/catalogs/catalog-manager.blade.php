@@ -135,9 +135,9 @@
 
                     @if (auth()->user()?->isAdmin())
                         <div class="flex gap-3 pt-1 text-xs">
-                            <button type="button" wire:click="edit({{ $fila->{$definicion->key} }})" class="text-brand hover:underline">Editar</button>
+                            <button type="button" wire:click="edit({{ $fila->{$definicion->key} }})" class="text-brand hover:underline">{{ __('Editar') }}</button>
                             <button type="button" wire:click="delete({{ $fila->{$definicion->key} }})"
-                                    wire:confirm="¿Dar de baja este registro?" class="text-ink-muted hover:text-brand">{{ __('Baja') }}</button>
+                                    wire:confirm="{{ __('¿Dar de baja este registro?') }}" class="text-ink-muted hover:text-brand">{{ __('Baja') }}</button>
                         </div>
                     @endif
                 </li>
@@ -189,9 +189,9 @@
                             @if (auth()->user()?->isAdmin())
                                 <td class="whitespace-nowrap px-4 py-2 text-right">
                                     <div class="flex justify-end gap-3 text-xs">
-                                        <button type="button" wire:click="edit({{ $fila->{$definicion->key} }})" class="text-brand hover:underline">Editar</button>
+                                        <button type="button" wire:click="edit({{ $fila->{$definicion->key} }})" class="text-brand hover:underline">{{ __('Editar') }}</button>
                                         <button type="button" wire:click="delete({{ $fila->{$definicion->key} }})"
-                                                wire:confirm="¿Dar de baja este registro?" class="text-ink-muted transition hover:text-brand">{{ __('Baja') }}</button>
+                                                wire:confirm="{{ __('¿Dar de baja este registro?') }}" class="text-ink-muted transition hover:text-brand">{{ __('Baja') }}</button>
                                     </div>
                                 </td>
                             @endif

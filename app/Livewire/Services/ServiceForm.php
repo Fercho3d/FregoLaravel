@@ -205,15 +205,15 @@ class ServiceForm extends Component
 
         $datos = $this->validate($this->rules(), attributes: [
             'form.description' => __('descripción'),
-            'form.price' => 'precio',
+            'form.price' => __('precio'),
             'form.charge_type_id' => __('tipo de cargo'),
-            'form.account_id' => 'divisa',
+            'form.account_id' => __('divisa'),
             'form.price_type' => __('tipo de precio'),
             'form.start_date' => __('inicio de vigencia'),
             'form.end_date' => __('fin de vigencia'),
             'form.min' => __('precio mínimo'),
             'form.max' => __('precio máximo'),
-            'form.party_id' => $this->isSale() ? 'cliente' : 'proveedor',
+            'form.party_id' => $this->isSale() ? __('cliente') : __('proveedor'),
             'contract' => __('contrato'),
         ])['form'];
 
@@ -277,14 +277,17 @@ class ServiceForm extends Component
      */
     private function rules(): array
     {
-        $catalogo = fn (string $tabla, string $llave) => ['nullable', Rule::exists($tabla, $llave)];
+        // Donde el catálogo tiene baja lógica, lo dado de baja ya no sale en el
+        // combo y tampoco se acepta aunque se mande a mano.
+        $vigente = fn (string $tabla, string $llave) => Rule::exists($tabla, $llave)->where('deleted', 0);
+        $catalogo = fn (string $tabla, string $llave, bool $conBaja = false) => ['nullable', $conBaja ? $vigente($tabla, $llave) : Rule::exists($tabla, $llave)];
 
         return [
             // Solo PDF y hasta 5 MB, como los 156 contratos que ya hay.
             'contract' => ['nullable', 'file', 'mimes:pdf', 'max:5120'],
             'form.description' => ['required', 'string', 'max:255'],
             'form.price' => ['required', 'numeric', 'min:0'],
-            'form.charge_type_id' => ['required', Rule::exists('charge_type', 'charge_type_id')],
+            'form.charge_type_id' => ['required', $vigente('charge_type', 'charge_type_id')],
             'form.account_id' => ['required', Rule::exists('account', 'account_id')],
             'form.party_id' => [
                 'required',
@@ -296,10 +299,10 @@ class ServiceForm extends Component
                 ($this->form['auto_include'] ?? false) ? 'required' : 'nullable',
                 Rule::in(array_keys($this->priceTypes())),
             ],
-            'form.loading_port_id' => $catalogo('loading_ports', 'port_id'),
-            'form.dicharge_port_id' => $catalogo('dicharge_port', 'dicharge_port_id'),
+            'form.loading_port_id' => $catalogo('loading_ports', 'port_id', true),
+            'form.dicharge_port_id' => $catalogo('dicharge_port', 'dicharge_port_id', true),
             'form.pickup_place_id' => $catalogo('pickup_place', 'pick_id'),
-            'form.final_destination_id' => $catalogo('final_destination', 'final_destination_id'),
+            'form.final_destination_id' => $catalogo('final_destination', 'final_destination_id', true),
             'form.container_type_id' => $catalogo('container_types', 'contType_id'),
             'form.start_date' => ['nullable', 'date'],
             'form.end_date' => ['nullable', 'date', 'after_or_equal:form.start_date'],

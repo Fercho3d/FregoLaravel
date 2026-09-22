@@ -32,6 +32,11 @@ class CatalogRegistry
         $textoOpcional = ['nullable', 'string', 'max:255'];
         $deducible = fn (array $form) => ! ($form['non_deductible'] ?? false);
 
+        // `unique: true` en el nombre solo donde la base real no tiene repetidos.
+        // Puertos de carga y descarga, destinos finales, buques y tipos de cargo
+        // ya traen nombres duplicados del sistema viejo y ahí no se exige; días
+        // festivos, bancos y personas repiten nombre con razón.
+
         $definiciones = [
             new CatalogDefinition(
                 slug: 'puertos-carga',
@@ -88,7 +93,7 @@ class CatalogRegistry
                 key: 'contType_id',
                 singular: __('Tipo de contenedor'),
                 plural: __('Tipos de contenedor'),
-                fields: [new CatalogField('container_name', __('Nombre'), rules: ['required', 'string', 'max:25'])],
+                fields: [new CatalogField('container_name', __('Nombre'), rules: ['required', 'string', 'max:25'], unique: true)],
                 // `containers.container_type` es `ON DELETE CASCADE`: borrar un tipo
                 // en uso borraría los contenedores de todos sus bookings.
                 usedBy: [['containers', 'container_type'], ['booking', 'container_type'], ['service', 'container_type_id']],
@@ -100,7 +105,7 @@ class CatalogRegistry
                 singular: __('Naviera'),
                 plural: __('Navieras'),
                 fields: [
-                    new CatalogField('name', __('Nombre'), rules: $texto),
+                    new CatalogField('name', __('Nombre'), rules: $texto, unique: true),
                     // `email` es `NOT NULL` y es el usuario del portal: sin él o repetido, la
                     // naviera no podría entrar.
                     new CatalogField('email', __('Correo'), rules: ['required', 'email', 'max:50'], unique: true),
@@ -152,7 +157,7 @@ class CatalogRegistry
                 singular: __('Unidad'),
                 plural: __('Unidades'),
                 fields: [
-                    new CatalogField('numero', __('Número económico'), rules: ['required', 'string', 'max:30']),
+                    new CatalogField('numero', __('Número económico'), rules: ['required', 'string', 'max:30'], unique: true),
                     new CatalogField('tipo', __('Tipo'), rules: ['required', 'string', 'max:20']),
                     new CatalogField('placas', __('Placas'), rules: ['nullable', 'string', 'max:20']),
                     new CatalogField('marca', __('Marca'), rules: ['nullable', 'string', 'max:40']),
@@ -182,7 +187,7 @@ class CatalogRegistry
                 singular: __('Refacción'),
                 plural: __('Refacciones'),
                 fields: [
-                    new CatalogField('codigo', __('Código'), rules: ['required', 'string', 'max:40']),
+                    new CatalogField('codigo', __('Código'), rules: ['required', 'string', 'max:40'], unique: true),
                     new CatalogField('nombre', __('Nombre'), rules: ['required', 'string', 'max:120']),
                     new CatalogField('categoria', __('Categoría'), rules: ['nullable', 'string', 'max:40']),
                     new CatalogField('medida', __('Medida'), rules: ['nullable', 'string', 'max:20']),
@@ -286,7 +291,7 @@ class CatalogRegistry
                 key: 'modality_id',
                 singular: __('Modalidad'),
                 plural: __('Modalidades'),
-                fields: [new CatalogField('modality_name', __('Nombre'), rules: ['required', 'string', 'max:15'])],
+                fields: [new CatalogField('modality_name', __('Nombre'), rules: ['required', 'string', 'max:15'], unique: true)],
                 // `booking_continuity.modality` es `ON DELETE CASCADE`: borrar una
                 // modalidad en uso borraría la continuidad de todos sus bookings.
                 usedBy: [['booking_continuity', 'modality']],
@@ -297,7 +302,7 @@ class CatalogRegistry
                 key: 'pay_terms_id',
                 singular: __('Término de pago'),
                 plural: __('Términos de pago'),
-                fields: [new CatalogField('pay_terms', __('Término'), rules: ['required', 'string', 'max:50'])],
+                fields: [new CatalogField('pay_terms', __('Término'), rules: ['required', 'string', 'max:50'], unique: true)],
                 usedBy: [['transaction', 'payment_terms']],
             ),
             new CatalogDefinition(
@@ -307,7 +312,7 @@ class CatalogRegistry
                 singular: __('Lugar de recolección'),
                 plural: __('Lugares de recolección'),
                 fields: [
-                    new CatalogField('name', __('Nombre'), rules: $texto),
+                    new CatalogField('name', __('Nombre'), rules: $texto, unique: true),
                     new CatalogField('address1', __('Dirección'), rules: $textoOpcional),
                     new CatalogField('address2', __('Dirección 2'), rules: $textoOpcional, inList: false),
                     new CatalogField('city', __('Ciudad'), rules: ['nullable', 'string', 'max:25']),
@@ -343,7 +348,7 @@ class CatalogRegistry
                 singular: __('Moneda'),
                 plural: __('Monedas'),
                 fields: [
-                    new CatalogField('account_name', __('Nombre'), rules: ['required', 'string', 'max:50']),
+                    new CatalogField('account_name', __('Nombre'), rules: ['required', 'string', 'max:50'], unique: true),
                     new CatalogField('prefix', __('Prefijo'), rules: ['nullable', 'string', 'max:6']),
                     new CatalogField('default', __('Moneda base'), type: 'boolean', rules: ['boolean']),
                 ],
@@ -363,7 +368,7 @@ class CatalogRegistry
                 singular: __('Compañía'),
                 plural: __('Compañías emisoras'),
                 fields: [
-                    new CatalogField('name', __('Nombre corto'), rules: ['required', 'string', 'max:150']),
+                    new CatalogField('name', __('Nombre corto'), rules: ['required', 'string', 'max:150'], unique: true),
                     new CatalogField('business_name', __('Razón social'), rules: $textoOpcional),
                     // Los tres datos que viajan al CFDI, con el formato que exige el SAT.
                     new CatalogField('rfc', __('RFC'), rules: ['nullable', 'string', 'max:15', 'regex:'.RegimenesFiscales::RFC_REGEX]),
@@ -445,7 +450,7 @@ class CatalogRegistry
                 singular: __('Campo de archivo'),
                 plural: __('Campos de archivo'),
                 fields: [
-                    new CatalogField('field', __('Campo'), rules: ['required', 'string', 'max:25']),
+                    new CatalogField('field', __('Campo'), rules: ['required', 'string', 'max:25'], unique: true),
                     new CatalogField('label', __('Etiqueta'), rules: ['nullable', 'string', 'max:25']),
                     new CatalogField('default', __('Por omisión'), type: 'boolean', rules: ['boolean']),
                 ],
@@ -460,7 +465,7 @@ class CatalogRegistry
                 singular: __('Código de impuesto'),
                 plural: __('Códigos de impuesto'),
                 fields: [
-                    new CatalogField('tax_code', __('Código'), rules: ['required', 'string', 'max:255']),
+                    new CatalogField('tax_code', __('Código'), rules: ['required', 'string', 'max:255'], unique: true),
                     new CatalogField('tax_rate', __('Tasa'), type: 'number', rules: ['nullable', 'numeric']),
                     // La columna es `varchar(255)` por herencia, pero lo que se guarda es una tasa.
                     new CatalogField('tax_retention', __('Retención'), type: 'number', rules: ['nullable', 'numeric']),

@@ -5,7 +5,9 @@ namespace App\Livewire\Catalogs;
 use App\Support\Catalogs\CatalogDefinition;
 use App\Support\Catalogs\CatalogField;
 use App\Support\Catalogs\CatalogRegistry;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
@@ -54,6 +56,18 @@ class CatalogManager extends Component
         return CatalogRegistry::find($this->slug);
     }
 
+    /**
+     * Los renglones vivos del catálogo: sin los dados de baja donde hay baja
+     * lógica. `NULL` cuenta como vivo, como en el listado de siempre.
+     */
+    private function vivos(CatalogDefinition $definicion): Builder
+    {
+        return DB::table($definicion->table)->when(
+            $definicion->softDelete !== null,
+            fn ($q) => $q->where(fn ($w) => $w->where($definicion->softDelete, 0)->orWhereNull($definicion->softDelete))
+        );
+    }
+
     public function updatedSearch(): void
     {
         $this->resetPage();
@@ -83,7 +97,8 @@ class CatalogManager extends Component
 
         $definicion = $this->definition();
 
-        $fila = DB::table($definicion->table)->where($definicion->key, $id)->first();
+        // Un id manipulado no abre un renglón dado de baja.
+        $fila = $this->vivos($definicion)->where($definicion->key, $id)->first();
 
         abort_if($fila === null, 404);
 
@@ -137,7 +152,9 @@ class CatalogManager extends Component
             return;
         }
 
-        session()->flash('status', $definicion->singular.($this->editing === 0 ? ' agregado.' : ' actualizado.'));
+        session()->flash('status', $this->editing === 0
+            ? __(':cosa agregado.', ['cosa' => $definicion->singular])
+            : __(':cosa actualizado.', ['cosa' => $definicion->singular]));
         $this->cancel();
     }
 
@@ -153,7 +170,14 @@ class CatalogManager extends Component
             return $campo->rules;
         }
 
-        return [...$campo->rules, Rule::unique($definicion->table, $campo->name)->ignore($this->editing, $definicion->key)];
+        // Lo dado de baja no cuenta: su nombre se puede volver a usar.
+        $unica = Rule::unique($definicion->table, $campo->name)->ignore($this->editing, $definicion->key);
+
+        if ($definicion->softDelete !== null) {
+            $unica->where(fn ($q) => $q->where($definicion->softDelete, 0)->orWhereNull($definicion->softDelete));
+        }
+
+        return [...$campo->rules, $unica];
     }
 
     /** @param  array<string, mixed>  $valores */
@@ -175,7 +199,7 @@ class CatalogManager extends Component
 
         if ($definicion->audited) {
             $valores['created_by'] = auth()->id();
-            $valores['created_at'] = now();
+            $valores['created_at'] = $this->stamp($definicion, 'created_at');
         }
 
         DB::table($definicion->table)->insert($valores);
@@ -186,10 +210,20 @@ class CatalogManager extends Component
     {
         if ($definicion->audited) {
             $valores['modified_by'] = auth()->id();
-            $valores['modified_at'] = now();
+            $valores['modified_at'] = $this->stamp($definicion, 'modified_at');
         }
 
-        DB::table($definicion->table)->where($definicion->key, $this->editing)->update($valores);
+        // `editing` viaja en el navegador: tampoco se actualiza algo dado de baja.
+        $this->vivos($definicion)->where($definicion->key, $this->editing)->update($valores);
+    }
+
+    /**
+     * Fecha de auditoría según la columna: `pickup_place.created_at` y
+     * `modified_at` son `date` y no `datetime`, y ahí va solo el día.
+     */
+    private function stamp(CatalogDefinition $definicion, string $columna): Carbon|string
+    {
+        return Schema::getColumnType($definicion->table, $columna) === 'date' ? now()->toDateString() : now();
     }
 
     /**
@@ -217,7 +251,7 @@ class CatalogManager extends Component
                 ? DB::table($definicion->table)->where($definicion->key, $id)->update([$definicion->softDelete => 1])
                 : DB::table($definicion->table)->where($definicion->key, $id)->delete();
 
-            session()->flash('status', $definicion->singular.__(' dado de baja.'));
+            session()->flash('status', __(':cosa dado de baja.', ['cosa' => $definicion->singular]));
         } catch (QueryException $e) {
             $this->addError('delete', __('No se puede borrar: hay registros que lo usan.'));
         }
@@ -259,11 +293,7 @@ class CatalogManager extends Component
     {
         $definicion = $this->definition();
 
-        $consulta = DB::table($definicion->table)
-            ->when(
-                $definicion->softDelete !== null,
-                fn ($q) => $q->where(fn ($w) => $w->where($definicion->softDelete, 0)->orWhereNull($definicion->softDelete))
-            )
+        $consulta = $this->vivos($definicion)
             ->when($this->search !== '', function ($q) use ($definicion) {
                 $q->where(function ($w) use ($definicion) {
                     foreach ($definicion->searchColumns() as $columna) {

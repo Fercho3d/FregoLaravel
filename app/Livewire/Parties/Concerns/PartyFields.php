@@ -8,6 +8,7 @@ use App\Support\Cfdi\RegimenesFiscales;
 use Closure;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Livewire\Attributes\Computed;
 
 /**
  * Lo que comparten la lista y la ficha de clientes y proveedores: el modo, su
@@ -144,7 +145,7 @@ trait PartyFields
     public function optionsFor(string $campo): array
     {
         return match ($campo) {
-            'account_id' => Account::options(),
+            'account_id' => $this->accountOptions,
             'type_id' => [
                 Provider::TYPE_CARRIER => __('Naviera'),
                 Provider::TYPE_TRANSPORT => __('Transportista'),
@@ -154,6 +155,13 @@ trait PartyFields
             'invoice_use', 'pay_method', 'pay_form' => $this->satOptions($campo),
             default => [],
         };
+    }
+
+    /** Divisas del selector, leídas una vez por petición. @return array<int, string> */
+    #[Computed]
+    public function accountOptions(): array
+    {
+        return Account::options();
     }
 
     /** @var array<string, array<string, string>> Se leen una vez por petición. */

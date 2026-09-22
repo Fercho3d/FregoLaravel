@@ -28,7 +28,7 @@ class CatalogVisibilityTest extends TestCase
 
     private function admin(): User
     {
-        return User::create([
+        return User::forceCreate([
             'username' => 'jefa', 'password' => 'secreto-de-prueba',
             'role' => User::ROLE_SUPER_ADMIN, 'status' => 1,
         ]);

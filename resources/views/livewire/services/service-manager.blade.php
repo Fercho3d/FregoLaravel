@@ -1,7 +1,9 @@
 @php
     $money = fn ($v) => number_format((float) $v, 2);
-    $fecha = fn ($v) => $v ? \Illuminate\Support\Carbon::parse($v)->format('d/m/Y') : null;
+    // El esquema heredado guarda «sin fecha» como `0000-00-00`: se trata como vacía.
+    $fecha = fn ($v) => $v && ! str_starts_with((string) $v, '0000-00-00') ? \Illuminate\Support\Carbon::parse($v)->format('d/m/Y') : null;
     $esVenta = $this->isSale();
+    $porTipo = $this->filtersByType();
     $esAdmin = auth()->user()?->isSuperAdmin() ?? false;
 @endphp
 
@@ -35,21 +37,24 @@
             <label class="block">
                 <span class="field-label text-xs">{{ __('Tipo') }}</span>
                 <select wire:model.live="type" class="field-input mt-1 py-1.5 text-sm">
-                    @foreach (['1' => __('De venta (cliente)'), '2' => __('De compra (proveedor)')] as $valor => $etiqueta)
-                        <option value="{{ $valor }}" @selected((string) $valor === $type)>{{ $etiqueta }}</option>
+                    @foreach (['todos' => __('Todos'), '1' => __('De venta (cliente)'), '2' => __('De compra (proveedor)')] as $valor => $etiqueta)
+                        <option value="{{ $valor }}" @selected((string) $valor === $type || ($valor === 'todos' && ! $porTipo))>{{ $etiqueta }}</option>
                     @endforeach
                 </select>
             </label>
 
-            <label class="block">
-                <span class="field-label text-xs">{{ $esVenta ? __('Cliente') : __('Proveedor') }}</span>
-                <select wire:model.live="partyId" class="field-input mt-1 py-1.5 text-sm">
-                    <option value="">{{ __('Todos') }}</option>
-                    @foreach ($terceros as $id => $nombre)
-                        <option value="{{ $id }}" @selected((string) $id === $partyId)>{{ $nombre }}</option>
-                    @endforeach
-                </select>
-            </label>
+            {{-- Sin tipo no hay de dónde sacar la lista: clientes y proveedores no se mezclan --}}
+            @if ($porTipo)
+                <label class="block">
+                    <span class="field-label text-xs">{{ $esVenta ? __('Cliente') : __('Proveedor') }}</span>
+                    <select wire:model.live="partyId" class="field-input mt-1 py-1.5 text-sm">
+                        <option value="">{{ __('Todos') }}</option>
+                        @foreach ($terceros as $id => $nombre)
+                            <option value="{{ $id }}" @selected((string) $id === $partyId)>{{ $nombre }}</option>
+                        @endforeach
+                    </select>
+                </label>
+            @endif
 
             <label class="block">
                 <span class="field-label text-xs">{{ __('Descripción') }}</span>
@@ -73,7 +78,7 @@
                     <tr>
                         <th class="px-4 py-2.5 text-right font-semibold">ID</th>
                         <th class="px-4 py-2.5 text-left font-semibold">{{ __('Descripción') }}</th>
-                        <th class="px-4 py-2.5 text-left font-semibold">{{ $esVenta ? __('Cliente') : __('Proveedor') }}</th>
+                        <th class="px-4 py-2.5 text-left font-semibold">{{ ! $porTipo ? __('Cliente o proveedor') : ($esVenta ? __('Cliente') : __('Proveedor')) }}</th>
                         <th class="px-4 py-2.5 text-left font-semibold">{{ __('Tipo de cargo') }}</th>
                         <th class="px-4 py-2.5 text-right font-semibold">{{ __('Precio') }}</th>
                         <th class="px-4 py-2.5 text-left font-semibold">{{ __('Tipo de precio') }}</th>
@@ -111,7 +116,7 @@
                                 </p>
                             </td>
                             <td class="max-w-[14rem] truncate px-4 py-2 text-ink-muted">
-                                {{ ($esVenta ? $servicio->client_name : $servicio->provider_name) ?: '—' }}
+                                {{ (! $porTipo ? ($servicio->client_name ?: $servicio->provider_name) : ($esVenta ? $servicio->client_name : $servicio->provider_name)) ?: '—' }}
                             </td>
                             <td class="whitespace-nowrap px-4 py-2 text-ink-muted">{{ $servicio->charge_type_name ?: '—' }}</td>
                             <td class="whitespace-nowrap px-4 py-2 text-right tabular-nums text-ink-soft">

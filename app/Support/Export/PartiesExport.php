@@ -36,7 +36,9 @@ class PartiesExport
             $pagina = 1;
 
             do {
-                $lote = $consulta->paginate(self::TROZO, ['*'], 'page', $pagina);
+                // Solo las columnas del archivo (y lo que ya acote la consulta):
+                // nunca `*`, que traería contraseñas y llaves del portal.
+                $lote = $consulta->paginate(self::TROZO, array_values($columnas), 'page', $pagina);
 
                 foreach ($lote as $fila) {
                     fputcsv($salida, array_map(

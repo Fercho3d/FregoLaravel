@@ -14,9 +14,13 @@ use Illuminate\Support\Facades\Schema;
  */
 class CatalogSchema
 {
-    public static function create(CatalogDefinition $definicion): void
+    /**
+     * @param  string  $auditoria  Tipo de `created_at`/`modified_at`: `dateTime` casi
+     *                             siempre; `date` en `pickup_place`, como en la base.
+     */
+    public static function create(CatalogDefinition $definicion, string $auditoria = 'dateTime'): void
     {
-        Schema::create($definicion->table, function ($table) use ($definicion) {
+        Schema::create($definicion->table, function ($table) use ($definicion, $auditoria) {
             $table->increments($definicion->key);
 
             foreach ($definicion->fields as $campo) {
@@ -35,8 +39,8 @@ class CatalogSchema
             if ($definicion->audited) {
                 $table->integer('created_by')->nullable();
                 $table->integer('modified_by')->nullable();
-                $table->dateTime('created_at')->nullable();
-                $table->dateTime('modified_at')->nullable();
+                $table->{$auditoria}('created_at')->nullable();
+                $table->{$auditoria}('modified_at')->nullable();
             }
         });
     }

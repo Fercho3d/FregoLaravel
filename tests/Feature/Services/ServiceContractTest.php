@@ -39,7 +39,7 @@ class ServiceContractTest extends TestCase
 
     private function admin(): User
     {
-        return User::create(['username' => 'admin', 'password' => 'secreto-de-prueba', 'role' => User::ROLE_SUPER_ADMIN, 'status' => 1]);
+        return User::forceCreate(['username' => 'admin', 'password' => 'secreto-de-prueba', 'role' => User::ROLE_SUPER_ADMIN, 'status' => 1]);
     }
 
     private function formulario(?int $service = null): Testable

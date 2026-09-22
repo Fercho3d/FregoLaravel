@@ -30,7 +30,7 @@ class ServiceManager extends Component
     #[Url(as: 'q', except: '')]
     public string $search = '';
 
-    /** 1 = de venta (cliente), 2 = de compra (proveedor). */
+    /** 1 = de venta (cliente), 2 = de compra (proveedor); cualquier otro valor, sin filtro. */
     #[Url(as: 'tipo', except: '1')]
     public string $type = '1';
 
@@ -65,6 +65,12 @@ class ServiceManager extends Component
         if ($property === 'type') {
             $this->partyId = '';
         }
+    }
+
+    /** ¿Se filtra por venta o compra? Un `tipo` desconocido en la URL no filtra. */
+    public function filtersByType(): bool
+    {
+        return in_array($this->type, ['1', '2'], true);
     }
 
     public function isSale(): bool
@@ -111,8 +117,8 @@ class ServiceManager extends Component
             ->leftJoin('charge_type as ct', 'ct.charge_type_id', '=', 's.charge_type_id')
             ->leftJoin('client as c', 'c.client_id', '=', 's.client_id')
             ->leftJoin('provider as p', 'p.provider_id', '=', 's.provider_id')
-            ->where('s.type', (int) $this->type)
-            ->when($this->partyId !== '', fn ($q) => $this->isSale()
+            ->when($this->filtersByType(), fn ($q) => $q->where('s.type', (int) $this->type))
+            ->when($this->filtersByType() && $this->partyId !== '', fn ($q) => $this->isSale()
                 ? $q->where('s.client_id', (int) $this->partyId)
                 : $q->where('s.provider_id', (int) $this->partyId))
             ->when($this->search !== '', fn ($q) => $q->where('s.description', 'like', '%'.$this->search.'%'))

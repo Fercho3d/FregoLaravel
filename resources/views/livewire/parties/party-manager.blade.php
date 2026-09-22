@@ -1,10 +1,8 @@
 @php
-    $campos = $this->fields();
     $esAdmin = auth()->user()?->isAdmin() ?? false;
 
-    // En el listado solo las columnas que sirven para reconocer al tercero. El
-    // tipo del proveedor decide en qué selector del booking aparece, así que se ve.
-    $enLista = array_intersect_key($campos, array_flip(['fullName', 'rfc', 'email', 'city', 'phone', 'type_id']));
+    // En el listado solo las columnas que sirven para reconocer al tercero.
+    $enLista = $this->listFields();
     $tipos = $this->optionsFor('type_id');
 @endphp
 
@@ -32,7 +30,7 @@
 
         <div class="flex items-center gap-2">
             <input type="search" wire:model.live.debounce.300ms="search" value="{{ $search }}"
-                   class="field-input py-1.5 text-sm" placeholder="{{ __('Buscar por nombre, RFC o ciudad…') }}">
+                   class="field-input py-1.5 text-sm" placeholder="{{ __('Buscar por nombre, RFC, correo o ciudad…') }}">
             @if ($esAdmin)
                 <button type="button" wire:click="export" wire:loading.attr="disabled" wire:target="export"
                         class="btn-ghost !px-3 !py-1.5 text-xs">
