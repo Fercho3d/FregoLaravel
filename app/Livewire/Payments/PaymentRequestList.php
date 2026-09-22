@@ -210,19 +210,25 @@ class PaymentRequestList extends Component
 
         $solicitud = PaymentRequest::findOrFail($requestId);
 
-        abort_if((bool) $solicitud->paid, 422, __('La solicitud ya está pagada.'));
+        // Los motivos de negocio se muestran arriba del listado (`@error('markPaid')`);
+        // el `abort` queda solo para los permisos.
+        $motivo = match (true) {
+            (bool) $solicitud->paid => __('La solicitud ya está pagada.'),
+            PaymentByTransaction::where('request_id', $requestId)->doesntExist() => __('La solicitud no tiene transacciones.'),
+            default => null,
+        };
 
-        abort_if(
-            PaymentByTransaction::where('request_id', $requestId)->doesntExist(),
-            422,
-            __('La solicitud no tiene transacciones.'),
-        );
+        if ($motivo !== null) {
+            $this->addError('markPaid', $motivo);
+
+            return;
+        }
 
         $solicitud->forceFill(['paid' => 1, 'opened' => 0])->save();
         $recalc->forRequest($requestId);
 
         $this->highlight = null;
-        session()->flash('status', __('Solicitud ').$this->folio($solicitud->request_id).' marcada como pagada.');
+        session()->flash('status', __('Solicitud :folio marcada como pagada.', ['folio' => $this->folio($solicitud->request_id)]));
     }
 
     /** Vuelve a abrir una solicitud pagada, para corregirla. */
@@ -234,7 +240,7 @@ class PaymentRequestList extends Component
         $recalc->forRequest($requestId);
 
         $this->highlight = null;
-        session()->flash('status', __('Solicitud ').$this->folio($requestId).' reabierta.');
+        session()->flash('status', __('Solicitud :folio reabierta.', ['folio' => $this->folio($requestId)]));
     }
 
     /**
@@ -252,7 +258,11 @@ class PaymentRequestList extends Component
 
         $solicitud = PaymentRequest::findOrFail($requestId);
 
-        abort_if((bool) $solicitud->paid, 422, __('Una solicitud pagada no se borra: primero hay que reabrirla.'));
+        if ($solicitud->paid) {
+            $this->addError('markPaid', __('Una solicitud pagada no se borra: primero hay que reabrirla.'));
+
+            return;
+        }
 
         $transacciones = PaymentByTransaction::where('request_id', $requestId)->pluck('transc_id')->all();
         PaymentByTransaction::where('request_id', $requestId)->delete();
@@ -260,7 +270,7 @@ class PaymentRequestList extends Component
         $recalc->handle($transacciones);
 
         $this->highlight = null;
-        session()->flash('status', __('Solicitud ').$this->folio($requestId).' borrada.');
+        session()->flash('status', __('Solicitud :folio borrada.', ['folio' => $this->folio($requestId)]));
     }
 
     public function folio(int|string|null $requestId): string
@@ -285,7 +295,8 @@ class PaymentRequestList extends Component
             'type' => $this->type !== '' ? (int) $this->type : null,
             // El folio es único: se busca en cualquier fecha.
             'dates' => $folio ? null : ($this->dates ?: null),
-            'number' => trim($this->number) ?: null,
+            // Sin `?:`: el número de cheque «0» también se busca.
+            'number' => trim($this->number) !== '' ? trim($this->number) : null,
             'client_id' => $this->clientId !== '' ? (int) $this->clientId : null,
             'provider_id' => $this->providerId !== '' ? (int) $this->providerId : null,
             'currency_id' => $this->currencyId !== '' ? (int) $this->currencyId : null,

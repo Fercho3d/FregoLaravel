@@ -356,6 +356,28 @@ class PaymentRequestFlowTest extends TestCase
         );
     }
 
+    /** Como el `beforeSave` de Yii2: el renglón firma quién lo creó y quién lo corrigió. */
+    public function test_los_renglones_firman_alta_y_correccion(): void
+    {
+        $id = $this->solicitudCreada();
+
+        $usuario = $this->usuario();
+        $usuario->usr_id = 9;
+        $this->actingAs($usuario);
+
+        Livewire::test(PaymentRequestDetail::class, ['request' => $id])
+            ->set('amounts.1', '800')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $renglon = PaymentByTransaction::where('transc_id', 1)->first();
+
+        $this->assertSame(
+            [7, true, 9, true],
+            [(int) $renglon->created_by, $renglon->created_at !== null, (int) $renglon->modified_by, $renglon->modified_at !== null],
+        );
+    }
+
     public function test_reabierta_se_quita_una_transaccion(): void
     {
         $id = $this->solicitudCreada();
@@ -909,7 +931,25 @@ class PaymentRequestFlowTest extends TestCase
         $id = $this->conSolicitud();
 
         $this->listado()->call('markPaid', $id);
-        $this->listado()->call('markPaid', $id)->assertStatus(422);
+        $this->listado()->call('markPaid', $id)->assertHasErrors('markPaid')->assertSee(__('La solicitud ya está pagada.'));
+    }
+
+    public function test_el_listado_filtra_tambien_por_el_numero_cero(): void
+    {
+        $this->conSolicitud();
+
+        $this->listado()->set('number', '0')->assertViewHas('filas', fn ($filas) => $filas->isEmpty());
+    }
+
+    /** Como el «Amount» de Yii2: el pago a proveedor se enseña en negativo. */
+    public function test_el_listado_muestra_el_importe_con_signo(): void
+    {
+        $id = $this->conSolicitud();
+        $importe = number_format((float) PaymentRequest::find($id)->amount, 2);
+
+        // La tarjeta móvil pega la divisa al importe: así no se confunde con el
+        // total pagado, que ya venía con signo.
+        $this->listado()->assertSeeHtml('-'.$importe.' MXN');
     }
 
     public function test_reabrir_una_solicitud_pagada(): void
@@ -1020,7 +1060,8 @@ class PaymentRequestFlowTest extends TestCase
         $id = $this->conSolicitud();
 
         $this->listado()->call('markPaid', $id);
-        $this->listado(User::ROLE_SUPER_ADMIN)->call('delete', $id)->assertStatus(422);
+        // El motivo sale arriba del listado; el 422 dejaba la pantalla sin explicación.
+        $this->listado(User::ROLE_SUPER_ADMIN)->call('delete', $id)->assertHasErrors('markPaid');
 
         $this->assertSame(1, PaymentRequest::count());
     }

@@ -140,7 +140,9 @@ class CfdiLayout
             ."Exportacion=01\n";
 
         if ($moneda !== 'MXN') {
-            $layout .= 'TipoCambio='.$this->tipoCambio."\n";
+            // Yii2 pegaba el decimal(11,4) tal cual lo da MySQL («17.0000»); con el
+            // float un TC entero saldría «17».
+            $layout .= 'TipoCambio='.($this->tipoCambio === null ? '' : $this->money($this->tipoCambio))."\n";
         }
 
         return $layout

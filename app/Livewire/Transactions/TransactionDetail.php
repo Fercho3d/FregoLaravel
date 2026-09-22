@@ -16,6 +16,7 @@ use App\Queries\TransactionQuery;
 use App\Support\Cfdi\CfdiException;
 use App\Support\TransactionLock;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Validator;
 use Livewire\Component;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
@@ -219,12 +220,26 @@ class TransactionDetail extends Component
             'price' => ['required', 'numeric', 'min:0'],
         ], attributes: [
             'chargeType' => __('tipo de cargo'),
-            'serviceId' => 'servicio',
-            'quantity' => 'cantidad',
-            'price' => 'precio',
+            'serviceId' => __('servicio'),
+            'quantity' => __('cantidad'),
+            'price' => __('precio'),
         ]);
 
         $servicio = Service::findOrFail($datos['serviceId']);
+
+        // `service.description` es varchar(255) y `charge.description` varchar(100):
+        // como en Yii2 (`Charge::rules`), se rechaza antes de que MySQL la trunque o falle.
+        $descripcion = Validator::make(
+            ['description' => $servicio->description],
+            ['description' => ['nullable', 'string', 'max:100']],
+            attributes: ['description' => __('descripción del servicio')],
+        );
+
+        if ($descripcion->fails()) {
+            $this->addError('serviceId', $descripcion->errors()->first('description'));
+
+            return;
+        }
 
         $modelo = $this->chargeId === null
             ? new Charge(['transaction' => $this->transactionId])

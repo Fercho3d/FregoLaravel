@@ -172,10 +172,10 @@ class PaymentRequestForm extends Component
             'amounts.*' => ['required', 'numeric'],
         ], attributes: [
             'number' => __('número'),
-            'date' => 'fecha',
-            'bankId' => 'banco',
+            'date' => __('fecha'),
+            'bankId' => __('banco'),
             'tcValue' => __('tipo de cambio'),
-            'amounts.*' => 'importe',
+            'amounts.*' => __('importe'),
         ]);
 
         $transacciones = $this->transactions();
@@ -215,7 +215,7 @@ class PaymentRequestForm extends Component
             auth()->user(),
         );
 
-        session()->flash('status', __('Solicitud ').str_pad((string) $solicitud->request_id, 4, '0', STR_PAD_LEFT).' creada.');
+        session()->flash('status', __('Solicitud :folio creada.', ['folio' => str_pad((string) $solicitud->request_id, 4, '0', STR_PAD_LEFT)]));
 
         $this->redirectRoute('payments.requests', [
             'num' => $solicitud->number,

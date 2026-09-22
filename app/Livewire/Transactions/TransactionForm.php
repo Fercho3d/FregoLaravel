@@ -212,7 +212,9 @@ class TransactionForm extends Component
             'tranNumber' => ['nullable', 'string', 'max:128'],
             'seal' => ['nullable', 'string', 'max:128'],
             'newSeal' => ['nullable', 'string', 'max:128'],
-            'invoiceType' => [Rule::requiredIf($this->isInvoice()), 'nullable', 'integer'],
+            'invoiceType' => [Rule::requiredIf($this->isInvoice()), 'nullable', 'integer', Rule::in([
+                Transaction::INVOICE_TYPE_NORMAL, Transaction::INVOICE_TYPE_HISTORY, Transaction::INVOICE_TYPE_CREDIT,
+            ])],
             'customerId' => [Rule::requiredIf($this->isInvoice()), 'nullable', Rule::exists('client', 'client_id')],
             'vendorId' => [Rule::requiredIf(! $this->isInvoice()), 'nullable', Rule::exists('provider', 'provider_id')],
             'pdfFile' => ['nullable', 'file', 'extensions:pdf', 'max:20480'],
@@ -234,15 +236,15 @@ class TransactionForm extends Component
     protected function validationAttributes(): array
     {
         return [
-            'tranDate' => 'fecha',
-            'accountId' => 'moneda',
+            'tranDate' => __('fecha'),
+            'accountId' => __('moneda'),
             'companyId' => __('compañía'),
             'tranNumber' => __('número'),
             'invoiceType' => __('tipo de factura'),
-            'customerId' => 'cliente',
-            'vendorId' => 'proveedor',
-            'pdfFile' => 'archivo PDF',
-            'xmlFile' => 'archivo XML',
+            'customerId' => __('cliente'),
+            'vendorId' => __('proveedor'),
+            'pdfFile' => __('archivo PDF'),
+            'xmlFile' => __('archivo XML'),
         ];
     }
 

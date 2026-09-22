@@ -167,6 +167,19 @@ class TransactionFormTest extends TestCase
         $this->assertNull($creada->invoice, 'Las históricas no consumen folio.');
     }
 
+    public function test_el_tipo_de_factura_solo_admite_los_del_catalogo(): void
+    {
+        $this->actingAs($this->usuario());
+
+        $this->formulario(['booking' => 1, 'tipo' => 'factura'], [
+            'tranDate' => '2026-01-15',
+            'accountId' => '1',
+            'customerId' => '1',
+            'companyId' => '1',
+            'invoiceType' => '7',
+        ])->call('save')->assertHasErrors(['invoiceType' => 'in']);
+    }
+
     public function test_un_costo_exige_proveedor(): void
     {
         $this->actingAs($this->usuario());

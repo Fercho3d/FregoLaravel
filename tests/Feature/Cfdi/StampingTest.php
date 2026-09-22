@@ -114,6 +114,18 @@ class StampingTest extends TestCase
         $this->assertStringContainsString('Rfc=AAA010101AAA', $layout, 'El receptor debe ser el cliente.');
     }
 
+    /** Yii2 pegaba el decimal(11,4) de MySQL: un TC entero va como «17.0000», no «17». */
+    public function test_el_tipo_de_cambio_viaja_con_cuatro_decimales(): void
+    {
+        DB::table('account')->insert([['account_id' => 2, 'account_name' => 'Dólares', 'default' => 0, 'prefix' => 'USD']]);
+        DB::table('exchange')->insert([['exchange_id' => 2, 'exchange_value' => 17, 'date_exchange' => '2026-01-15', 'account' => 2]]);
+        DB::table('transaction')->where('transc_id', 1)->update(['account' => 2]);
+
+        $this->detalle()->call('stamp')->assertHasNoErrors();
+
+        $this->assertStringContainsString("TipoCambio=17.0000\n", $this->pac->layoutRecibido);
+    }
+
     public function test_una_factura_ya_timbrada_no_se_vuelve_a_timbrar(): void
     {
         $this->detalle()->call('stamp')->assertHasNoErrors();

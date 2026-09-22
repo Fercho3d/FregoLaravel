@@ -705,6 +705,9 @@ class CoreSchema
             $table->text('url')->nullable();
             $table->integer('created_by')->nullable();
             $table->integer('modified_by')->nullable();
+            // En la base son `date`, no `datetime`.
+            $table->date('created_at')->nullable();
+            $table->date('modified_at')->nullable();
         });
 
         Schema::create('transaction', function ($table) {
@@ -794,6 +797,10 @@ class CoreSchema
             $table->integer('request_id');
             $table->integer('transc_id');
             $table->decimal('amount', 16, 4)->nullable();
+            $table->date('created_at')->nullable();
+            $table->integer('created_by')->nullable();
+            $table->dateTime('modified_at')->nullable();
+            $table->integer('modified_by')->nullable();
             $table->integer('paid')->default(0);
             $table->primary(['request_id', 'transc_id']);
         });

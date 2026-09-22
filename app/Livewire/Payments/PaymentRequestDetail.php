@@ -132,7 +132,7 @@ class PaymentRequestDetail extends Component
         $solicitud->forceFill(['paid' => 1, 'opened' => 0])->save();
         $recalc->forRequest($this->requestId);
 
-        session()->flash('status', __('Solicitud ').$this->folio($this->requestId).' marcada como pagada.');
+        session()->flash('status', __('Solicitud :folio marcada como pagada.', ['folio' => $this->folio($this->requestId)]));
     }
 
     /** Vuelve a abrir una solicitud pagada, para corregirla. */
@@ -145,7 +145,7 @@ class PaymentRequestDetail extends Component
 
         $this->loadEditable();
 
-        session()->flash('status', __('Solicitud ').$this->folio($this->requestId).' reabierta.');
+        session()->flash('status', __('Solicitud :folio reabierta.', ['folio' => $this->folio($this->requestId)]));
     }
 
     /** Guarda el encabezado y los importes corregidos. */
@@ -160,9 +160,9 @@ class PaymentRequestDetail extends Component
             'amounts.*' => ['required', 'numeric'],
         ], attributes: [
             'number' => __('número'),
-            'date' => 'fecha',
-            'bankId' => 'banco',
-            'amounts.*' => 'importe',
+            'date' => __('fecha'),
+            'bankId' => __('banco'),
+            'amounts.*' => __('importe'),
         ]);
 
         $this->assertAmountsFit($this->transactionsForValidation(), 'applied_here');
@@ -174,7 +174,7 @@ class PaymentRequestDetail extends Component
         foreach ($this->amounts as $transaccion => $importe) {
             PaymentByTransaction::where('request_id', $this->requestId)
                 ->where('transc_id', $transaccion)
-                ->update(['amount' => round((float) $importe, 2)]);
+                ->update(['amount' => round((float) $importe, 2)] + PaymentByTransaction::modificationStamp());
         }
 
         // La fecha manda el tipo de cambio con que se valúa la solicitud: si
@@ -189,7 +189,7 @@ class PaymentRequestDetail extends Component
         $this->saveTotals($solicitud);
         app(RecalculatePaidColumns::class)->forRequest($this->requestId);
 
-        session()->flash('status', __('Solicitud ').$this->folio($this->requestId).' guardada.');
+        session()->flash('status', __('Solicitud :folio guardada.', ['folio' => $this->folio($this->requestId)]));
 
         return true;
     }
@@ -292,7 +292,7 @@ class PaymentRequestDetail extends Component
         $solicitud->delete();
         $recalc->handle($transacciones);
 
-        session()->flash('status', __('Solicitud ').$this->folio($this->requestId).' borrada.');
+        session()->flash('status', __('Solicitud :folio borrada.', ['folio' => $this->folio($this->requestId)]));
 
         return $this->redirect($this->volver, navigate: true);
     }

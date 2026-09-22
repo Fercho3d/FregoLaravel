@@ -41,7 +41,7 @@
 
             <label class="block">
                 <span class="field-label flex items-center justify-between text-xs">
-                    <span>Carga del booking <span class="text-ink-faint">{{ __('(dd/mm/aaaa - dd/mm/aaaa)') }}</span></span>
+                    <span>{{ __('Carga del booking') }} <span class="text-ink-faint">{{ __('(dd/mm/aaaa - dd/mm/aaaa)') }}</span></span>
                     @if ($dates !== '')
                         <button type="button" wire:click="showAllYears"
                                 class="font-normal text-brand hover:underline">{{ __('Ver todos los años') }}</button>

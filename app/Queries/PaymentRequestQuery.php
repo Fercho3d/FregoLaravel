@@ -288,7 +288,7 @@ class PaymentRequestQuery
             ->when($f->client_id, fn ($q, $v) => $q->where('pr.client_id', $v))
             ->when($f->currency_id, fn ($q, $v) => $q->where('pr.currency_id', $v))
             ->when($f->type, fn ($q, $v) => $q->where('pr.type', $v))
-            ->when($f->number, fn ($q, $v) => $q->where('pr.number', $v))
+            ->when($f->number !== null && $f->number !== '', fn ($q) => $q->where('pr.number', $f->number))
             ->when($f->paid !== null, fn ($q) => $q->where('pr.paid', $f->paid));
 
         if (($rango = $f->dateRange()) !== null) {

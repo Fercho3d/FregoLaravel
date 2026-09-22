@@ -3,6 +3,8 @@
 
 @php
     $money = fn ($v) => $v === null ? '—' : number_format((float) $v, 2);
+    // Las tasas se guardan como fracción (0.16); sin tipo de cargo cuentan como 0, igual que el IFNULL de Yii2.
+    $percent = fn ($v) => rtrim(rtrim(number_format((float) $v * 100, 2), '0'), '.').' %';
     $estado = PaymentStatus::for($fila);
     $esFactura = (int) $fila->tran_type === Transaction::TYPE_INVOICE;
     $contraparte = $esFactura ? $fila->customerName : $fila->vendorName;
@@ -10,9 +12,9 @@
     // El desglose del pie se toma de las mismas columnas que alimentan la tabla,
     // para que los importes cuadren al centavo con el listado.
     $desglose = [
-        ['Subtotal 0 %', $fila->sub_0_mxn],
-        ['Subtotal 16 %', $fila->sub_16_mxn],
-        ['IVA 16 %', $fila->tax_16_mxn],
+        [__('Subtotal 0 %'), $fila->sub_0_mxn],
+        [__('Subtotal 16 %'), $fila->sub_16_mxn],
+        [__('IVA 16 %'), $fila->tax_16_mxn],
         [__('Retención IVA'), $fila->tax_ret_mxn],
     ];
 @endphp
@@ -121,7 +123,7 @@
                 </p>
 
                 <div class="flex flex-wrap justify-end gap-3">
-                    <button type="button" wire:click="$set('cancelling', false)" class="btn-ghost !px-3 !py-1.5 text-xs">Cerrar</button>
+                    <button type="button" wire:click="$set('cancelling', false)" class="btn-ghost !px-3 !py-1.5 text-xs">{{ __('Cerrar') }}</button>
                     <button type="submit" wire:loading.attr="disabled" wire:target="cancelStamp"
                             class="btn-accent !px-3 !py-1.5 text-xs">
                         <x-spinner wire:loading wire:target="cancelStamp" class="h-3.5 w-3.5" />
@@ -299,8 +301,8 @@
                     </div>
                     <p class="text-xs text-ink-muted">
                         {{ number_format((float) $cargo->quantity, 2) }} × {{ $money($cargo->price) }}
-                        · IVA {{ $money($cargo->tax) }}
-                        @if ($cargo->retention > 0) · Ret. {{ $money($cargo->retention) }} @endif
+                        · {{ __('IVA') }} {{ $money($cargo->tax) }}
+                        @if ($cargo->retention > 0) · {{ __('Ret.') }} {{ $money($cargo->retention) }} @endif
                     </p>
                     @unless ($candado->locked)
                         {{-- Confirmación en la misma fila y no con confirm(): si el navegador
@@ -333,11 +335,15 @@
                 <thead class="border-b border-line text-xs uppercase tracking-wide text-ink-muted">
                     <tr>
                         <th class="px-4 py-2.5 text-left font-semibold">{{ __('Tipo') }}</th>
+                        <th class="px-4 py-2.5 text-left font-semibold">{{ __('Prepagado') }}</th>
                         <th class="px-4 py-2.5 text-left font-semibold">{{ __('Descripción') }}</th>
                         <th class="px-4 py-2.5 text-right font-semibold">{{ __('Cantidad') }}</th>
+                        <th class="px-4 py-2.5 text-right font-semibold">{{ __('Unidad') }}</th>
                         <th class="px-4 py-2.5 text-right font-semibold">{{ __('Precio') }}</th>
                         <th class="px-4 py-2.5 text-right font-semibold">{{ __('Subtotal') }}</th>
+                        <th class="px-4 py-2.5 text-right font-semibold">{{ __('Tasa de IVA') }}</th>
                         <th class="px-4 py-2.5 text-right font-semibold">{{ __('IVA') }}</th>
+                        <th class="px-4 py-2.5 text-right font-semibold">{{ __('Tasa de retención') }}</th>
                         <th class="px-4 py-2.5 text-right font-semibold">{{ __('Retención') }}</th>
                         <th class="px-4 py-2.5 text-right font-semibold">{{ __('Total') }}</th>
                         @unless ($candado->locked)
@@ -349,11 +355,16 @@
                     @forelse ($cargos as $cargo)
                         <tr class="transition hover:bg-raised">
                             <td class="whitespace-nowrap px-4 py-2 text-ink-muted">{{ $cargo->chargeType?->charge_type_name ?: '—' }}</td>
+                            {{-- En Yii2 `prepaid` nulo se leía como «No» (IFNULL en ChargeSearch). --}}
+                            <td class="whitespace-nowrap px-4 py-2 text-ink-muted">{{ (int) $cargo->prepaid === 1 ? __('Sí') : __('No') }}</td>
                             <td class="max-w-[20rem] truncate px-4 py-2 text-ink" title="{{ $cargo->description }}">{{ $cargo->description ?: '—' }}</td>
                             <td class="whitespace-nowrap px-4 py-2 text-right tabular-nums text-ink-muted">{{ number_format((float) $cargo->quantity, 2) }}</td>
+                            <td class="whitespace-nowrap px-4 py-2 text-right tabular-nums text-ink-muted">{{ $cargo->unit === null ? '—' : number_format($cargo->unit, 2) }}</td>
                             <td class="whitespace-nowrap px-4 py-2 text-right tabular-nums text-ink-muted">{{ $money($cargo->price) }}</td>
                             <td class="whitespace-nowrap px-4 py-2 text-right tabular-nums text-ink-soft">{{ $money($cargo->subtotal) }}</td>
+                            <td class="whitespace-nowrap px-4 py-2 text-right tabular-nums text-ink-muted">{{ $percent($cargo->chargeType?->tax_rate) }}</td>
                             <td class="whitespace-nowrap px-4 py-2 text-right tabular-nums text-ink-muted">{{ $money($cargo->tax) }}</td>
+                            <td class="whitespace-nowrap px-4 py-2 text-right tabular-nums text-ink-muted">{{ $percent($cargo->chargeType?->tax_retention) }}</td>
                             <td class="whitespace-nowrap px-4 py-2 text-right tabular-nums text-ink-muted">{{ $money($cargo->retention) }}</td>
                             <td class="whitespace-nowrap px-4 py-2 text-right font-semibold tabular-nums text-ink">{{ $money($cargo->total) }}</td>
                             @unless ($candado->locked)
@@ -380,7 +391,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="{{ $candado->locked ? 8 : 9 }}" class="px-4 py-10 text-center text-ink-faint">
+                            <td colspan="{{ $candado->locked ? 12 : 13 }}" class="px-4 py-10 text-center text-ink-faint">
                                 {{ __('Esta transacción no tiene conceptos.') }}
                             </td>
                         </tr>

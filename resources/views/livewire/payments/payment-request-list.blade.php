@@ -50,7 +50,7 @@
             <label class="block">
                 <span class="field-label text-xs">{{ __('Tipo') }}</span>
                 <select wire:model.live="type" class="field-input mt-1 py-1.5 text-sm">
-                    @foreach (['' => __('Todos'), '1' => 'Invoice', '2' => 'Bill'] as $valor => $etiqueta)
+                    @foreach (['' => __('Todos'), '1' => __('Cobro a cliente'), '2' => __('Pago a proveedor')] as $valor => $etiqueta)
                         <option value="{{ $valor }}" @selected((string) $valor === $type)>{{ $etiqueta }}</option>
                     @endforeach
                 </select>
@@ -160,7 +160,7 @@
                         </div>
                         <div class="flex justify-between gap-2">
                             <dt class="text-ink-faint">{{ __('Importe') }}</dt>
-                            <dd class="font-semibold tabular-nums text-ink">{{ $money($fila->amount) }} {{ $fila->prefix }}</dd>
+                            <dd class="font-semibold tabular-nums text-ink">{{ $money($fila->amount_original_neg) }} {{ $fila->prefix }}</dd>
                         </div>
                     </dl>
                 </li>
@@ -205,7 +205,7 @@
                             <td class="whitespace-nowrap px-3 py-2">
                                 <span class="font-medium text-brand hover:underline">{{ $this->folio($fila->request_id) }}</span>
                             </td>
-                            <td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ (int) $fila->type === 1 ? 'Invoice' : 'Bill' }}</td>
+                            <td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ (int) $fila->type === 1 ? __('Cobro a cliente') : __('Pago a proveedor') }}</td>
                             <td class="max-w-[16rem] truncate px-3 py-2 text-ink-muted">
                                 {{ (int) $fila->type === 1 ? ($fila->clientName ?: '—') : ($fila->providerName ?: '—') }}
                             </td>
@@ -218,7 +218,8 @@
                             <td class="whitespace-nowrap px-3 py-2 text-right tabular-nums text-ink-faint">
                                 {{ $fila->exchange_value === null ? '—' : number_format((float) $fila->exchange_value, 4) }}
                             </td>
-                            <td class="whitespace-nowrap px-3 py-2 text-right tabular-nums text-ink-soft">{{ $money($fila->amount) }}</td>
+                            {{-- Con signo, como el «Amount» de Yii2: negativo en los pagos a proveedor. --}}
+                            <td class="whitespace-nowrap px-3 py-2 text-right tabular-nums text-ink-soft">{{ $money($fila->amount_original_neg) }}</td>
                             @foreach ($desglose as $columna => $etiqueta)
                                 <td class="whitespace-nowrap px-3 py-2 text-right tabular-nums text-ink-muted">{{ $money($fila->{$columna}) }}</td>
                             @endforeach
