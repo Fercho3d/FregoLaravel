@@ -28,7 +28,7 @@ class ContinuityReportTest extends TestCase
 
     private function usuario(int $rol = User::ROLE_ADMIN): User
     {
-        return User::create([
+        return User::forceCreate([
             'username' => 'operador'.$rol, 'password' => 'secreto-de-prueba', 'role' => $rol, 'status' => 1,
         ]);
     }
@@ -132,5 +132,17 @@ class ContinuityReportTest extends TestCase
 
         $this->assertCount(1, $filas->items());
         $this->assertSame('BK-1', $filas->items()[0]->booking_number);
+    }
+
+    public function test_un_booking_con_dos_filas_de_continuidad_sale_una_vez(): void
+    {
+        DB::table('booking_continuity')->insert([
+            ['cont_id' => 1, 'booking' => 1, 'pickup_date' => '2026-03-01 00:00:00'],
+            ['cont_id' => 2, 'booking' => 1, 'pickup_date' => '2026-03-02 00:00:00'],
+        ]);
+
+        $filas = $this->pantalla()->set('dates', '01/03/2026 - 31/03/2026')->viewData('filas');
+
+        $this->assertSame(1, $filas->total());
     }
 }

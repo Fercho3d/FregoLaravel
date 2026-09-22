@@ -384,6 +384,16 @@
                         </tr>
                     @endforelse
                 </tbody>
+                @if ($contenedores->isNotEmpty())
+                    {{-- Total de cantidades, como el pie de página del grid del viejo. --}}
+                    <tfoot class="border-t border-line font-semibold">
+                        <tr>
+                            <td colspan="3" class="px-4 py-2 text-right text-xs uppercase tracking-wide text-ink-muted">{{ __('Total') }}</td>
+                            <td class="whitespace-nowrap px-4 py-2 text-right tabular-nums text-ink" data-total-contenedores>{{ $contenedores->sum('quantity') }}</td>
+                            <td colspan="{{ auth()->user()?->isAdmin() && ! $booking->locked ? 3 : 2 }}"></td>
+                        </tr>
+                    </tfoot>
+                @endif
             </table>
         </div>
     </section>

@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Operations;
 
+use App\Queries\BookingQuery;
 use App\Queries\TransactionFilters;
 use App\Support\Milestones\BookingMilestones;
 use App\Support\Milestones\Checklist;
@@ -119,7 +120,7 @@ class ContinuityReport extends Component
     public function render()
     {
         $filas = DB::table('booking as b')
-            ->leftJoin('booking_continuity as bc', 'bc.booking', '=', 'b.booking_id')
+            ->leftJoin('booking_continuity as bc', BookingQuery::ultimaContinuidad(...))
             ->leftJoin('client as c', 'c.client_id', '=', 'b.client')
             ->leftJoin('vessel as v', 'v.vessel_id', '=', 'b.vessel')
             ->where('b.is_draft', 0)

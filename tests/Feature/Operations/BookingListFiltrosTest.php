@@ -60,7 +60,7 @@ class BookingListFiltrosTest extends TestCase
 
     private function listado(): Testable
     {
-        $this->actingAs(User::create([
+        $this->actingAs(User::forceCreate([
             'username' => 'operadora', 'password' => 'secreto-de-prueba', 'role' => User::ROLE_USER, 'status' => 1,
         ]));
 
@@ -152,7 +152,7 @@ class BookingListFiltrosTest extends TestCase
     {
         DB::table('booking')->where('booking_id', 2)->update(['locked' => 1]);
 
-        $this->actingAs(User::create([
+        $this->actingAs(User::forceCreate([
             'username' => 'jefa', 'password' => 'secreto-de-prueba', 'role' => User::ROLE_ADMIN, 'status' => 1,
         ]));
 
@@ -177,7 +177,7 @@ class BookingListFiltrosTest extends TestCase
     /** Un borrador se abre en el detalle: ahí se le capturan contenedores y se confirma. */
     public function test_el_detalle_abre_un_borrador(): void
     {
-        $this->actingAs(User::create([
+        $this->actingAs(User::forceCreate([
             'username' => 'jefa', 'password' => 'secreto-de-prueba', 'role' => User::ROLE_ADMIN, 'status' => 1,
         ]));
 
@@ -186,5 +186,18 @@ class BookingListFiltrosTest extends TestCase
             ->assertSee('Este booking es un borrador.')
             ->assertSee('Confirmar booking')
             ->assertSee('Copiar');
+    }
+
+    /**
+     * Un booking con dos filas de continuidad sale una sola vez y con las
+     * fechas de la más reciente (mayor `cont_id`), no mezcladas.
+     */
+    public function test_dos_filas_de_continuidad_dan_un_solo_renglon_con_la_ultima(): void
+    {
+        DB::table('booking_continuity')->insert(['cont_id' => 3, 'booking' => 1, 'SI_date' => '2026-03-15 00:00:00']);
+
+        $filas = collect($this->listado()->viewData('filas')->items())->where('booking_id', 1);
+
+        $this->assertSame(['2026-03-15 00:00:00'], $filas->pluck('SI_date')->all());
     }
 }

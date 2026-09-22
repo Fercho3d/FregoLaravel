@@ -41,7 +41,7 @@ class BookingFilesTest extends TestCase
 
     private function usuario(int $rol = User::ROLE_ADMIN): User
     {
-        return User::create([
+        return User::forceCreate([
             'username' => 'operador'.$rol, 'password' => 'secreto-de-prueba', 'role' => $rol, 'status' => 1,
         ]);
     }

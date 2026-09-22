@@ -188,7 +188,7 @@ class BookingForm extends Component
         // que la pantalla no enseñó dejaría el formulario imposible de guardar.
         $datos = $this->validate(Expediente::soloVisibles([
             'bookingNumber' => ['required', 'string', 'max:128'],
-            'hb' => ['nullable', 'string', 'max:64'],
+            'hb' => ['nullable', 'string', 'max:50'],
             'customerReference' => ['nullable', 'string', 'max:64'],
             'clientId' => ['required', Rule::exists('client', 'client_id')],
             'bookingType' => ['nullable', 'integer', Rule::in(array_keys(Booking::typeLabels()))],

@@ -44,7 +44,7 @@ class BookingFormTest extends TestCase
 
     private function usuario(int $rol = User::ROLE_ADMIN): User
     {
-        return User::create([
+        return User::forceCreate([
             'username' => 'operador'.$rol, 'password' => 'secreto-de-prueba', 'role' => $rol, 'status' => 1,
         ]);
     }
@@ -249,5 +249,11 @@ class BookingFormTest extends TestCase
             ->assertSet('clientId', '1')
             ->assertSet('commodity', 'Aguacate')
             ->assertSet('bookingType', '1');
+    }
+
+    /** La columna `booking.HB` es `varchar(50)`. */
+    public function test_el_hb_no_pasa_de_50_caracteres(): void
+    {
+        $this->formulario(['hb' => str_repeat('H', 51)])->call('save')->assertHasErrors(['hb' => 'max']);
     }
 }

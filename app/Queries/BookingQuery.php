@@ -4,6 +4,7 @@ namespace App\Queries;
 
 use App\Support\Milestones\MilestoneCatalog;
 use Illuminate\Database\Query\Builder;
+use Illuminate\Database\Query\JoinClause;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -51,7 +52,7 @@ class BookingQuery
     public function query(): Builder
     {
         $query = DB::table('booking as b')
-            ->leftJoin('booking_continuity as bc', 'bc.booking', '=', 'b.booking_id')
+            ->leftJoin('booking_continuity as bc', self::ultimaContinuidad(...))
             ->leftJoin('vessel as v', 'v.vessel_id', '=', 'b.vessel')
             ->leftJoin('client as c', 'c.client_id', '=', 'b.client')
             ->leftJoin('loading_ports as lp', 'lp.port_id', '=', 'b.loading_port')
@@ -89,7 +90,25 @@ class BookingQuery
 
         $this->applyFilters($query);
 
-        return $query->groupBy('b.booking_id')->orderByDesc('b.booking_id');
+        // Sin GROUP BY: cada JOIN trae a lo más una fila por booking (catálogos
+        // por llave primaria, avance ya agrupado y una sola fila de
+        // continuidad), así que el resultado es determinista sin depender de
+        // `strict => false`.
+        return $query->orderByDesc('b.booking_id');
+    }
+
+    /**
+     * Condición del JOIN a `booking_continuity`: solo la fila más reciente
+     * (mayor `cont_id`) de cada booking.
+     *
+     * En `frego` la columna `booking` es única, pero el esquema no lo exige en
+     * todas partes; si un booking llegara a tener dos filas, el listado y el
+     * reporte de continuidad lo enseñarían repetido o con fechas mezcladas.
+     */
+    public static function ultimaContinuidad(JoinClause $join): void
+    {
+        $join->on('bc.booking', '=', 'b.booking_id')
+            ->whereRaw('bc.cont_id = (SELECT MAX(ult.cont_id) FROM booking_continuity ult WHERE ult.booking = b.booking_id)');
     }
 
     /**

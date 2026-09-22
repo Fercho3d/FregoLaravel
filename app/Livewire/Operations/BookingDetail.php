@@ -887,6 +887,8 @@ class BookingDetail extends Component
     public function delete(): void
     {
         abort_unless(auth()->user()?->isAdmin() ?? false, 403);
+        // La vista ya esconde el botón, pero la acción se puede llamar directa.
+        abort_if((bool) $this->header()->locked, 422, __('Este booking está cerrado.'));
 
         $facturacion = DB::table('transaction')
             ->where('booking', $this->bookingId)

@@ -39,7 +39,7 @@ class ListaDeVerificacionTest extends TestCase
 
     private function usuario(int $rol = User::ROLE_ADMIN): User
     {
-        return User::create([
+        return User::forceCreate([
             'username' => 'operador'.$rol, 'name' => 'Ana Ruiz', 'password' => 'secreto-de-prueba',
             'role' => $rol, 'access' => User::ACCESS_INTERNAL, 'status' => 1,
         ]);

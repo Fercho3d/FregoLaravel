@@ -30,7 +30,7 @@ class BookingContainersTest extends TestCase
 
     private function usuario(int $rol = User::ROLE_ADMIN): User
     {
-        return User::create([
+        return User::forceCreate([
             'username' => 'operador'.$rol, 'password' => 'secreto-de-prueba', 'role' => $rol, 'status' => 1,
         ]);
     }
@@ -235,5 +235,16 @@ class BookingContainersTest extends TestCase
         $this->detalle(User::ROLE_USER)->call('lock')->assertForbidden();
 
         $this->assertSame(0, (int) DB::table('booking')->where('booking_id', 1)->value('locked'));
+    }
+
+    /** Como el `pageSummary` del grid del viejo: la suma de cantidades al pie. */
+    public function test_el_pie_suma_las_cantidades(): void
+    {
+        DB::table('containers')->insert([
+            ['container_ID' => 1, 'booking' => 1, 'container_type' => 1, 'quantity' => 2, 'comodity' => 'Aguacate'],
+            ['container_ID' => 2, 'booking' => 1, 'container_type' => 1, 'quantity' => 3, 'comodity' => 'Limón'],
+        ]);
+
+        $this->detalle()->assertSeeHtml('data-total-contenedores>5</td>');
     }
 }

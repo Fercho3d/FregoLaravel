@@ -38,7 +38,10 @@
         </div>
         <div class="flex items-center gap-3">
             <span class="text-xs text-ink-faint">
-                {{ number_format($filas->total()) }} {{ $mode === '9' ? 'cotizaciones' : 'bookings' }} · consulta en {{ $queryMs }} ms
+                {{ $mode === '9'
+                    ? trans_choice(__('{1}:count cotización|[0,*]:count cotizaciones'), $filas->total(), ['count' => number_format($filas->total())])
+                    : trans_choice(__('{1}:count booking|[0,*]:count bookings'), $filas->total(), ['count' => number_format($filas->total())]) }}
+                · {{ __('consulta en :ms ms', ['ms' => $queryMs]) }}
             </span>
             {{-- Dar de alta es de cualquier usuario interno, como en el original.
                  Con el tipo encendido, el alta ya llega con importación o

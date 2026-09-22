@@ -87,9 +87,9 @@ class BookingTimeline
     public function forBooking(int $bookingId): Collection
     {
         return collect()
-            ->merge($this->changes('booking_history', 'booking_id', $bookingId, 'Booking'))
+            ->merge($this->changes('booking_history', 'booking_id', $bookingId, __('Booking')))
             ->merge($this->containerChanges($bookingId))
-            ->merge($this->changes('booking_continuity_history', 'booking', $bookingId, 'Continuidad'))
+            ->merge($this->changes('booking_continuity_history', 'booking', $bookingId, __('Continuidad')))
             ->merge($this->checklistChanges($bookingId))
             ->sortByDesc('fecha')
             ->values();
@@ -116,12 +116,13 @@ class BookingTimeline
             ->orderBy('change_date')
             ->get()
             ->groupBy('container_ID')
-            ->flatMap(fn (Collection $serie, $id) => $this->diff($serie->values(), 'Contenedor '.$id));
+            ->flatMap(fn (Collection $serie, $id) => $this->diff($serie->values(), __('Contenedor :id', ['id' => $id])));
     }
 
     /**
      * La lista de verificación se lee distinto: no cambian valores, se marcan y
-     * se desmarcan casillas.
+     * se desmarcan casillas. Cada marca lleva quién la hizo (`{casilla}_chk_by`),
+     * que no siempre es quien firmó el renglón (`modified_by`).
      *
      * @return Collection<int, array<string, mixed>>
      */
@@ -143,14 +144,17 @@ class BookingTimeline
                 $antes = $anterior?->{$columna};
 
                 if (filled($valor) && blank($antes)) {
-                    $marcas[] = ['campo' => self::etiqueta($casilla), 'antes' => null, 'despues' => 'marcada'];
+                    $marcas[] = [
+                        'campo' => __(self::etiqueta($casilla)), 'antes' => null, 'despues' => __('marcada'),
+                        'por' => $this->userName($fila->{$casilla.'_chk_by'} ?? null),
+                    ];
                 } elseif (blank($valor) && filled($antes)) {
-                    $marcas[] = ['campo' => self::etiqueta($casilla), 'antes' => 'marcada', 'despues' => null];
+                    $marcas[] = ['campo' => __(self::etiqueta($casilla)), 'antes' => __('marcada'), 'despues' => null];
                 }
             }
 
             if ($marcas !== [] || $anterior === null) {
-                $eventos->push($this->event($fila, 'Lista de verificación', $marcas));
+                $eventos->push($this->event($fila, __('Lista de verificación'), $marcas));
             }
 
             $anterior = $fila;
@@ -187,7 +191,7 @@ class BookingTimeline
                 }
 
                 $cambios[] = [
-                    'campo' => self::etiqueta($columna),
+                    'campo' => __(self::etiqueta($columna)),
                     'antes' => $anterior === null ? null : $this->display($columna, $antes),
                     'despues' => $this->display($columna, $valor),
                 ];
