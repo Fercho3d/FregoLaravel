@@ -5,6 +5,7 @@ namespace Tests\Feature\Payments;
 use App\Livewire\Payments\PaymentRequestList;
 use App\Livewire\Payments\PaymentsReport;
 use App\Models\User;
+use Illuminate\Support\Facades\Http;
 use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
@@ -20,6 +21,17 @@ use Tests\LegacyDatabaseTestCase;
 #[Group('parity')]
 class PaymentsReportTest extends LegacyDatabaseTestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // La lista de solicitudes revalúa a la fecha de hoy y pide ese tipo de
+        // cambio a Banxico si falta; la base real es solo lectura, así que la
+        // respuesta se finge vacía y no se registra nada.
+        Http::preventStrayRequests();
+        Http::fake(['www.banxico.org.mx/*' => Http::response(['bmx' => ['series' => [['datos' => []]]]])]);
+    }
+
     private function admin(): User
     {
         $usuario = User::query()
@@ -36,13 +48,17 @@ class PaymentsReportTest extends LegacyDatabaseTestCase
 
     public function test_los_reportes_son_solo_para_administradores(): void
     {
+        // Interno y activo: a uno dado de baja `EnsureUserIsActive` lo manda al
+        // login (302) antes de que la puerta de administradores conteste 403.
         $noAdmin = User::query()
             ->whereNotIn('role', [User::ROLE_ADMIN, User::ROLE_SUPER_ADMIN])
+            ->where(fn ($q) => $q->whereNull('status')->orWhere('status', 1))
+            ->where(fn ($q) => $q->whereNull('access')->orWhere('access', User::ACCESS_INTERNAL))
             ->orderBy('usr_id')
             ->first();
 
         if (! $noAdmin) {
-            $this->markTestSkipped('La base local no tiene un usuario sin rol administrativo.');
+            $this->markTestSkipped('La base local no tiene un usuario interno activo sin rol administrativo.');
         }
 
         $this->actingAs($noAdmin);

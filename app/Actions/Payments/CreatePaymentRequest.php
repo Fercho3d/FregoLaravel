@@ -2,6 +2,7 @@
 
 namespace App\Actions\Payments;
 
+use App\Models\Core\Exchange;
 use App\Models\Core\PaymentByTransaction;
 use App\Models\Core\PaymentRequest;
 use App\Models\Core\Transaction;
@@ -21,11 +22,11 @@ use Illuminate\Validation\ValidationException;
  */
 class CreatePaymentRequest
 {
-    public function __construct(private ExchangeRates $rates) {}
+    public function __construct(private ExchangeRates $rates, private RecalculatePaidColumns $recalc) {}
 
     /**
      * @param  Collection<int, object>  $transacciones  Filas del motor de consulta.
-     * @param  array<string, mixed>  $datos  number, date, bank_id
+     * @param  array<string, mixed>  $datos  number, date, bank_id y, opcionales, custom_tc y tc_value
      * @param  array<int, float>  $importes  transc_id => importe a aplicar
      */
     public function handle(Collection $transacciones, array $datos, array $importes, User $usuario): PaymentRequest
@@ -40,6 +41,7 @@ class CreatePaymentRequest
         $this->rates->ensureFor($fecha);
 
         $primera = $transacciones->first();
+        $tcPropio = (bool) ($datos['custom_tc'] ?? false);
 
         $solicitud = new PaymentRequest;
         $solicitud->forceFill([
@@ -47,6 +49,11 @@ class CreatePaymentRequest
             'date' => $fecha->toDateString(),
             'bank_id' => (int) $datos['bank_id'],
             'currency_id' => (int) $primera->account_id,
+            // Con «tipo de cambio propio» se guarda el capturado y el motor lo
+            // usa en vez del del día (`custom_tc = 1`). Si no, se anota el del
+            // día como referencia, igual que el original.
+            'custom_tc' => $tcPropio ? 1 : 0,
+            'tc_value' => $tcPropio ? round((float) $datos['tc_value'], 4) : $this->dayRate($fecha, (int) $primera->account_id),
             'type' => $esCobro ? 1 : 2,
             'client_id' => $esCobro ? $primera->customer : null,
             'provider_id' => $esCobro ? null : $primera->vendor,
@@ -66,6 +73,21 @@ class CreatePaymentRequest
         }
 
         return $solicitud;
+    }
+
+    /**
+     * El tipo de cambio registrado para la fecha; el de la divisa de la
+     * solicitud si lo hay y, si no, el del día (el original tomaba el primero
+     * registrado para esa fecha sin mirar la cuenta).
+     */
+    private function dayRate(Carbon $fecha, int $currencyId): ?float
+    {
+        $valor = Exchange::whereDate('date_exchange', $fecha)
+            ->orderByRaw('CASE WHEN account = ? THEN 0 ELSE 1 END', [$currencyId])
+            ->orderBy('exchange_id')
+            ->value('exchange_value');
+
+        return $valor === null ? null : round((float) $valor, 4);
     }
 
     /**
@@ -104,14 +126,8 @@ class CreatePaymentRequest
 
     /**
      * Aplica el pago a una transacción: deja el renglón que la liga con la
-     * solicitud y actualiza sus columnas de cobro. También lo usa la solicitud
-     * reabierta al agregarle una transacción (`PaymentRequestDetail`).
-     *
-     * La fórmula de `paid` es la del original y **parece equivocada**
-     * (`left_to_pay - paid_amount`, cuando lo natural sería comparar contra el
-     * total); se conserva porque escribe en una columna que el sistema viejo
-     * sigue leyendo. El estado que se enseña en pantalla no sale de ahí, sino de
-     * los importes calculados, así que la rareza no se ve.
+     * solicitud y recalcula sus columnas heredadas de cobro. También lo usa la
+     * solicitud reabierta al agregarle una transacción (`PaymentRequestDetail`).
      */
     public function applyTo(object $transaccion, int $requestId, float $importe): void
     {
@@ -122,13 +138,7 @@ class CreatePaymentRequest
             'paid' => 1,
         ]);
 
-        $pagadoAntes = (float) ($transaccion->paid_amount ?? 0);
-
-        Transaction::whereKey($transaccion->transc_id)->update([
-            'paid_amount' => $pagadoAntes + $importe,
-            'paid' => ((float) $transaccion->left_to_pay - $pagadoAntes) === 0.0 ? 1 : 2,
-            'paid_at' => now(),
-        ]);
+        $this->recalc->handle([(int) $transaccion->transc_id]);
     }
 
     /** @param  Collection<int, object>  $transacciones */

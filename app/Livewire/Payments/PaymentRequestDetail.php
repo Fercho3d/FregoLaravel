@@ -3,6 +3,7 @@
 namespace App\Livewire\Payments;
 
 use App\Actions\Payments\CreatePaymentRequest;
+use App\Actions\Payments\RecalculatePaidColumns;
 use App\Models\Core\Bank;
 use App\Models\Core\PaymentByTransaction;
 use App\Models\Core\PaymentRequest;
@@ -10,6 +11,8 @@ use App\Queries\PaymentRequestFilters;
 use App\Queries\PaymentRequestQuery;
 use App\Queries\TransactionFilters;
 use App\Queries\TransactionQuery;
+use App\Support\ExchangeRates;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Livewire\Component;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -112,7 +115,7 @@ class PaymentRequestDetail extends Component
     // ------------------------------------------------------------ Acciones
 
     /** Marca la solicitud como pagada (misma regla que el listado). */
-    public function markPaid(): void
+    public function markPaid(RecalculatePaidColumns $recalc): void
     {
         // Como el «Pay» del modal de Yii2: guarda lo corregido y paga.
         if (! $this->save()) {
@@ -127,16 +130,18 @@ class PaymentRequestDetail extends Component
         );
 
         $solicitud->forceFill(['paid' => 1, 'opened' => 0])->save();
+        $recalc->forRequest($this->requestId);
 
         session()->flash('status', __('Solicitud ').$this->folio($this->requestId).' marcada como pagada.');
     }
 
     /** Vuelve a abrir una solicitud pagada, para corregirla. */
-    public function reopen(): void
+    public function reopen(RecalculatePaidColumns $recalc): void
     {
         $this->assertAdmin();
 
         PaymentRequest::findOrFail($this->requestId)->forceFill(['paid' => 0, 'opened' => 1])->save();
+        $recalc->forRequest($this->requestId);
 
         $this->loadEditable();
 
@@ -172,15 +177,30 @@ class PaymentRequestDetail extends Component
                 ->update(['amount' => round((float) $importe, 2)]);
         }
 
-        $this->saveHeader($solicitud);
+        // La fecha manda el tipo de cambio con que se valúa la solicitud: si
+        // cambió, hay que tenerlo registrado (el `beforeSave` del original).
+        app(ExchangeRates::class)->ensureFor(Carbon::parse($this->date));
+
+        $solicitud->forceFill([
+            'number' => $this->number,
+            'date' => $this->date,
+            'bank_id' => (int) $this->bankId,
+        ]);
+        $this->saveTotals($solicitud);
+        app(RecalculatePaidColumns::class)->forRequest($this->requestId);
 
         session()->flash('status', __('Solicitud ').$this->folio($this->requestId).' guardada.');
 
         return true;
     }
 
-    /** Suelta una transacción de la solicitud; la última no, eso es borrarla. */
-    public function removeTransaction(int $transaccion): void
+    /**
+     * Suelta una transacción de la solicitud; la última no, eso es borrarla.
+     *
+     * Número, fecha y banco NO se guardan aquí: lo tecleado se queda en
+     * pantalla y entra por «Guardar cambios», que sí lo valida.
+     */
+    public function removeTransaction(int $transaccion, RecalculatePaidColumns $recalc): void
     {
         $solicitud = $this->assertEditable();
 
@@ -189,7 +209,8 @@ class PaymentRequestDetail extends Component
         PaymentByTransaction::where('request_id', $this->requestId)->where('transc_id', $transaccion)->delete();
         unset($this->amounts[$transaccion]);
 
-        $this->saveHeader($solicitud);
+        $this->saveTotals($solicitud);
+        $recalc->handle([$transaccion]);
     }
 
     /** Abre o cierra el panel «Agregar transacción». */
@@ -233,37 +254,43 @@ class PaymentRequestDetail extends Component
 
         $crear->applyTo($candidata, $this->requestId, $importe);
         $this->amounts[$transaccion] = (string) $importe;
-        $this->saveHeader($solicitud);
+        $this->saveTotals($solicitud);
 
         session()->flash('status', __('Transacción :num agregada a la solicitud.', ['num' => $candidata->tran_number ?: $transaccion]));
     }
 
-    /** Número, fecha, banco y el importe, que es la suma de los renglones. */
-    private function saveHeader(PaymentRequest $solicitud): void
+    /**
+     * El importe (la suma de los renglones) y el reparto en JSON que el
+     * original guarda en `payments` y que sus pantallas viejas siguen leyendo.
+     */
+    private function saveTotals(PaymentRequest $solicitud): void
     {
-        $importe = round(collect($this->amounts)->sum(fn ($v) => (float) $v), 2);
+        $reparto = collect($this->amounts)->mapWithKeys(fn ($v, $id) => [(int) $id => round((float) $v, 2)]);
 
         $solicitud->forceFill([
-            'number' => $this->number,
-            'date' => $this->date,
-            'bank_id' => (int) $this->bankId,
-            'amount' => $importe,
-            'total_to_pay' => $importe,
+            'amount' => round($reparto->sum(), 2),
+            'total_to_pay' => round($reparto->sum(), 2),
+            'payments' => json_encode($reparto->all()),
             'modified_by' => auth()->user()?->usr_id,
         ])->save();
     }
 
-    /** Borra la solicitud y suelta sus transacciones; regresa al listado. */
-    public function delete()
+    /**
+     * Borra la solicitud y suelta sus transacciones; regresa al listado. Solo
+     * el super administrador, como en el original.
+     */
+    public function delete(RecalculatePaidColumns $recalc)
     {
-        $this->assertAdmin();
+        abort_unless(auth()->user()?->isSuperAdmin() ?? false, 403);
 
         $solicitud = PaymentRequest::findOrFail($this->requestId);
 
         abort_if((bool) $solicitud->paid, 422, __('Una solicitud pagada no se borra: primero hay que reabrirla.'));
 
+        $transacciones = PaymentByTransaction::where('request_id', $this->requestId)->pluck('transc_id')->all();
         PaymentByTransaction::where('request_id', $this->requestId)->delete();
         $solicitud->delete();
+        $recalc->handle($transacciones);
 
         session()->flash('status', __('Solicitud ').$this->folio($this->requestId).' borrada.');
 
@@ -378,16 +405,16 @@ class PaymentRequestDetail extends Component
 
         abort_if($solicitud === null, 404);
 
+        $modelo = PaymentRequest::findOrFail($this->requestId);
         $editable = (auth()->user()?->isAdmin() ?? false) && ! $solicitud->paid;
-        $candidatas = $editable && $this->showAdd
-            ? $this->candidates(PaymentRequest::findOrFail($this->requestId))
-            : collect();
+        $candidatas = $editable && $this->showAdd ? $this->candidates($modelo) : collect();
 
         return view('livewire.payments.payment-request-detail', [
             'solicitud' => $solicitud,
             'transacciones' => $this->transactions(),
             'banks' => Bank::options(),
             'editable' => $editable,
+            'tcPropio' => (int) $modelo->custom_tc === 1,
             'candidatas' => $candidatas->take(self::MAX_CANDIDATAS),
             'candidatasTotal' => $candidatas->count(),
             'maxCandidatas' => self::MAX_CANDIDATAS,

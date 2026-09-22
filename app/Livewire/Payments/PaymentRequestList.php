@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Payments;
 
+use App\Actions\Payments\RecalculatePaidColumns;
 use App\Models\Core\Bank;
 use App\Models\Core\Client;
 use App\Models\Core\PaymentByTransaction;
@@ -38,6 +39,14 @@ class PaymentRequestList extends Component
     #[Url(as: 'f', except: '')]
     public string $dates = '';
 
+    /**
+     * Sin rango de fechas a propósito. Sin esto, la pantalla vacía arranca en
+     * el año en curso (ver `mount()`), y al volver del detalle o recargar se
+     * perdería el «Ver todos los años».
+     */
+    #[Url(as: 'todos', except: false)]
+    public bool $allYears = false;
+
     /** Folio (ID) de la solicitud: se acepta con o sin ceros a la izquierda. */
     #[Url(as: 'folio', except: '')]
     public string $folioId = '';
@@ -51,9 +60,8 @@ class PaymentRequestList extends Component
 
     /*
      * Filtros que llegan desde los reportes de cobros y pagos al abrir un
-     * renglón: el cliente, el proveedor (con su divisa) y la fecha con la que
-     * el reporte revalúa lo pagado. No tienen campo propio; se quitan con
-     * «Limpiar filtros».
+     * renglón: el cliente y el proveedor (con su divisa). No tienen campo
+     * propio; se quitan con «Limpiar filtros».
      */
     #[Url(as: 'cliente', except: '')]
     public string $clientId = '';
@@ -64,6 +72,11 @@ class PaymentRequestList extends Component
     #[Url(as: 'divisa', except: '')]
     public string $currencyId = '';
 
+    /**
+     * Fecha con la que se revalúa lo pagado («dd/mm/aaaa»); de ella salen
+     * «TC pago», «Total a pagar» y «Diferencia». Hoy por omisión, como el
+     * `date_pay` del `actionIndex` original; los reportes la mandan con la suya.
+     */
     #[Url(as: 'tc', except: '')]
     public string $datePay = '';
 
@@ -103,15 +116,13 @@ class PaymentRequestList extends Component
 
         // Como en transacciones: arranca en el año en curso para que «Ver todas»
         // no traiga años de historia de golpe y se quede sin memoria.
-        if ($this->dates === '') {
-            $this->dates = $this->defaultDates();
+        if ($this->dates === '' && ! $this->allYears) {
+            $this->dates = now()->startOfYear()->format('d/m/Y').' - '.now()->format('d/m/Y');
         }
-    }
 
-    /** Del 1 de enero de este año a hoy («dd/mm/aaaa - dd/mm/aaaa»). */
-    private function defaultDates(): string
-    {
-        return now()->startOfYear()->format('d/m/Y').' - '.now()->format('d/m/Y');
+        if ($this->datePay === '') {
+            $this->datePay = now()->format('d/m/Y');
+        }
     }
 
     public function updatedShowTotals(bool $value): void
@@ -127,6 +138,11 @@ class PaymentRequestList extends Component
 
         $this->resetPage();
         $this->highlight = null;
+
+        // Borrar el rango a mano también es «todos los años».
+        if ($property === 'dates') {
+            $this->allYears = $this->dates === '';
+        }
     }
 
     /** «Ver todas»: el filtro completo en una sola página, como en transacciones. */
@@ -136,11 +152,20 @@ class PaymentRequestList extends Component
         $this->resetPage();
     }
 
+    /** Quita el rango de fechas: toda la historia, no solo el año en curso. */
+    public function verTodosLosAnios(): void
+    {
+        $this->dates = '';
+        $this->allYears = true;
+        $this->resetPage();
+    }
+
+    /** Deja la pantalla sin ningún filtro, tampoco el rango de fechas. */
     public function clearFilters(): void
     {
-        $this->reset(['type', 'bankId', 'paid', 'folioId', 'number', 'highlight', 'clientId', 'providerId', 'currencyId', 'datePay']);
-        $this->dates = $this->defaultDates();
-        $this->resetPage();
+        $this->reset(['type', 'bankId', 'paid', 'folioId', 'number', 'highlight', 'clientId', 'providerId', 'currencyId']);
+        $this->verTodosLosAnios();
+        $this->datePay = now()->format('d/m/Y');
     }
 
     /**
@@ -155,6 +180,7 @@ class PaymentRequestList extends Component
             'banco' => $this->bankId,
             'estado' => $this->paid,
             'f' => $this->dates,
+            'todos' => $this->allYears ? '1' : null,
             'folio' => $this->folioId,
             'num' => $this->number,
             'n' => $this->perPage === 50 ? null : $this->perPage,
@@ -178,7 +204,7 @@ class PaymentRequestList extends Component
      * nacen con `paid = 1` desde que se crea la solicitud, ese recorrido no tenía
      * nada que hacer: aquí se marca la solicitud y ya.
      */
-    public function markPaid(int $requestId): void
+    public function markPaid(int $requestId, RecalculatePaidColumns $recalc): void
     {
         $this->assertAdmin();
 
@@ -193,40 +219,45 @@ class PaymentRequestList extends Component
         );
 
         $solicitud->forceFill(['paid' => 1, 'opened' => 0])->save();
+        $recalc->forRequest($requestId);
 
         $this->highlight = null;
         session()->flash('status', __('Solicitud ').$this->folio($solicitud->request_id).' marcada como pagada.');
     }
 
     /** Vuelve a abrir una solicitud pagada, para corregirla. */
-    public function reopen(int $requestId): void
+    public function reopen(int $requestId, RecalculatePaidColumns $recalc): void
     {
         $this->assertAdmin();
 
         PaymentRequest::findOrFail($requestId)->forceFill(['paid' => 0, 'opened' => 1])->save();
+        $recalc->forRequest($requestId);
 
         $this->highlight = null;
         session()->flash('status', __('Solicitud ').$this->folio($requestId).' reabierta.');
     }
 
     /**
-     * Borra la solicitud y suelta las transacciones que agrupaba.
+     * Borra la solicitud y suelta las transacciones que agrupaba. Solo el super
+     * administrador, como en el original.
      *
      * El original borraba solo la solicitud y dejaba comentado el `unpay()` de
      * cada transacción, así que los renglones de pago quedaban huérfanos y las
      * transacciones seguían apareciendo como cobradas. Aquí se borran los
      * renglones también: una solicitud que ya no existe no puede seguir pagando.
      */
-    public function delete(int $requestId): void
+    public function delete(int $requestId, RecalculatePaidColumns $recalc): void
     {
-        $this->assertAdmin();
+        abort_unless(auth()->user()?->isSuperAdmin() ?? false, 403);
 
         $solicitud = PaymentRequest::findOrFail($requestId);
 
         abort_if((bool) $solicitud->paid, 422, __('Una solicitud pagada no se borra: primero hay que reabrirla.'));
 
+        $transacciones = PaymentByTransaction::where('request_id', $requestId)->pluck('transc_id')->all();
         PaymentByTransaction::where('request_id', $requestId)->delete();
         $solicitud->delete();
+        $recalc->handle($transacciones);
 
         $this->highlight = null;
         session()->flash('status', __('Solicitud ').$this->folio($requestId).' borrada.');
@@ -258,7 +289,8 @@ class PaymentRequestList extends Component
             'client_id' => $this->clientId !== '' ? (int) $this->clientId : null,
             'provider_id' => $this->providerId !== '' ? (int) $this->providerId : null,
             'currency_id' => $this->currencyId !== '' ? (int) $this->currencyId : null,
-            'date_pay' => $this->datePay ?: null,
+            // Una fecha a medio teclear no revalúa, en vez de tirar la consulta.
+            'date_pay' => preg_match('~^\d{1,2}/\d{1,2}/\d{4}$~', trim($this->datePay)) ? trim($this->datePay) : null,
         ]);
 
         if ($this->paid !== '') {

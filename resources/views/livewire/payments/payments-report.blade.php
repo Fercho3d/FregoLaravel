@@ -8,6 +8,11 @@
         default => $fila->clientName ?: __('Sin cliente'),
     };
 
+    // Por cliente y por proveedor se agrupa también por divisa (o se mostraba
+    // un proveedor con USD y MXN en dos renglones iguales) y se enseña lo
+    // pagado en esa divisa, como el «Natural Amount» del original.
+    $conDivisa = $mode !== 'general';
+
     // Columnas de dinero, iguales en las tres pantallas.
     $columnas = [
         ['Sub 0 %', 'sub_0_paid'],
@@ -38,7 +43,19 @@
 
     {{-- Filtros --}}
     <div class="card p-4">
-        <div class="grid gap-3 sm:grid-cols-3">
+        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            @if ($mode !== 'general')
+                <label class="block">
+                    <span class="field-label text-xs">{{ $mode === 'vendor' ? __('Proveedor') : __('Cliente') }}</span>
+                    <select wire:model.live="{{ $mode === 'vendor' ? 'providerId' : 'clientId' }}" class="field-input mt-1 py-1.5 text-sm">
+                        <option value="">{{ __('Todos') }}</option>
+                        @foreach ($terceros as $id => $etiqueta)
+                            <option value="{{ $id }}" @selected((string) $id === ($mode === 'vendor' ? $providerId : $clientId))>{{ $etiqueta }}</option>
+                        @endforeach
+                    </select>
+                </label>
+            @endif
+
             <label class="block">
                 <span class="field-label text-xs">{{ __('Fecha de la solicitud') }} <span class="text-ink-faint">{{ __('(rango)') }}</span></span>
                 <input type="text" wire:model.live.debounce.600ms="dates" value="{{ $dates }}"
@@ -83,6 +100,10 @@
                         <th class="px-4 py-2.5 text-left font-semibold">
                             {{ $mode === 'vendor' ? __('Proveedor') : ($mode === 'general' ? __('Tipo') : __('Cliente')) }}
                         </th>
+                        @if ($conDivisa)
+                            <th class="px-4 py-2.5 text-left font-semibold">{{ __('Divisa') }}</th>
+                            <th class="px-4 py-2.5 text-right font-semibold">{{ __('Importe natural') }}</th>
+                        @endif
                         @foreach ($columnas as [$etiqueta, $columna])
                             <th class="px-4 py-2.5 text-right font-semibold">{{ $etiqueta }}</th>
                         @endforeach
@@ -105,6 +126,10 @@
                                     <span class="text-ink">{{ $nombre($fila) }}</span>
                                 </span>
                             </td>
+                            @if ($conDivisa)
+                                <td class="whitespace-nowrap px-4 py-2 text-ink-muted">{{ $fila->prefix ?: '—' }}</td>
+                                <td class="whitespace-nowrap px-4 py-2 text-right tabular-nums text-ink-muted">{{ $money($fila->amount_original_paid) }}</td>
+                            @endif
                             @foreach ($columnas as [$etiqueta, $columna])
                                 <td class="whitespace-nowrap px-4 py-2 text-right tabular-nums text-ink-muted">{{ $money($fila->{$columna}) }}</td>
                             @endforeach
@@ -115,7 +140,7 @@
 
                     @empty
                         <tr>
-                            <td colspan="{{ count($columnas) + 2 }}" class="px-4 py-12 text-center text-ink-faint">
+                            <td colspan="{{ count($columnas) + ($conDivisa ? 4 : 2) }}" class="px-4 py-12 text-center text-ink-faint">
                                 {{ __('No hay movimientos con estos filtros.') }}
                             </td>
                         </tr>
@@ -125,7 +150,7 @@
                 @if ($filas->isNotEmpty())
                     <tfoot class="border-t border-line bg-panel text-sm font-semibold">
                         <tr>
-                            <td class="px-4 py-2.5 text-ink-muted">{{ __('Total') }}</td>
+                            <td colspan="{{ $conDivisa ? 3 : 1 }}" class="px-4 py-2.5 text-ink-muted">{{ __('Total') }}</td>
                             @foreach ($columnas as [$etiqueta, $columna])
                                 <td class="whitespace-nowrap px-4 py-2.5 text-right tabular-nums text-ink-soft">{{ $money($totales[$columna]) }}</td>
                             @endforeach
@@ -138,4 +163,32 @@
             </table>
         </div>
     </div>
+
+    {{-- Saldos por banco: el «Total» de la pantalla de Bancos del original --}}
+    @if ($mode === 'general')
+        <div class="rounded-xl border border-line bg-panel">
+            <div class="flex flex-wrap items-baseline justify-between gap-2 border-b border-line px-4 py-3">
+                <h3 class="text-sm font-semibold text-ink">{{ __('Saldos por banco') }}</h3>
+                <span class="text-xs text-ink-muted">
+                    {{ __('Solicitudes pagadas hasta el :fecha, en pesos, al tipo de cambio de cada una.', ['fecha' => $this->bankCutoff()->format('d/m/Y')]) }}
+                </span>
+            </div>
+            <table class="min-w-full text-sm">
+                <tbody class="divide-y divide-line">
+                    @forelse ($saldos as $saldo)
+                        <tr>
+                            <td class="px-4 py-2 text-ink">{{ $saldo->bank_name }}</td>
+                            <td class="whitespace-nowrap px-4 py-2 text-right font-semibold tabular-nums {{ (float) $saldo->total < 0 ? 'text-brand' : 'text-ink' }}">
+                                {{ $money($saldo->total) }}
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td class="px-4 py-8 text-center text-ink-faint">{{ __('No hay bancos activos.') }}</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    @endif
 </div>

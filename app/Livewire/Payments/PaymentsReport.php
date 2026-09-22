@@ -3,8 +3,12 @@
 namespace App\Livewire\Payments;
 
 use App\Models\Core\Bank;
+use App\Models\Core\Client;
+use App\Models\Core\Provider;
 use App\Queries\PaymentRequestFilters;
 use App\Queries\PaymentRequestQuery;
+use App\Queries\TransactionFilters;
+use Illuminate\Support\Carbon;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 
@@ -38,6 +42,13 @@ class PaymentsReport extends Component
     #[Url(as: 'banco', except: '')]
     public string $bankId = '';
 
+    /** Un solo cliente (modo `customer`) o proveedor (modo `vendor`). */
+    #[Url(as: 'cliente', except: '')]
+    public string $clientId = '';
+
+    #[Url(as: 'proveedor', except: '')]
+    public string $providerId = '';
+
     public float $queryMs = 0;
 
     public function mount(string $mode = 'customer'): void
@@ -47,7 +58,7 @@ class PaymentsReport extends Component
 
     public function clearFilters(): void
     {
-        $this->reset(['dates', 'datePay', 'bankId']);
+        $this->reset(['dates', 'datePay', 'bankId', 'clientId', 'providerId']);
     }
 
     /** Este reporte con su filtro: a dónde vuelve la lista de solicitudes. */
@@ -57,6 +68,8 @@ class PaymentsReport extends Component
             'f' => $this->dates,
             'tc' => $this->datePay,
             'banco' => $this->bankId,
+            'cliente' => $this->clientId,
+            'proveedor' => $this->providerId,
         ]), absolute: false);
     }
 
@@ -86,6 +99,8 @@ class PaymentsReport extends Component
             'dates' => $this->dates ?: null,
             'date_pay' => $this->datePay ?: null,
             'bank_id' => $this->bankId !== '' ? (int) $this->bankId : null,
+            'client_id' => $this->mode === 'customer' && $this->clientId !== '' ? (int) $this->clientId : null,
+            'provider_id' => $this->mode === 'vendor' && $this->providerId !== '' ? (int) $this->providerId : null,
         ]);
 
         $filtros->paid = 1;
@@ -124,15 +139,36 @@ class PaymentsReport extends Component
         ], fn ($valor) => $valor !== null && $valor !== ''), absolute: false);
     }
 
+    /**
+     * Corte de los saldos por banco: el fin del rango de fechas del reporte o,
+     * sin rango, hoy.
+     */
+    public function bankCutoff(): Carbon
+    {
+        $rango = TransactionFilters::parseRange($this->dates ?: null);
+
+        return $rango === null ? Carbon::today() : Carbon::parse($rango[1]);
+    }
+
     public function render()
     {
         $inicio = microtime(true);
-        $filas = PaymentRequestQuery::make($this->filters())->get();
+        $consulta = PaymentRequestQuery::make($this->filters());
+        $filas = $consulta->get();
+        // El «Total» por banco de la pantalla de Bancos del original, ahora
+        // aquí: solo en el general, que es el que abarca cobros y pagos.
+        $saldos = $this->mode === 'general' ? $consulta->bankBalances($this->bankCutoff()) : collect();
         $this->queryMs = round((microtime(true) - $inicio) * 1000, 1);
 
         return view('livewire.payments.payments-report', [
             'filas' => $filas,
+            'saldos' => $saldos,
             'banks' => Bank::options(),
+            'terceros' => match ($this->mode) {
+                'customer' => Client::options(),
+                'vendor' => Provider::options(),
+                default => [],
+            },
         ])->layout('components.app-layout', ['title' => $this->title()]);
     }
 }

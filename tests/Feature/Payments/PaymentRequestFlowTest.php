@@ -5,6 +5,7 @@ namespace Tests\Feature\Payments;
 use App\Livewire\Payments\PaymentRequestDetail;
 use App\Livewire\Payments\PaymentRequestForm;
 use App\Livewire\Payments\PaymentRequestList;
+use App\Livewire\Payments\PaymentsReport;
 use App\Livewire\Transactions\TransactionTable;
 use App\Models\Core\PaymentByTransaction;
 use App\Models\Core\PaymentRequest;
@@ -112,6 +113,7 @@ class PaymentRequestFlowTest extends TestCase
         $this->assertSame(2, PaymentByTransaction::where('request_id', $solicitud->request_id)->count());
     }
 
+    /** Las columnas heredadas de `transaction` cuentan desde que se crea la solicitud, como en el original. */
     public function test_el_pago_queda_aplicado_a_cada_transaccion(): void
     {
         $this->formulario([1, 2])
@@ -120,6 +122,84 @@ class PaymentRequestFlowTest extends TestCase
 
         $this->assertSame(1000.0, (float) DB::table('transaction')->where('transc_id', 1)->value('paid_amount'));
         $this->assertSame(500.0, (float) DB::table('transaction')->where('transc_id', 2)->value('paid_amount'));
+    }
+
+    // -------------------------------- Columnas heredadas de `transaction` (B5)
+
+    /** @return array{paid_amount: float, paid: int, paid_at: ?string} */
+    private function columnasHeredadas(int $transaccion): array
+    {
+        $fila = DB::table('transaction')->where('transc_id', $transaccion)->first(['paid_amount', 'paid', 'paid_at']);
+
+        return ['paid_amount' => (float) $fila->paid_amount, 'paid' => (int) $fila->paid, 'paid_at' => $fila->paid_at];
+    }
+
+    /** Crear la solicitud ya salda la transacción (`payTran` del original), aunque siga pendiente. */
+    public function test_crear_la_solicitud_salda_la_transaccion(): void
+    {
+        $this->solicitudCreada();
+
+        $columnas = $this->columnasHeredadas(1);
+
+        $this->assertSame([1000.0, 1, true], [$columnas['paid_amount'], $columnas['paid'], $columnas['paid_at'] !== null]);
+    }
+
+    /** Pagar no vuelve a acumular (el `payRequest` del original duplicaba) y conserva `paid_at`. */
+    public function test_pagar_no_duplica_lo_aplicado(): void
+    {
+        $id = $this->solicitudCreada();
+        $antes = $this->columnasHeredadas(1);
+
+        $this->listado()->call('markPaid', $id);
+
+        $this->assertSame($antes, $this->columnasHeredadas(1));
+    }
+
+    public function test_borrar_deja_la_transaccion_sin_pagar(): void
+    {
+        $id = $this->solicitudCreada();
+
+        $this->listado(User::ROLE_SUPER_ADMIN)->call('delete', $id);
+
+        $this->assertSame(['paid_amount' => 0.0, 'paid' => 0, 'paid_at' => null], $this->columnasHeredadas(1));
+    }
+
+    /** Aplicar una parte deja `paid = 2`, el «parcial» del original. */
+    public function test_un_pago_parcial_queda_como_parcial(): void
+    {
+        $this->formulario([1])
+            ->set('number', 'CHQ-100')->set('date', '2026-01-20')->set('bankId', '1')
+            ->set('amounts.1', '400')
+            ->call('save')->assertHasNoErrors();
+
+        $columnas = $this->columnasHeredadas(1);
+
+        $this->assertSame([400.0, 2], [$columnas['paid_amount'], $columnas['paid']]);
+    }
+
+    /** El reparto guardado en `payments`, como lo lee el original. */
+    private function reparto(int $id): array
+    {
+        return array_map('floatval', json_decode(PaymentRequest::find($id)->payments, true));
+    }
+
+    /** El JSON del reparto (`payments`) sigue a las correcciones, como al crear. */
+    public function test_corregir_y_quitar_actualizan_el_reparto(): void
+    {
+        $id = $this->solicitudCreada();
+
+        $this->actingAs($this->usuario());
+
+        $detalle = Livewire::test(PaymentRequestDetail::class, ['request' => $id])
+            ->set('amounts.1', '800')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame([1 => 800.0, 2 => 500.0], $this->reparto($id));
+
+        $detalle->call('removeTransaction', 2);
+
+        $this->assertSame([1 => 800.0], $this->reparto($id));
     }
 
     public function test_no_se_agrupan_proveedores_distintos(): void
@@ -247,7 +327,7 @@ class PaymentRequestFlowTest extends TestCase
     {
         $id = $this->solicitudCreada();
 
-        $this->actingAs($this->usuario());
+        $this->actingAs($this->usuario(User::ROLE_SUPER_ADMIN));
 
         Livewire::test(PaymentRequestDetail::class, ['request' => $id])
             ->call('delete')
@@ -288,6 +368,51 @@ class PaymentRequestFlowTest extends TestCase
             (float) PaymentRequest::find($id)->amount,
             PaymentByTransaction::where('request_id', $id)->pluck('transc_id')->all(),
         ]);
+    }
+
+    /**
+     * «Quitar» no guarda número, fecha ni banco: eso entra por «Guardar
+     * cambios», que los valida. Antes se escribían tal cual, aunque estuvieran
+     * vacíos.
+     */
+    public function test_quitar_no_guarda_un_encabezado_sin_validar(): void
+    {
+        $id = $this->solicitudCreada();
+
+        $this->actingAs($this->usuario());
+
+        Livewire::test(PaymentRequestDetail::class, ['request' => $id])
+            ->set('number', '')
+            ->set('bankId', '')
+            ->call('removeTransaction', 2);
+
+        $this->assertSame(['CHQ-DET', 1], [PaymentRequest::find($id)->number, (int) PaymentRequest::find($id)->bank_id]);
+    }
+
+    /** Cambiar la fecha pide el tipo de cambio de ese día, como el `beforeSave` original. */
+    public function test_cambiar_la_fecha_pide_el_tipo_de_cambio_de_ese_dia(): void
+    {
+        $id = $this->solicitudCreada();
+
+        $this->actingAs($this->usuario());
+
+        Livewire::test(PaymentRequestDetail::class, ['request' => $id])
+            ->set('date', '2026-01-21')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        Http::assertSent(fn ($peticion) => str_contains($peticion->url(), '2026-01-21/2026-01-21'));
+    }
+
+    /** Borrar es solo del super administrador, como en el original. */
+    public function test_borrar_es_solo_para_el_super_administrador(): void
+    {
+        $id = $this->solicitudCreada();
+
+        $this->listado()->call('delete', $id)->assertForbidden();
+        $this->detalle($id)->call('delete')->assertForbidden();
+
+        $this->assertSame(1, PaymentRequest::count());
     }
 
     public function test_no_se_corrige_mas_de_lo_que_vale_el_documento(): void
@@ -657,10 +782,11 @@ class PaymentRequestFlowTest extends TestCase
 
         $this->detalle($id)->call('addTransaction', 2);
 
-        $this->assertSame([1500.0, 500.0, 500.0], [
+        $this->assertSame([1500.0, 500.0, 500.0, [1 => 1000.0, 2 => 500.0]], [
             (float) PaymentRequest::find($id)->amount,
             (float) PaymentByTransaction::where('request_id', $id)->where('transc_id', 2)->value('amount'),
             (float) DB::table('transaction')->where('transc_id', 2)->value('paid_amount'),
+            $this->reparto($id),
         ]);
     }
 
@@ -801,7 +927,7 @@ class PaymentRequestFlowTest extends TestCase
     {
         $id = $this->conSolicitud();
 
-        $this->listado()->call('delete', $id);
+        $this->listado(User::ROLE_SUPER_ADMIN)->call('delete', $id);
 
         $this->assertSame(0, PaymentRequest::count());
         $this->assertSame(0, PaymentByTransaction::where('request_id', $id)->count());
@@ -894,9 +1020,119 @@ class PaymentRequestFlowTest extends TestCase
         $id = $this->conSolicitud();
 
         $this->listado()->call('markPaid', $id);
-        $this->listado()->call('delete', $id)->assertStatus(422);
+        $this->listado(User::ROLE_SUPER_ADMIN)->call('delete', $id)->assertStatus(422);
 
         $this->assertSame(1, PaymentRequest::count());
+    }
+
+    // ------------------------------------------ Fechas y revaluación (B1, B2)
+
+    /** Arranca en el año en curso, pero «Limpiar filtros» deja la pantalla sin rango. */
+    public function test_limpiar_filtros_deja_la_lista_sin_rango(): void
+    {
+        $this->listado()
+            ->assertSet('dates', now()->startOfYear()->format('d/m/Y').' - '.now()->format('d/m/Y'))
+            ->call('clearFilters')
+            ->assertSet('dates', '')
+            ->assertSet('allYears', true);
+    }
+
+    /** «Ver todos los años» sobrevive al viaje al detalle y de vuelta. */
+    public function test_ver_todos_los_anios_viaja_en_la_direccion(): void
+    {
+        $url = $this->listado()->call('verTodosLosAnios')->assertSet('dates', '')->instance()->currentUrl();
+
+        parse_str((string) parse_url($url, PHP_URL_QUERY), $parametros);
+
+        $this->actingAs($this->usuario());
+
+        Livewire::withQueryParams($parametros)->test(PaymentRequestList::class)->assertSet('dates', '');
+    }
+
+    /** La revaluación arranca en hoy, como el `date_pay` del `actionIndex` original. */
+    public function test_la_revaluacion_arranca_en_hoy(): void
+    {
+        $this->conSolicitud();
+
+        $this->listado()
+            ->assertSet('datePay', now()->format('d/m/Y'))
+            ->assertViewHas('filas', fn ($filas) => $filas->first()->pay_tc !== null);
+    }
+
+    // ------------------------------------------------ Tipo de cambio propio (B3)
+
+    /** El costo 4 está en dólares; el TC registrado para el 15/01/2026 es 20. */
+    public function test_con_tc_propio_la_solicitud_se_valua_con_el(): void
+    {
+        $this->formulario([4])
+            ->set('number', 'CHQ-USD')->set('date', '2026-01-15')->set('bankId', '1')
+            ->set('customTc', true)
+            ->set('tcValue', '18.5')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $solicitud = PaymentRequest::first();
+        $fila = $this->listado()->viewData('filas')->first();
+
+        $this->assertSame([1, 18.5, 18.5, -5550.0], [
+            (int) $solicitud->custom_tc,
+            (float) $solicitud->tc_value,
+            (float) $fila->exchange_value,
+            (float) $fila->total_paid,
+        ]);
+    }
+
+    public function test_sin_tc_propio_se_anota_el_del_dia(): void
+    {
+        $this->formulario([4])
+            ->set('number', 'CHQ-USD')->set('date', '2026-01-15')->set('bankId', '1')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame([0, 20.0], [(int) PaymentRequest::first()->custom_tc, (float) PaymentRequest::first()->tc_value]);
+    }
+
+    public function test_el_tc_propio_exige_su_valor(): void
+    {
+        $this->formulario([4])
+            ->set('number', 'CHQ-USD')->set('date', '2026-01-15')->set('bankId', '1')
+            ->set('customTc', true)
+            ->call('save')
+            ->assertHasErrors('tcValue');
+    }
+
+    // ------------------------------------------------ Reportes de pagos (B8, B9)
+
+    /** Una solicitud pagada de 1,500 MXN al proveedor 1. */
+    private function conSolicitudPagada(): void
+    {
+        $id = $this->conSolicitud();
+        $this->listado()->call('markPaid', $id);
+    }
+
+    public function test_el_reporte_por_proveedor_filtra_por_proveedor_y_enseña_la_divisa(): void
+    {
+        $this->conSolicitudPagada();
+
+        Livewire::test(PaymentsReport::class, ['mode' => 'vendor'])
+            ->assertViewHas('filas', fn ($filas) => $filas->count() === 1
+                && $filas->first()->prefix === 'MXN'
+                && (float) $filas->first()->amount_original_paid === 1500.0)
+            ->set('providerId', '2')
+            ->assertViewHas('filas', fn ($filas) => $filas->isEmpty())
+            ->assertSee(__('Importe natural'));
+    }
+
+    /** Los saldos por banco: cobros suman, pagos restan, hasta la fecha de corte. */
+    public function test_el_reporte_general_trae_los_saldos_por_banco(): void
+    {
+        $this->conSolicitudPagada();
+
+        Livewire::test(PaymentsReport::class, ['mode' => 'general'])
+            ->assertSee(__('Saldos por banco'))
+            ->assertViewHas('saldos', fn ($saldos) => $saldos->pluck('total', 'bank_name')->map(fn ($v) => (float) $v)->all() === ['BBVA MXN' => -1500.0])
+            ->set('dates', '01/01/2026 - 19/01/2026')
+            ->assertViewHas('saldos', fn ($saldos) => (float) $saldos->first()->total === 0.0);
     }
 
     /**
@@ -927,8 +1163,8 @@ class PaymentRequestFlowTest extends TestCase
         $html = Livewire::test(TransactionTable::class, ['screen' => 'bill'])->html();
 
         $this->assertStringContainsString('columnResizer(', $html);
-        // 17 columnas desde que el listado enseña «Tipo» (factura, costo o nota de crédito).
-        $this->assertSame(17, substr_count($html, 'cursor-col-resize'), 'Cada columna necesita su tirador.');
+        // 22 columnas: Tipo, Non Dec, PDF/XML, Solicitud, Total natural y Saldo, como el `bill.php` original.
+        $this->assertSame(22, substr_count($html, 'cursor-col-resize'), 'Cada columna necesita su tirador.');
         $this->assertStringContainsString('truncate', $html);
     }
 

@@ -1,8 +1,9 @@
 @php
     $money = fn ($v) => $v === null ? '—' : number_format((float) $v, 2);
     $esAdmin = auth()->user()?->isAdmin() ?? false;
+    $esSuperAdmin = auth()->user()?->isSuperAdmin() ?? false;
     $esCobro = (int) $solicitud->type === 1;
-    // $editable (admin y no pagada) llega del componente, que lo necesita para las candidatas.
+    // $editable (admin y no pagada) y $tcPropio llegan del componente.
 @endphp
 
 <div class="space-y-4">
@@ -25,9 +26,11 @@
                             wire:confirm="{{ __('Reabrir la solicitud para poder corregirla. ¿Continuar?') }}"
                             class="btn-ghost !px-3 !py-1.5 text-sm">{{ __('Reabrir') }}</button>
                 @else
-                    <button type="button" wire:click="delete"
-                            wire:confirm="{{ __('Se borrará la solicitud y se soltarán sus transacciones. ¿Continuar?') }}"
-                            class="btn-ghost !px-3 !py-1.5 text-sm">{{ __('Borrar') }}</button>
+                    @if ($esSuperAdmin)
+                        <button type="button" wire:click="delete"
+                                wire:confirm="{{ __('Se borrará la solicitud y se soltarán sus transacciones. ¿Continuar?') }}"
+                                class="btn-ghost !px-3 !py-1.5 text-sm">{{ __('Borrar') }}</button>
+                    @endif
                     <button type="button" wire:click="save" class="btn-ghost !px-3 !py-1.5 text-sm">{{ __('Guardar cambios') }}</button>
                     <button type="button" wire:click="markPaid"
                             wire:confirm="{{ __('¿Marcar esta solicitud como pagada?') }}"
@@ -95,7 +98,12 @@
             </div>
             <div class="flex justify-between gap-2 border-b border-line pb-2">
                 <dt class="text-ink-faint">{{ __('TC') }}</dt>
-                <dd class="tabular-nums text-ink-soft">{{ $solicitud->exchange_value === null ? '—' : number_format((float) $solicitud->exchange_value, 4) }}</dd>
+                <dd class="tabular-nums text-ink-soft">
+                    {{ $solicitud->exchange_value === null ? '—' : number_format((float) $solicitud->exchange_value, 4) }}
+                    @if ($tcPropio)
+                        <span class="badge badge-warn ml-1" title="{{ __('Tipo de cambio propio') }}">{{ __('propio') }}</span>
+                    @endif
+                </dd>
             </div>
             <div class="flex justify-between gap-2 border-b border-line pb-2">
                 <dt class="text-ink-faint">{{ __('Importe') }}</dt>

@@ -1,6 +1,7 @@
 @php
     $money = fn ($v) => $v === null ? '—' : number_format((float) $v, 2);
     $esAdmin = auth()->user()?->isAdmin() ?? false;
+    $esSuperAdmin = auth()->user()?->isSuperAdmin() ?? false;
     $desglose = [
         'sub_0_paid' => 'Sub 0 %',
         'sub_16_paid' => 'Sub 16 %',
@@ -45,7 +46,7 @@
 
     {{-- Filtros --}}
     <div class="card p-4">
-        <div class="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <div class="grid gap-3 sm:grid-cols-3 lg:grid-cols-7">
             <label class="block">
                 <span class="field-label text-xs">{{ __('Tipo') }}</span>
                 <select wire:model.live="type" class="field-input mt-1 py-1.5 text-sm">
@@ -86,10 +87,25 @@
                 </select>
             </label>
 
+            <div>
+                <label class="block">
+                    <span class="field-label text-xs">{{ __('Fechas') }} <span class="text-ink-faint">{{ __('(rango)') }}</span></span>
+                    <input type="text" wire:model.live.debounce.600ms="dates" value="{{ $dates }}"
+                           class="field-input mt-1 py-1.5 text-sm" placeholder="01/01/2025 - 31/12/2025">
+                </label>
+                {{-- El rango vigente: arranca en el año en curso para no traer toda la historia de golpe --}}
+                <p class="mt-1 text-xs text-ink-faint">
+                    {{ $dates !== '' ? __('Mostrando :rango', ['rango' => $dates]) : __('Mostrando todos los años') }}
+                    @if ($dates !== '')
+                        · <button type="button" wire:click="verTodosLosAnios" class="text-brand hover:underline">{{ __('Ver todos los años') }}</button>
+                    @endif
+                </p>
+            </div>
+
             <label class="block">
-                <span class="field-label text-xs">{{ __('Fechas') }} <span class="text-ink-faint">{{ __('(rango)') }}</span></span>
-                <input type="text" wire:model.live.debounce.600ms="dates" value="{{ $dates }}"
-                       class="field-input mt-1 py-1.5 text-sm" placeholder="01/01/2025 - 31/12/2025">
+                <span class="field-label text-xs">{{ __('Revaluar al TC del') }} <span class="text-ink-faint">{{ __('(dd/mm/aaaa)') }}</span></span>
+                <input type="text" wire:model.live.debounce.600ms="datePay" value="{{ $datePay }}"
+                       class="field-input mt-1 py-1.5 text-sm" placeholder="{{ now()->format('d/m/Y') }}">
             </label>
         </div>
 
@@ -232,9 +248,11 @@
                                             <button type="button" wire:click="markPaid({{ $fila->request_id }})"
                                                     wire:confirm="{{ __('¿Marcar esta solicitud como pagada?') }}"
                                                     class="text-brand hover:underline">{{ __('Pagar') }}</button>
-                                            <button type="button" wire:click="delete({{ $fila->request_id }})"
-                                                    wire:confirm="{{ __('Se borrará la solicitud y se soltarán sus transacciones. ¿Continuar?') }}"
-                                                    class="text-ink-muted transition hover:text-brand">{{ __('Borrar') }}</button>
+                                            @if ($esSuperAdmin)
+                                                <button type="button" wire:click="delete({{ $fila->request_id }})"
+                                                        wire:confirm="{{ __('Se borrará la solicitud y se soltarán sus transacciones. ¿Continuar?') }}"
+                                                        class="text-ink-muted transition hover:text-brand">{{ __('Borrar') }}</button>
+                                            @endif
                                         @endif
                                     </div>
                                 </td>

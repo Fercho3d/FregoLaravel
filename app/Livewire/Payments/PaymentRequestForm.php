@@ -4,10 +4,12 @@ namespace App\Livewire\Payments;
 
 use App\Actions\Payments\CreatePaymentRequest;
 use App\Models\Core\Bank;
+use App\Models\Core\Exchange;
 use App\Models\Core\Transaction;
 use App\Queries\TransactionFilters;
 use App\Queries\TransactionQuery;
 use Illuminate\Support\Collection;
+use Illuminate\Validation\Rule;
 use Livewire\Component;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
@@ -31,6 +33,15 @@ class PaymentRequestForm extends Component
     public string $date = '';
 
     public string $bankId = '';
+
+    /**
+     * «Tipo de cambio propio»: la solicitud se valúa con el TC capturado en vez
+     * del registrado para su fecha. Es la casilla «Custom TC» del modal de Yii2.
+     */
+    public bool $customTc = false;
+
+    /** El TC propio, con cuatro decimales. */
+    public string $tcValue = '';
 
     /** @var array<int, string> transc_id => importe a aplicar */
     public array $amounts = [];
@@ -130,6 +141,25 @@ class PaymentRequestForm extends Component
         return round(collect($this->amounts)->sum(fn ($v) => (float) $v), 2);
     }
 
+    /**
+     * El TC registrado para la fecha y divisa elegidas, como referencia junto a
+     * la casilla; si aún no está registrado se pide al guardar.
+     */
+    public function dayRate(): ?float
+    {
+        $primera = $this->transactions()->first();
+
+        if ($primera === null || ! strtotime($this->date)) {
+            return null;
+        }
+
+        $valor = Exchange::where('account', (int) $primera->account_id)
+            ->whereDate('date_exchange', $this->date)
+            ->value('exchange_value');
+
+        return $valor === null ? null : (float) $valor;
+    }
+
     public function save(CreatePaymentRequest $crear): void
     {
         abort_unless(auth()->user()?->isAdmin() ?? false, 403);
@@ -138,11 +168,13 @@ class PaymentRequestForm extends Component
             'number' => ['required', 'string', 'max:64'],
             'date' => ['required', 'date'],
             'bankId' => ['required', 'exists:bank,bank_id'],
+            'tcValue' => [Rule::requiredIf($this->customTc), 'nullable', 'numeric', 'gt:0'],
             'amounts.*' => ['required', 'numeric'],
         ], attributes: [
             'number' => __('número'),
             'date' => 'fecha',
             'bankId' => 'banco',
+            'tcValue' => __('tipo de cambio'),
             'amounts.*' => 'importe',
         ]);
 
@@ -172,7 +204,13 @@ class PaymentRequestForm extends Component
 
         $solicitud = $crear->handle(
             $transacciones,
-            ['number' => $this->number, 'date' => $this->date, 'bank_id' => $this->bankId],
+            [
+                'number' => $this->number,
+                'date' => $this->date,
+                'bank_id' => $this->bankId,
+                'custom_tc' => $this->customTc,
+                'tc_value' => $this->tcValue,
+            ],
             $importes,
             auth()->user(),
         );
