@@ -148,7 +148,7 @@
 
             <label class="block">
                 <span class="field-label text-xs">{{ __('Compañía') }}</span>
-                <select wire:model="companyId" class="field-input mt-1 py-1.5 text-sm">
+                <select wire:model.live="companyId" class="field-input mt-1 py-1.5 text-sm">
                     <option value="">{{ __('Todas') }}</option>
                     @foreach ($companies as $id => $name)
                         <option value="{{ $id }}" @selected((string) $id === $companyId)>{{ $name }}</option>
@@ -158,7 +158,7 @@
 
             <label class="block">
                 <span class="field-label text-xs">{{ __('Divisa') }}</span>
-                <select wire:model="accountId" class="field-input mt-1 py-1.5 text-sm">
+                <select wire:model.live="accountId" class="field-input mt-1 py-1.5 text-sm">
                     <option value="">{{ __('Todas') }}</option>
                     @foreach ($currencies as $id => $prefix)
                         <option value="{{ $id }}" @selected((string) $id === $accountId)>{{ $prefix }}</option>
@@ -168,7 +168,7 @@
 
             <label class="block">
                 <span class="field-label text-xs">{{ __('Estado de pago') }}</span>
-                <select wire:model="paid" class="field-input mt-1 py-1.5 text-sm">
+                <select wire:model.live="paid" class="field-input mt-1 py-1.5 text-sm">
                     {{-- Ojo con el `(string)`: PHP convierte en enteros las claves
                          numéricas del arreglo, y la comparación estricta fallaría. --}}
                     @foreach (['' => __('Todas'), '0' => __('Sin pagar'), '2' => __('Parciales'), '1' => __('Pagadas')] as $valor => $etiqueta)
@@ -182,7 +182,7 @@
                      crédito de proveedor de un costo sin mirar el signo. --}}
                 <label class="block">
                     <span class="field-label text-xs">{{ __('Tipo') }}</span>
-                    <select wire:model="docType" class="field-input mt-1 py-1.5 text-sm">
+                    <select wire:model.live="docType" class="field-input mt-1 py-1.5 text-sm">
                         <option value="">{{ __('Todos') }}</option>
                         @foreach ($this->typeOptions() as $valor => $etiqueta)
                             <option value="{{ $valor }}" @selected($valor === $docType)>{{ $etiqueta }}</option>
@@ -193,7 +193,7 @@
 
             <label class="block">
                 <span class="field-label text-xs">{{ __('Canceladas') }}</span>
-                <select wire:model="showCancelled" class="field-input mt-1 py-1.5 text-sm">
+                <select wire:model.live="showCancelled" class="field-input mt-1 py-1.5 text-sm">
                     @foreach (['0' => __('Solo vigentes'), '1' => __('Vigentes y canceladas'), '2' => __('Solo canceladas')] as $valor => $etiqueta)
                         <option value="{{ $valor }}" @selected((string) $valor === $showCancelled)>{{ $etiqueta }}</option>
                     @endforeach
@@ -205,7 +205,7 @@
                  marcada aquí pero sigue vigente allá. --}}
             <label class="block">
                 <span class="field-label text-xs">{{ __('Estado del CFDI') }}</span>
-                <select wire:model="cfdiEstado" class="field-input mt-1 py-1.5 text-sm">
+                <select wire:model.live="cfdiEstado" class="field-input mt-1 py-1.5 text-sm">
                     <option value="">{{ __('Cualquiera') }}</option>
                     @foreach ([
                         \App\Queries\TransactionFilters::CFDI_SIN_TIMBRAR => __('Sin timbrar'),
@@ -235,6 +235,13 @@
                 @if ($this->allowsSelection() && auth()->user()?->isAdmin())
                     {{-- Timbrar en lote (Facturas y booking abierto): el «Seal» del sistema viejo. --}}
                     @if ($this->allowsStamping())
+                        {{-- Marcar de golpe lo que falta por timbrar: las ya timbradas
+                             se quedan fuera, que es lo que uno quiere antes de timbrar. --}}
+                        <button type="button" wire:click="selectUnstamped({{ Js::from(collect($rows->items())->map(fn ($r) => ['transc_id' => $r->transc_id, 'seal' => $r->seal, 'tran_type' => $r->tran_type, 'cancelled' => $r->cancelled, 'amount_original' => $r->amount_original, 'left_to_pay' => $r->left_to_pay])) }})"
+                                class="btn-ghost !py-1.5 !px-3 text-xs">
+                            {{ __('Marcar sin timbrar') }}
+                        </button>
+
                         <button type="button" wire:click="stampSelected"
                                 wire:confirm="{{ __('Se timbrarán ante el SAT las facturas seleccionadas. No se puede deshacer sin cancelarlas. ¿Continuar?') }}"
                                 wire:loading.attr="disabled" wire:target="stampSelected"
@@ -369,6 +376,12 @@
                         <li><span class="font-medium text-ink">{{ $factura }}</span> — {{ $motivo }}</li>
                     @endforeach
                 </ul>
+            @endif
+
+            @if (($stampResult['skipped'] ?? 0) > 0)
+                <p class="text-xs text-ink-faint">
+                    {{ trans_choice('Se omitió :n factura que ya estaba timbrada.|Se omitieron :n facturas que ya estaban timbradas.', $stampResult['skipped'], ['n' => $stampResult['skipped']]) }}
+                </p>
             @endif
 
             @if ($stampResult['pending'] > 0)

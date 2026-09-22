@@ -340,11 +340,17 @@ class TransactionTable extends Component
         // Solo se timbran facturas al cliente: en la pantalla del booking los
         // costos marcados se dejan de lado.
         $facturas = Transaction::whereIn('transc_id', $this->selected)->where('tran_type', Transaction::TYPE_INVOICE);
-        $totalFacturas = (clone $facturas)->count();
-        $lote = $facturas->limit(self::STAMP_BATCH)->get();
+        // Las que ya tienen sello se omiten en silencio: marcar una factura
+        // timbrada es normal (para reenviarla), y no es un error que reportar.
+        $yaTimbradas = (clone $facturas)->whereNotNull('seal')->where('seal', '<>', '')->count();
+        $porTimbrar = $facturas->where(fn ($q) => $q->whereNull('seal')->orWhere('seal', ''));
+        $totalFacturas = (clone $porTimbrar)->count();
+        $lote = $porTimbrar->limit(self::STAMP_BATCH)->get();
 
         if ($lote->isEmpty()) {
-            $this->addError('selected', __('Marca al menos una factura para timbrar.'));
+            $this->addError('selected', $yaTimbradas > 0
+                ? __('Las facturas marcadas ya están timbradas.')
+                : __('Marca al menos una factura para timbrar.'));
 
             return;
         }
@@ -368,6 +374,7 @@ class TransactionTable extends Component
             'done' => $done,
             'errors' => $errors,
             'pending' => max(0, $totalFacturas - $lote->count()),
+            'skipped' => $yaTimbradas,
         ];
 
         $this->selected = [];
@@ -526,6 +533,32 @@ class TransactionTable extends Component
         $this->selected = $todasMarcadas
             ? array_values(array_diff($this->selected, $marcables))
             : array_values(array_unique([...$this->selected, ...$marcables]));
+    }
+
+    /**
+     * Marca solo las facturas de la página que todavía no tienen sello.
+     *
+     * Las ya timbradas siguen siendo marcables a mano porque «Enviar
+     * documentos» necesita justo esas: el PDF y el XML salen del timbrado. Lo
+     * que no tiene sentido es marcarlas para volver a timbrar, y de eso se
+     * encarga este botón.
+     *
+     * @param  iterable<object>  $rows
+     */
+    public function selectUnstamped(iterable $rows): void
+    {
+        $this->selected = collect($rows)
+            ->filter(fn ($row) => blank($row->seal ?? null)
+                && (int) ($row->tran_type ?? Transaction::TYPE_INVOICE) === Transaction::TYPE_INVOICE
+                && $this->unselectableReason($row) === null)
+            ->pluck('transc_id')
+            ->map(intval(...))
+            ->values()
+            ->all();
+
+        if ($this->selected === []) {
+            $this->addError('selected', __('No hay facturas sin timbrar en esta página.'));
+        }
     }
 
     public function unselectableReason(object $row): ?string

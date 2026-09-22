@@ -1265,5 +1265,9 @@
     "Timbradas": "Stamped",
     "Marcar o desmarcar todas las de esta página": "Select or clear every row on this page",
     "Marcar todas las de esta página": "Select every row on this page",
-    "Abrir :archivo": "Open :archivo"
+    "Abrir :archivo": "Open :archivo",
+    "Marcar sin timbrar": "Select not stamped",
+    "No hay facturas sin timbrar en esta página.": "There are no unstamped invoices on this page.",
+    "Las facturas marcadas ya están timbradas.": "The selected invoices are already stamped.",
+    "Se omitió :n factura que ya estaba timbrada.|Se omitieron :n facturas que ya estaban timbradas.": "Skipped :n invoice that was already stamped.|Skipped :n invoices that were already stamped."
 }

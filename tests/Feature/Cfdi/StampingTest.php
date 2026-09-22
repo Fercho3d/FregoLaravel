@@ -258,8 +258,8 @@ class StampingTest extends TestCase
      */
     public function test_timbrado_en_lote_desde_el_listado(): void
     {
-        // Una segunda factura YA timbrada, para ver que el lote la reporta como
-        // error sin volver a timbrarla ni tocar su sello.
+        // Una segunda factura YA timbrada: el lote la omite y lo dice, sin
+        // tocarle el sello y sin ensuciar la lista de errores.
         DB::table('transaction')->insert([
             'transc_id' => 2, 'booking' => 1, 'tran_type' => 0, 'customer' => 1, 'company_id' => 1,
             'account' => 1, 'tran_number' => 'F-2', 'tran_date' => '2026-01-15', 'invoice_type' => 1,
@@ -279,7 +279,8 @@ class StampingTest extends TestCase
             ->get('stampResult');
 
         $this->assertSame(1, $resultado['done']);
-        $this->assertArrayHasKey('F-2', $resultado['errors']);
+        $this->assertSame([], $resultado['errors']);
+        $this->assertSame(1, $resultado['skipped']);
         $this->assertSame($this->pac->uuid, Transaction::find(1)->seal);
         $this->assertSame('YA-TIMBRADA', Transaction::find(2)->seal);
     }
@@ -367,5 +368,47 @@ class StampingTest extends TestCase
         Livewire::test(TransactionTable::class, ['screen' => 'invoice'])
             ->assertSeeHtml(route('transactions.file', [1, 'pdf']))
             ->assertSeeHtml(route('transactions.file', [1, 'xml']));
+    }
+
+    /** «Marcar sin timbrar» deja fuera las que ya tienen sello. */
+    public function test_marcar_sin_timbrar_solo_toma_las_que_faltan(): void
+    {
+        DB::table('transaction')->insert([
+            'transc_id' => 2, 'booking' => 1, 'tran_type' => 0, 'customer' => 1, 'company_id' => 1,
+            'account' => 1, 'tran_number' => 'F-2', 'tran_date' => '2026-01-15', 'invoice_type' => 1,
+            'seal' => 'YA-TIMBRADA',
+        ]);
+
+        $this->actingAs($this->usuario());
+
+        $pantalla = Livewire::test(TransactionTable::class, ['screen' => 'invoice']);
+        $pantalla->call('selectUnstamped', $pantalla->viewData('rows')->items());
+
+        $this->assertSame([1], $pantalla->get('selected'));
+    }
+
+    public function test_sin_facturas_pendientes_el_boton_lo_dice(): void
+    {
+        DB::table('transaction')->where('transc_id', 1)->update(['seal' => 'YA-TIMBRADA']);
+
+        $this->actingAs($this->usuario());
+
+        $pantalla = Livewire::test(TransactionTable::class, ['screen' => 'invoice']);
+        $pantalla->call('selectUnstamped', $pantalla->viewData('rows')->items())
+            ->assertHasErrors('selected');
+    }
+
+    /** Los selectores de filtro se aplican al cambiarlos, sin pulsar «Filtrar». */
+    public function test_cambiar_un_selector_filtra_de_inmediato(): void
+    {
+        DB::table('transaction')->where('transc_id', 1)->update(['seal' => 'YA-TIMBRADA']);
+
+        $this->actingAs($this->usuario());
+
+        $pantalla = Livewire::test(TransactionTable::class, ['screen' => 'invoice'])
+            ->set('cfdiEstado', TransactionFilters::CFDI_SIN_TIMBRAR);
+
+        $this->assertSame([], collect($pantalla->viewData('rows')->items())->pluck('transc_id')->all());
+        $this->assertStringContainsString('wire:model.live="cfdiEstado"', $pantalla->html());
     }
 }
