@@ -31,8 +31,8 @@ class UserManagerTest extends TestCase
     private function superAdmin(): User
     {
         return User::create([
-            'name' => 'Super', 'username' => 'super.admin', 'password' => 'secreto-de-prueba',
-            'role' => User::ROLE_SUPER_ADMIN, 'status' => 1,
+            'name' => 'Super', 'username' => 'super.admin', 'email' => 'super@ejemplo.com',
+            'password' => 'secreto-de-prueba', 'role' => User::ROLE_SUPER_ADMIN, 'status' => 1,
         ]);
     }
 
@@ -75,6 +75,7 @@ class UserManagerTest extends TestCase
         $this->pantalla($this->admin())
             ->call('create')
             ->set('username', 'aspirante')
+            ->set('email', 'aspirante@ejemplo.com')
             ->set('userRole', (string) User::ROLE_SUPER_ADMIN)
             ->set('password', 'contrasena-larga')
             ->set('passwordConfirmation', 'contrasena-larga')
@@ -97,6 +98,7 @@ class UserManagerTest extends TestCase
             ->call('create')
             ->set('name', 'Karina')
             ->set('username', 'karina')
+            ->set('email', 'karina@ejemplo.com')
             ->set('userRole', (string) User::ROLE_USER)
             ->set('password', 'contrasena-larga')
             ->set('passwordConfirmation', 'contrasena-larga')
@@ -117,6 +119,7 @@ class UserManagerTest extends TestCase
         $this->pantalla()
             ->call('create')
             ->set('username', 'super.admin')
+            ->set('email', 'otro@ejemplo.com')
             ->set('password', 'contrasena-larga')
             ->set('passwordConfirmation', 'contrasena-larga')
             ->call('save')
@@ -128,6 +131,7 @@ class UserManagerTest extends TestCase
         $this->pantalla()
             ->call('create')
             ->set('username', 'nuevo')
+            ->set('email', 'nuevo@ejemplo.com')
             ->set('password', 'contrasena-larga')
             ->set('passwordConfirmation', 'otra-distinta')
             ->call('save')
@@ -140,6 +144,7 @@ class UserManagerTest extends TestCase
         $this->pantalla()
             ->call('create')
             ->set('username', 'portal.cliente')
+            ->set('email', 'portal@ejemplo.com')
             ->set('access', (string) UserManager::ACCESS_CLIENT)
             ->set('password', 'contrasena-larga')
             ->set('passwordConfirmation', 'contrasena-larga')
@@ -152,7 +157,9 @@ class UserManagerTest extends TestCase
         $this->pantalla()
             ->call('create')
             ->set('username', 'portal.cliente')
+            ->set('email', 'portal@ejemplo.com')
             ->set('access', (string) UserManager::ACCESS_CLIENT)
+            ->set('userRole', (string) User::ROLE_CLIENT_READONLY)
             ->set('partyId', '1')
             ->set('password', 'contrasena-larga')
             ->set('passwordConfirmation', 'contrasena-larga')
@@ -168,8 +175,8 @@ class UserManagerTest extends TestCase
     public function test_editar_sin_tocar_la_contrasena_la_deja_igual(): void
     {
         $otro = User::create([
-            'name' => 'Karina', 'username' => 'karina', 'password' => 'contrasena-original',
-            'role' => User::ROLE_USER, 'status' => 1,
+            'name' => 'Karina', 'username' => 'karina', 'email' => 'karina@ejemplo.com',
+            'password' => 'contrasena-original', 'role' => User::ROLE_USER, 'status' => 1,
         ]);
 
         $this->pantalla()
@@ -222,5 +229,167 @@ class UserManagerTest extends TestCase
         $this->pantalla($super)->call('toggleActive', $super->usr_id)->assertStatus(422);
 
         $this->assertSame(1, (int) $super->refresh()->status);
+    }
+    // ------------------------------------------------- Roles de portal (A20)
+
+    /** Cuenta del portal de cliente con rol 13 (editor), como las 81 que hay en la base. */
+    private function cuentaDePortal(int $rol = User::ROLE_CLIENT_EDITOR): User
+    {
+        return User::create([
+            'username' => 'portal.editor', 'email' => 'editor@ejemplo.com', 'password' => 'x',
+            'role' => $rol, 'access' => User::ACCESS_CLIENT, 'client_id' => 1, 'status' => 1,
+        ]);
+    }
+
+    public function test_editar_una_cuenta_de_portal_sin_tocar_el_rol_guarda_bien(): void
+    {
+        $cuenta = $this->cuentaDePortal();
+
+        $this->pantalla()
+            ->call('edit', $cuenta->usr_id)
+            ->set('name', 'Editor del cliente')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $cuenta->refresh();
+
+        $this->assertSame('Editor del cliente', $cuenta->name);
+        $this->assertSame(User::ROLE_CLIENT_EDITOR, (int) $cuenta->role);
+    }
+
+    public function test_un_acceso_de_cliente_no_acepta_un_rol_interno(): void
+    {
+        $this->pantalla()
+            ->call('create')
+            ->set('username', 'portal.admin')
+            ->set('email', 'portal@ejemplo.com')
+            ->set('access', (string) UserManager::ACCESS_CLIENT)
+            ->set('partyId', '1')
+            ->set('userRole', (string) User::ROLE_ADMIN)
+            ->set('password', 'contrasena-larga')
+            ->set('passwordConfirmation', 'contrasena-larga')
+            ->call('save')
+            ->assertHasErrors('userRole');
+
+        $this->assertNull(User::where('username', 'portal.admin')->first());
+    }
+
+    /** Al cambiar el acceso en el formulario, el rol pasa al primero de la lista que toca. */
+    public function test_al_cambiar_el_acceso_cambia_la_lista_de_roles(): void
+    {
+        $this->pantalla()
+            ->call('create')
+            ->set('access', (string) UserManager::ACCESS_PROVIDER)
+            ->assertSet('userRole', (string) User::ROLE_PROVIDER_CUSTOMS_BROKER)
+            ->assertSeeHtml('<option value="'.User::ROLE_PROVIDER_CARRIER.'" >'.__('Transportista').'</option>');
+    }
+
+    public function test_el_listado_pinta_la_etiqueta_del_rol_de_portal(): void
+    {
+        $this->cuentaDePortal(User::ROLE_CLIENT_CUSTOMS_BROKER);
+
+        $this->pantalla()->assertSee(__('Agente aduanal del cliente'));
+    }
+
+    /** Los roles de portal no dan permisos internos. */
+    public function test_los_roles_de_portal_no_son_administradores(): void
+    {
+        foreach (User::clientRoles() + User::providerRoles() as $rol => $etiqueta) {
+            $cuenta = new User(['role' => $rol, 'access' => User::ACCESS_CLIENT]);
+
+            $this->assertFalse($cuenta->isAdmin(), "El rol {$rol} ({$etiqueta}) no debe ser administrador.");
+            $this->assertTrue($cuenta->isPortal());
+        }
+    }
+
+    // --------------------------------------------- Baja y sesión (A19)
+
+    public function test_dar_de_baja_limpia_el_token_de_recordar(): void
+    {
+        $otro = User::create([
+            'username' => 'karina', 'password' => 'x', 'role' => User::ROLE_USER, 'status' => 1,
+            'remember_token' => 'token-de-la-cookie',
+        ]);
+
+        $this->pantalla()->call('toggleActive', $otro->usr_id);
+
+        $this->assertNull($otro->refresh()->remember_token);
+    }
+
+    // ------------------------------------------------- Uno mismo (extra)
+
+    public function test_nadie_se_da_de_baja_a_si_mismo_desde_el_formulario(): void
+    {
+        $super = $this->superAdmin();
+
+        $this->pantalla($super)
+            ->call('edit', $super->usr_id)
+            ->set('active', false)
+            ->call('save')
+            ->assertHasErrors('active');
+
+        $this->assertSame(1, (int) $super->refresh()->status);
+    }
+
+    public function test_nadie_se_cambia_el_rol_a_si_mismo(): void
+    {
+        $super = $this->superAdmin();
+
+        $this->pantalla($super)
+            ->call('edit', $super->usr_id)
+            ->set('userRole', (string) User::ROLE_USER)
+            ->call('save')
+            ->assertHasErrors('userRole');
+
+        $this->assertTrue($super->refresh()->isSuperAdmin());
+    }
+
+    public function test_al_editarse_uno_mismo_no_aparece_la_casilla_de_activo(): void
+    {
+        $super = $this->superAdmin();
+
+        $this->pantalla($super)->call('edit', $super->usr_id)->assertDontSeeHtml('wire:model="active"');
+    }
+
+    // ------------------------------------------------------ Correo (extra)
+
+    public function test_el_correo_es_obligatorio(): void
+    {
+        $this->pantalla()
+            ->call('create')
+            ->set('username', 'sin.correo')
+            ->set('password', 'contrasena-larga')
+            ->set('passwordConfirmation', 'contrasena-larga')
+            ->call('save')
+            ->assertHasErrors(['email' => 'required']);
+    }
+
+    public function test_un_correo_nuevo_debe_tener_forma_de_correo(): void
+    {
+        $this->pantalla()
+            ->call('create')
+            ->set('username', 'nuevo')
+            ->set('email', 'esto-no-es-un-correo')
+            ->set('password', 'contrasena-larga')
+            ->set('passwordConfirmation', 'contrasena-larga')
+            ->call('save')
+            ->assertHasErrors(['email' => 'email']);
+    }
+
+    /** La tabla heredada guarda en `email` valores que no son correos; eso no debe bloquear la edición. */
+    public function test_un_correo_heredado_sin_forma_no_impide_editar(): void
+    {
+        $otro = User::create([
+            'username' => 'elymaersk', 'email' => 'elymaersk', 'password' => 'x',
+            'role' => User::ROLE_USER, 'status' => 1,
+        ]);
+
+        $this->pantalla()
+            ->call('edit', $otro->usr_id)
+            ->set('name', 'Ely')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame('Ely', $otro->refresh()->name);
     }
 }

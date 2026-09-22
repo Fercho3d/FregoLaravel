@@ -80,19 +80,120 @@ class User extends Authenticatable
     /** Portal del proveedor. */
     public const ACCESS_PROVIDER = 11;
 
-    /** Roles heredados de Yii2 (`User::ROLE_*`). */
+    /*
+     * Roles heredados de Yii2 (`User::getInternalRoles()`, `getClientRoles()` y
+     * `getProviderRoles()`). Cada acceso tiene los suyos: los internos mandan
+     * dentro del sistema y los de portal solo matizan qué ve la cuenta del
+     * cliente o del proveedor. En la base hay decenas de cuentas de cada uno.
+     */
+
+    /** Personal: usuario de operación. */
     public const ROLE_USER = 9;
 
+    /** Personal: administrador. */
     public const ROLE_ADMIN = 10;
 
+    /** Personal: super administrador, el dueño del software. */
     public const ROLE_SUPER_ADMIN = 20;
 
+    /** Portal de cliente: solo consulta. */
+    public const ROLE_CLIENT_READONLY = 12;
+
+    /** Portal de cliente: editor o asociado. */
+    public const ROLE_CLIENT_EDITOR = 13;
+
+    /** Portal de cliente: agente aduanal del cliente. */
+    public const ROLE_CLIENT_CUSTOMS_BROKER = 16;
+
+    /** Portal de proveedor: agente aduanal. */
+    public const ROLE_PROVIDER_CUSTOMS_BROKER = 14;
+
+    /** Portal de proveedor: transportista. */
+    public const ROLE_PROVIDER_CARRIER = 15;
+
     /**
-     * Solo los usuarios activos pueden autenticarse.
+     * Roles del personal de la empresa, con su etiqueta.
+     *
+     * @return array<int, string>
+     */
+    public static function internalRoles(): array
+    {
+        return [
+            self::ROLE_USER => __('Usuario de operación'),
+            self::ROLE_ADMIN => __('Administrador'),
+            self::ROLE_SUPER_ADMIN => __('Super administrador'),
+        ];
+    }
+
+    /**
+     * Roles de las cuentas del portal de cliente.
+     *
+     * @return array<int, string>
+     */
+    public static function clientRoles(): array
+    {
+        return [
+            self::ROLE_CLIENT_READONLY => __('Cliente solo lectura'),
+            self::ROLE_CLIENT_EDITOR => __('Editor o asociado'),
+            self::ROLE_CLIENT_CUSTOMS_BROKER => __('Agente aduanal del cliente'),
+        ];
+    }
+
+    /**
+     * Roles de las cuentas del portal de proveedor.
+     *
+     * @return array<int, string>
+     */
+    public static function providerRoles(): array
+    {
+        return [
+            self::ROLE_PROVIDER_CUSTOMS_BROKER => __('Agente aduanal'),
+            self::ROLE_PROVIDER_CARRIER => __('Transportista'),
+        ];
+    }
+
+    /**
+     * Todos los roles, para filtros y listados.
+     *
+     * @return array<int, string>
+     */
+    public static function allRoles(): array
+    {
+        return self::internalRoles() + self::clientRoles() + self::providerRoles();
+    }
+
+    /**
+     * Roles que admite un acceso: los de portal no pueden llevar rol interno ni
+     * al revés, porque `isAdmin()` mira solo el rol.
+     *
+     * @return array<int, string>
+     */
+    public static function rolesForAccess(int $access): array
+    {
+        return match ($access) {
+            self::ACCESS_CLIENT => self::clientRoles(),
+            self::ACCESS_PROVIDER => self::providerRoles(),
+            default => self::internalRoles(),
+        };
+    }
+
+    /** Etiqueta del rol; un guion si el valor no es de los conocidos. */
+    public function roleLabel(): string
+    {
+        return self::allRoles()[(int) $this->role] ?? '—';
+    }
+
+    /**
+     * Solo los usuarios activos pueden autenticarse y seguir dentro.
+     *
+     * `users.status` es `tinyint(1) NULL DEFAULT 1` en la tabla heredada: una
+     * cuenta sin el valor cargado (o construida en memoria, como en las
+     * pruebas) cuenta como activa, igual que la trataría la base al insertarla.
+     * Solo el 0 explícito es una baja.
      */
     public function isActive(): bool
     {
-        return (bool) $this->status;
+        return (bool) ($this->status ?? true);
     }
 
     /**

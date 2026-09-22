@@ -5,6 +5,8 @@ namespace App\Livewire\Users;
 use App\Models\Core\Client;
 use App\Models\Core\Provider;
 use App\Models\User;
+use Closure;
+use Illuminate\Support\Arr;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -18,7 +20,8 @@ use Livewire\WithPagination;
  *
  * Hay dos conceptos que conviene no confundir:
  *  - **rol**: qué puede hacer dentro del sistema (9 usuario, 10 administrador,
- *    20 super administrador).
+ *    20 super administrador) o qué ve en el portal (12, 13 y 16 para clientes;
+ *    14 y 15 para proveedores). Ver `User::rolesForAccess()`.
  *  - **acceso**: desde dónde entra (9 interno, 10 portal de cliente, 11 portal
  *    de proveedor). Los dos últimos van ligados a un cliente o a un proveedor.
  */
@@ -85,6 +88,22 @@ class UserManager extends Component
         $this->resetPage();
     }
 
+    /**
+     * Cada acceso tiene sus propios roles, así que al cambiarlo en el formulario
+     * el rol elegido deja de valer y se pasa al primero de la nueva lista. El
+     * cliente o proveedor ligado tampoco sirve para el otro acceso.
+     */
+    public function updatedAccess(): void
+    {
+        $roles = $this->rolesAsignables();
+
+        if (! array_key_exists((int) $this->userRole, $roles)) {
+            $this->userRole = (string) array_key_first($roles);
+        }
+
+        $this->partyId = '';
+    }
+
     // ------------------------------------------------------------ Edición
 
     public function create(): void
@@ -138,17 +157,43 @@ class UserManager extends Component
             $this->assertPuedeTocar($objetivo);
         }
 
+        // Uno mismo no se da de baja ni se cambia el rol desde el formulario:
+        // es la misma regla que ya protege el botón de baja del listado.
+        $esMismo = ! $esNuevo && (int) $objetivo->usr_id === (int) auth()->id();
+
         $this->validate([
             'name' => ['nullable', 'string', 'max:100'],
-            // `username` y `email` son únicos en la tabla heredada.
+            // `username` y `email` son únicos en la tabla heredada. El correo es
+            // obligatorio porque por ahí va la recuperación de contraseña; la
+            // forma solo se exige al capturarlo, porque la base heredada guarda
+            // ahí decenas de valores que no son correos y no se puede impedir
+            // editar esas cuentas.
             'username' => ['required', 'string', 'max:45', Rule::unique('users', 'username')->ignore($this->editing, 'usr_id')],
-            'email' => ['nullable', 'string', 'max:45', Rule::unique('users', 'email')->ignore($this->editing, 'usr_id')],
-            // Los roles asignables dependen de quién guarda: un admin no puede
-            // crear ni nombrar super administradores.
-            'userRole' => ['required', Rule::in($this->rolesAsignables())],
+            'email' => [
+                'required', 'string', 'max:45',
+                Rule::when($esNuevo || $this->email !== (string) $objetivo->email, ['email']),
+                Rule::unique('users', 'email')->ignore($this->editing, 'usr_id'),
+            ],
+            // Los roles asignables dependen del acceso elegido y de quién guarda:
+            // un admin no puede crear ni nombrar super administradores.
+            'userRole' => [
+                'required', Rule::in(array_keys($this->rolesAsignables())),
+                function (string $attribute, mixed $value, Closure $fail) use ($esMismo, $objetivo) {
+                    if ($esMismo && (int) $value !== (int) $objetivo->role) {
+                        $fail(__('No puedes cambiar tu propio rol.'));
+                    }
+                },
+            ],
             'access' => ['required', Rule::in([self::ACCESS_INTERNAL, self::ACCESS_CLIENT, self::ACCESS_PROVIDER])],
             'partyId' => [Rule::requiredIf($this->needsParty()), 'nullable'],
             'password' => [Rule::requiredIf($esNuevo), 'nullable', 'string', 'min:8', 'same:passwordConfirmation'],
+            'active' => [
+                function (string $attribute, mixed $value, Closure $fail) use ($esMismo) {
+                    if ($esMismo && ! $value) {
+                        $fail(__('No puedes darte de baja a ti mismo.'));
+                    }
+                },
+            ],
         ], attributes: [
             'username' => 'usuario',
             'email' => 'correo',
@@ -170,6 +215,10 @@ class UserManager extends Component
             'provider_id' => $this->access === (string) self::ACCESS_PROVIDER ? (int) $this->partyId : null,
             'status' => $this->active ? 1 : 0,
         ]);
+
+        if (! $this->active) {
+            $usuario->remember_token = null;
+        }
 
         if (filled($this->password)) {
             $usuario->password = $this->password;
@@ -228,7 +277,12 @@ class UserManager extends Component
 
         $usuario = User::findOrFail($id);
         $this->assertPuedeTocar($usuario);
-        $usuario->forceFill(['status' => $usuario->status ? 0 : 1])->save();
+
+        // Al dar de baja se borra también el token de «recordarme»: si no, la
+        // cookie reconstruiría la sesión aunque `EnsureUserIsActive` la cierre.
+        $usuario->forceFill($usuario->status
+            ? ['status' => 0, 'remember_token' => null]
+            : ['status' => 1])->save();
 
         session()->flash('status', $usuario->status ? 'Usuario reactivado.' : __('Usuario dado de baja.'));
     }
@@ -253,17 +307,19 @@ class UserManager extends Component
     }
 
     /**
-     * Roles que el usuario actual puede asignar. Solo el super administrador
-     * puede crear o nombrar a otro super administrador; el resto se queda en
-     * usuario y administrador. Así un admin no se auto-asciende ni crea dueños.
+     * Roles que se pueden asignar con el acceso elegido en el formulario. Para el
+     * personal, solo el super administrador puede crear o nombrar a otro super
+     * administrador; así un admin no se auto-asciende ni crea dueños.
      *
-     * @return int[]
+     * @return array<int, string>
      */
-    private function rolesAsignables(): array
+    public function rolesAsignables(): array
     {
+        $roles = User::rolesForAccess((int) $this->access);
+
         return (auth()->user()?->isSuperAdmin() ?? false)
-            ? [User::ROLE_USER, User::ROLE_ADMIN, User::ROLE_SUPER_ADMIN]
-            : [User::ROLE_USER, User::ROLE_ADMIN];
+            ? $roles
+            : Arr::except($roles, User::ROLE_SUPER_ADMIN);
     }
 
     // --------------------------------------------------------- Pintado

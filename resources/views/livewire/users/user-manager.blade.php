@@ -2,14 +2,11 @@
 @use('App\Livewire\Users\UserManager')
 
 @php
-    $roles = [
-        User::ROLE_USER => __('Usuario'),
-        User::ROLE_ADMIN => 'Administrador',
-        User::ROLE_SUPER_ADMIN => 'Super administrador',
-    ];
+    // Todos los roles, internos y de portal, para el filtro del listado.
+    $roles = User::allRoles();
 
     $accesos = [
-        UserManager::ACCESS_INTERNAL => 'Interno',
+        UserManager::ACCESS_INTERNAL => __('Interno'),
         UserManager::ACCESS_CLIENT => __('Portal de cliente'),
         UserManager::ACCESS_PROVIDER => __('Portal de proveedor'),
     ];
@@ -17,9 +14,10 @@
     // Solo el dueño (super admin) crea o edita super administradores; para el
     // resto se oculta ese rol y no se ofrecen acciones sobre esas cuentas.
     $esDueno = auth()->user()?->isSuperAdmin() ?? false;
-    $rolesForm = $esDueno
-        ? $roles
-        : array_filter($roles, fn ($k) => $k !== User::ROLE_SUPER_ADMIN, ARRAY_FILTER_USE_KEY);
+
+    // El select de rol depende del acceso elegido: `access` es `.live`, así que
+    // al cambiarlo la pantalla se vuelve a pintar con la lista que toca.
+    $rolesForm = $this->rolesAsignables();
 @endphp
 
 <div class="space-y-4">
@@ -120,11 +118,14 @@
                     <x-password-input wire:model="passwordConfirmation" wrapper="mt-1.5" autocomplete="new-password" />
                 </label>
 
-                <label class="flex items-end gap-2 pb-2.5 text-sm text-ink-soft">
-                    <input type="checkbox" wire:model="active" @checked($active)
-                           class="h-4 w-4 rounded border-line bg-panel text-accent-500 focus:ring-accent-500">
-                    {{ __('Activo') }}
-                </label>
+                {{-- Nadie se da de baja a sí mismo, tampoco desde aquí. --}}
+                @if ($editing !== auth()->id())
+                    <label class="flex items-end gap-2 pb-2.5 text-sm text-ink-soft">
+                        <input type="checkbox" wire:model="active" @checked($active)
+                               class="h-4 w-4 rounded border-line bg-panel text-accent-500 focus:ring-accent-500">
+                        {{ __('Activo') }}
+                    </label>
+                @endif
             </div>
 
             <div class="flex flex-wrap justify-end gap-3 border-t border-line pt-4">
@@ -188,7 +189,7 @@
                         <tr class="transition hover:bg-raised {{ $usuario->status ? '' : 'opacity-60' }}">
                             <td class="max-w-[18rem] truncate px-4 py-2 text-ink" title="{{ $usuario->username }}">{{ $usuario->username ?: '—' }}</td>
                             <td class="max-w-[14rem] truncate px-4 py-2 text-ink-muted">{{ $usuario->name ?: '—' }}</td>
-                            <td class="whitespace-nowrap px-4 py-2 text-ink-muted">{{ $roles[(int) $usuario->role] ?? '—' }}</td>
+                            <td class="whitespace-nowrap px-4 py-2 text-ink-muted">{{ $usuario->roleLabel() }}</td>
                             <td class="whitespace-nowrap px-4 py-2 text-ink-muted">{{ $accesos[(int) $usuario->access] ?? __('Interno') }}</td>
                             <td class="whitespace-nowrap px-4 py-2">
                                 <span class="badge {{ $usuario->status ? 'badge-ok' : 'badge-neutral' }}">
