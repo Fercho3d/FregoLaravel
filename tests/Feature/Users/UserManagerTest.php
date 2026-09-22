@@ -63,33 +63,74 @@ class UserManagerTest extends TestCase
         Livewire::test(UserManager::class)->assertForbidden();
     }
 
-    public function test_un_administrador_si_administra_usuarios(): void
+    /** Como en Yii2: un administrador normal tampoco entra, ni por la ruta ni por Livewire. */
+    public function test_un_administrador_normal_recibe_403(): void
     {
         $this->actingAs($this->admin());
 
-        Livewire::test(UserManager::class)->assertSee(__('Usuarios y accesos'));
+        $this->get(route('users'))->assertForbidden();
+        Livewire::test(UserManager::class)->assertForbidden();
     }
 
-    public function test_un_administrador_no_puede_crear_super_administradores(): void
+    public function test_el_super_administrador_entra_por_la_ruta(): void
     {
-        $this->pantalla($this->admin())
-            ->call('create')
-            ->set('username', 'aspirante')
-            ->set('email', 'aspirante@ejemplo.com')
-            ->set('userRole', (string) User::ROLE_SUPER_ADMIN)
-            ->set('password', 'contrasena-larga')
-            ->set('passwordConfirmation', 'contrasena-larga')
-            ->call('save')
-            ->assertHasErrors('userRole');
+        $this->actingAs($this->superAdmin());
 
-        $this->assertNull(User::where('username', 'aspirante')->first());
+        $this->get(route('users'))->assertOk()->assertSee(__('Usuarios y accesos'));
     }
 
-    public function test_un_administrador_no_puede_tocar_a_un_super_administrador(): void
+    // ------------------------------------------------------- Auditoría
+
+    public function test_al_crear_se_registra_quien_lo_hizo(): void
     {
         $dueno = $this->superAdmin();
 
-        $this->pantalla($this->admin())->call('edit', $dueno->usr_id)->assertForbidden();
+        $this->pantalla($dueno)
+            ->call('create')
+            ->set('username', 'karina')
+            ->set('email', 'karina@ejemplo.com')
+            ->set('password', 'contrasena-larga')
+            ->set('passwordConfirmation', 'contrasena-larga')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $creado = User::where('username', 'karina')->first();
+
+        $this->assertSame($dueno->usr_id, (int) $creado->created_by);
+        $this->assertSame($dueno->usr_id, (int) $creado->modified_by);
+    }
+
+    public function test_al_editar_se_conserva_quien_lo_creo_y_se_anota_quien_lo_toco(): void
+    {
+        $dueno = $this->superAdmin();
+        $otro = User::forceCreate([
+            'username' => 'karina', 'email' => 'karina@ejemplo.com', 'password' => 'x',
+            'role' => User::ROLE_USER, 'status' => 1, 'created_by' => 77,
+        ]);
+
+        $this->pantalla($dueno)->call('edit', $otro->usr_id)->set('name', 'Karina')->call('save');
+
+        $otro->refresh();
+
+        $this->assertSame(77, (int) $otro->created_by);
+        $this->assertSame($dueno->usr_id, (int) $otro->modified_by);
+    }
+
+    public function test_el_listado_enseña_quien_creo_y_modifico_y_la_hora_del_ultimo_ingreso(): void
+    {
+        $dueno = $this->superAdmin();
+
+        User::forceCreate([
+            'username' => 'karina', 'email' => 'karina@ejemplo.com', 'password' => 'x',
+            'role' => User::ROLE_USER, 'status' => 1,
+            'created_by' => $dueno->usr_id, 'modified_by' => $dueno->usr_id,
+            'last_login' => '2026-09-21 14:35:00',
+        ]);
+
+        $this->pantalla($dueno)
+            ->assertSee('karina@ejemplo.com')
+            ->assertSee('21/09/2026 14:35')
+            ->assertSeeInOrder(['karina', 'super.admin', 'super.admin']);
     }
 
     public function test_crear_un_usuario_interno(): void
@@ -349,6 +390,37 @@ class UserManagerTest extends TestCase
         $super = $this->superAdmin();
 
         $this->pantalla($super)->call('edit', $super->usr_id)->assertDontSeeHtml('wire:model="active"');
+    }
+
+    // ------------------------------------------------- Acceso sin definir
+
+    /** Hay una cuenta real así: entra como interna, pero el grid lo señala. */
+    public function test_una_cuenta_sin_acceso_entra_como_interna_y_el_listado_lo_señala(): void
+    {
+        $cuenta = User::forceCreate([
+            'username' => 'sin.acceso', 'password' => 'x', 'role' => User::ROLE_USER, 'access' => null, 'status' => 1,
+        ]);
+
+        $this->assertTrue($cuenta->isInternal());
+        $this->assertTrue($cuenta->sinAccesoDefinido());
+
+        $this->pantalla()->assertSee(__('Sin acceso definido'));
+    }
+
+    public function test_al_editar_una_cuenta_sin_acceso_se_le_asigna_interno(): void
+    {
+        $cuenta = User::forceCreate([
+            'username' => 'sin.acceso', 'email' => 'sin@ejemplo.com', 'password' => 'x',
+            'role' => User::ROLE_USER, 'access' => null, 'status' => 1,
+        ]);
+
+        $this->pantalla()
+            ->call('edit', $cuenta->usr_id)
+            ->assertSet('access', (string) UserManager::ACCESS_INTERNAL)
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame(User::ACCESS_INTERNAL, (int) $cuenta->refresh()->access);
     }
 
     // ------------------------------------------------------ Correo (extra)

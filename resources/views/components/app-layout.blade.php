@@ -22,9 +22,18 @@
 </head>
 <body class="h-full antialiased">
 @php
-    // La facturación solo se enseña a administradores; para los demás roles las
-    // rutas responden 403, así que ni siquiera se listan.
+    // Cada enlace se pinta solo a quien su ruta deja pasar: la facturación, los
+    // terceros y los catálogos son de administradores; los usuarios, los
+    // servicios, el tipo de cambio y los ajustes, del super administrador (como
+    // el menú «Options» del sistema original). Al resto le darían 403.
     $esAdmin = auth()->user()?->isAdmin() ?? false;
+    $esSuperAdmin = auth()->user()?->isSuperAdmin() ?? false;
+
+    // El enlace de catálogos lleva al primero que este usuario puede abrir: los
+    // marcados `superAdmin` dan 403 a un administrador normal, y `companias`
+    // fijo daba 404 en las instalaciones que lo excluyen con `MARCA_CATALOGOS`.
+    $primerCatalogo = collect(\App\Support\Catalogs\CatalogRegistry::visibles())
+        ->first(fn ($catalogo) => $esSuperAdmin || ! $catalogo->superAdmin);
 
     $nav = array_merge(
         [[__('Panel'), route('dashboard'), request()->routeIs('dashboard'), 'panel']],
@@ -49,29 +58,40 @@
                 ]
                 : []),
         ] : [],
-        // Los usuarios los administra cualquier administrador (para dar de alta a
-        // su gente); las solicitudes de demo, solo el dueño (super admin).
-        ($esAdmin
+        $esSuperAdmin
             ? [[__('Usuarios'), route('users'), request()->routeIs('users'), 'usuarios']]
-            : []),
+            : [],
         // Solo con portada pública (producto de marca blanca) hay solicitudes de
-        // demo que leer, y solo las ve el dueño. En la instalación de un cliente
-        // (sin portada) ni se lista.
-        ((config('marca.landing') && (auth()->user()?->isSuperAdmin() ?? false))
+        // demo que leer. En la instalación de un cliente (sin portada) ni se lista.
+        (config('marca.landing') && $esSuperAdmin)
             ? [[__('Solicitudes de demostración'), route('demo-requests'), request()->routeIs('demo-requests'), 'usuarios']]
-            : []),
-        [
+            : [],
+        $esAdmin ? [
             [__('Clientes y proveedores'), route('parties.clients'), request()->routeIs('parties.clients', 'parties.providers'), 'contactos'],
+            ...($primerCatalogo
+                ? [[__('Catálogos'), route('catalogs.show', $primerCatalogo->slug), request()->routeIs('catalogs.*'), 'catalogo']]
+                : []),
+        ] : [],
+        $esSuperAdmin ? [
             [__('Servicios y precios'), route('parties.services'), request()->routeIs('parties.services'), 'servicio'],
-            [__('Catálogos'), route('catalogs.show', 'companias'), request()->routeIs('catalogs.*'), 'catalogo'],
             [__('Tipos de cambio'), route('exchange'), request()->routeIs('exchange'), 'cambio'],
-            [__('Bookings'), route('operations.bookings'), request()->routeIs('operations.bookings*'), 'operacion'],
-        ],
+        ] : [],
     );
+
+    // Operación: lo que usa todo el personal, con los atajos del menú «Bookings»
+    // del sistema original (todos, solo importaciones, solo exportaciones, alta).
+    $tipo = request()->query('tipo');
+    $enListado = request()->routeIs('operations.bookings');
+    $operacion = [
+        [__('Bookings'), route('operations.bookings'), request()->routeIs('operations.bookings*') && ! in_array($tipo, ['1', '2'], true) && ! request()->routeIs('operations.bookings.create'), 'operacion'],
+        [__('Importaciones'), route('operations.bookings', ['tipo' => 1]), $enListado && $tipo === '1', 'importacion'],
+        [__('Exportaciones'), route('operations.bookings', ['tipo' => 2]), $enListado && $tipo === '2', 'exportacion'],
+        [__('Nuevo booking'), route('operations.bookings.create'), request()->routeIs('operations.bookings.create'), 'nuevo'],
+    ];
 
     // Los ajustes van al final: se entra una vez a configurarlos y casi
     // nunca más, así que no deben competir con lo que se usa a diario.
-    $ajustes = (config('marca.ajustes') && (auth()->user()?->isSuperAdmin() ?? false))
+    $ajustes = (config('marca.ajustes') && $esSuperAdmin)
         ? [[__('Ajustes'), route('settings'), request()->routeIs('settings'), 'ajustes']]
         : [];
 
@@ -114,7 +134,7 @@
         </div>
 
         <nav class="flex flex-1 flex-col gap-0.5 overflow-y-auto p-3 text-sm">
-            @foreach ([['', $nav], [__('Reportes'), $reportes], ['', $ajustes]] as [$seccion, $items])
+            @foreach ([['', $nav], [__('Operación'), $operacion], [__('Reportes'), $reportes], ['', $ajustes]] as [$seccion, $items])
             @if ($seccion !== '')
                 <p class="mt-4 px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-ink-faint" :class="colapsado && 'lg:hidden'">{{ $seccion }}</p>
                 <hr class="my-2 hidden border-line" :class="colapsado && 'lg:block'">

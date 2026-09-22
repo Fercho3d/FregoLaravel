@@ -6,7 +6,6 @@ use App\Models\Core\Client;
 use App\Models\Core\Provider;
 use App\Models\User;
 use Closure;
-use Illuminate\Support\Arr;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -15,8 +14,9 @@ use Livewire\WithPagination;
 /**
  * Altas y accesos de usuarios.
  *
- * Equivale al `UserController` de Yii2, que —como aquí— **solo deja entrar al
- * super administrador**.
+ * Equivale al `UserController` de Yii2 y, como él, **solo deja entrar al super
+ * administrador**: la ruta lleva `EnsureUserIsSuperAdmin` y cada acción vuelve
+ * a comprobarlo, porque las llamadas de Livewire no pasan por esa ruta.
  *
  * Hay dos conceptos que conviene no confundir:
  *  - **rol**: qué puede hacer dentro del sistema (9 usuario, 10 administrador,
@@ -123,7 +123,6 @@ class UserManager extends Component
         $this->assertCanManageUsers();
 
         $usuario = User::findOrFail($id);
-        $this->assertPuedeTocar($usuario);
 
         $this->editing = $id;
         $this->name = (string) $usuario->name;
@@ -149,13 +148,7 @@ class UserManager extends Component
 
         $esNuevo = $this->editing === 0;
 
-        // A un super administrador ya existente solo lo edita otro super
-        // administrador (el candado se comprueba antes de validar nada).
         $objetivo = $esNuevo ? new User : User::findOrFail($this->editing);
-
-        if (! $esNuevo) {
-            $this->assertPuedeTocar($objetivo);
-        }
 
         // Uno mismo no se da de baja ni se cambia el rol desde el formulario:
         // es la misma regla que ya protege el botón de baja del listado.
@@ -174,8 +167,7 @@ class UserManager extends Component
                 Rule::when($esNuevo || $this->email !== (string) $objetivo->email, ['email']),
                 Rule::unique('users', 'email')->ignore($this->editing, 'usr_id'),
             ],
-            // Los roles asignables dependen del acceso elegido y de quién guarda:
-            // un admin no puede crear ni nombrar super administradores.
+            // Los roles asignables dependen del acceso elegido.
             'userRole' => [
                 'required', Rule::in(array_keys($this->rolesAsignables())),
                 function (string $attribute, mixed $value, Closure $fail) use ($esMismo, $objetivo) {
@@ -205,7 +197,11 @@ class UserManager extends Component
 
         $usuario = $objetivo;
 
+        // Auditoría, como la llevaba `User::beforeSave()` en Yii2: quién creó la
+        // cuenta y quién la tocó por última vez. El grid las enseña.
         $usuario->forceFill([
+            'created_by' => $esNuevo ? auth()->id() : $usuario->created_by,
+            'modified_by' => auth()->id(),
             'name' => $this->name ?: null,
             'username' => $this->username,
             'email' => $this->email ?: null,
@@ -241,7 +237,7 @@ class UserManager extends Component
     {
         $this->assertCanManageUsers();
 
-        $this->assertPuedeTocar(User::findOrFail($id));
+        User::findOrFail($id);
 
         $this->changingPassword = $id;
         $this->reset(['password', 'passwordConfirmation']);
@@ -253,13 +249,12 @@ class UserManager extends Component
         $this->assertCanManageUsers();
 
         $objetivo = User::findOrFail($this->changingPassword);
-        $this->assertPuedeTocar($objetivo);
 
         $this->validate([
             'password' => ['required', 'string', 'min:8', 'same:passwordConfirmation'],
         ], attributes: ['password' => __('contraseña')]);
 
-        $objetivo->forceFill(['password' => $this->password])->save();
+        $objetivo->forceFill(['password' => $this->password, 'modified_by' => auth()->id()])->save();
 
         session()->flash('status', __('Contraseña actualizada.'));
         $this->cancel();
@@ -276,50 +271,33 @@ class UserManager extends Component
         abort_if($id === auth()->id(), 422, __('No puedes darte de baja a ti mismo.'));
 
         $usuario = User::findOrFail($id);
-        $this->assertPuedeTocar($usuario);
 
         // Al dar de baja se borra también el token de «recordarme»: si no, la
         // cookie reconstruiría la sesión aunque `EnsureUserIsActive` la cierre.
-        $usuario->forceFill($usuario->status
+        $usuario->forceFill(($usuario->status
             ? ['status' => 0, 'remember_token' => null]
-            : ['status' => 1])->save();
+            : ['status' => 1]) + ['modified_by' => auth()->id()])->save();
 
         session()->flash('status', $usuario->status ? 'Usuario reactivado.' : __('Usuario dado de baja.'));
     }
 
-    /** La pantalla la manejan los administradores; el dueño (super admin) además maneja a los suyos. */
+    /**
+     * Solo el super administrador maneja usuarios, igual que en Yii2. Un
+     * administrador normal da de alta a su gente pidiéndoselo al dueño.
+     */
     private function assertCanManageUsers(): void
     {
-        abort_unless(auth()->user()?->isAdmin() ?? false, 403);
+        abort_unless(auth()->user()?->isSuperAdmin() ?? false, 403, __('Esta sección es solo para el super administrador'));
     }
 
     /**
-     * Un administrador no puede tocar (editar, cambiar contraseña, dar de baja) a
-     * un super administrador: esa cuenta es del dueño del software. Solo otro
-     * super administrador puede.
-     */
-    private function assertPuedeTocar(User $usuario): void
-    {
-        abort_if(
-            (int) $usuario->role === User::ROLE_SUPER_ADMIN && ! (auth()->user()?->isSuperAdmin() ?? false),
-            403,
-        );
-    }
-
-    /**
-     * Roles que se pueden asignar con el acceso elegido en el formulario. Para el
-     * personal, solo el super administrador puede crear o nombrar a otro super
-     * administrador; así un admin no se auto-asciende ni crea dueños.
+     * Roles que se pueden asignar con el acceso elegido en el formulario.
      *
      * @return array<int, string>
      */
     public function rolesAsignables(): array
     {
-        $roles = User::rolesForAccess((int) $this->access);
-
-        return (auth()->user()?->isSuperAdmin() ?? false)
-            ? $roles
-            : Arr::except($roles, User::ROLE_SUPER_ADMIN);
+        return User::rolesForAccess((int) $this->access);
     }
 
     // --------------------------------------------------------- Pintado
@@ -336,6 +314,7 @@ class UserManager extends Component
             })
             ->when($this->role !== '', fn ($q) => $q->where('role', (int) $this->role))
             ->when($this->status !== '', fn ($q) => $q->where('status', (int) $this->status))
+            ->with(['creador', 'modificador'])
             ->orderByDesc('status')
             ->orderBy('username')
             ->paginate(25, ['*'], 'page', $this->getPage());

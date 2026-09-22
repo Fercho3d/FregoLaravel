@@ -12,6 +12,7 @@ use App\Http\Controllers\TransactionFileController;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Middleware\EnsureUserIsInternal;
 use App\Http\Middleware\EnsureUserIsPortal;
+use App\Http\Middleware\EnsureUserIsSuperAdmin;
 use App\Livewire\Catalogs\CatalogManager;
 use App\Livewire\Dashboard;
 use App\Livewire\DemoRequests;
@@ -63,6 +64,12 @@ Route::put('/preferencias/idioma', LocaleController::class)->name('preferences.l
 // expone Laravel Fortify.
 Route::view('/seguridad', 'security.show')->middleware('auth')->name('security.show');
 
+// Los códigos de recuperación del 2FA solo se enseñan tras volver a confirmar
+// la contraseña, como hace Jetstream: una sesión abierta en una computadora
+// ajena no debe bastar para copiarlos.
+Route::view('/seguridad/codigos-de-recuperacion', 'security.recovery-codes')
+    ->middleware(['auth', 'password.confirm'])->name('security.recovery-codes');
+
 /*
  * Portal de clientes y proveedores. Cada cuenta ve únicamente sus documentos y,
  * si es cliente, sus embarques.
@@ -102,13 +109,16 @@ Route::middleware(['auth', EnsureUserIsInternal::class])->group(function () {
     });
 
     /*
-     * Usuarios y accesos. Solo el super administrador entra aquí, igual que el
-     * `UserController` de Yii2.
+     * Lo que es solo del dueño del software: los usuarios (igual que el
+     * `UserController` de Yii2), las solicitudes de demostración y los ajustes
+     * de la instalación (qué mueve la empresa, si factura con CFDI…). Un
+     * administrador normal recibe 403.
      */
-    Route::get('/usuarios', UserManager::class)->name('users');
-    Route::get('/solicitudes-demo', DemoRequests::class)->name('demo-requests');
-    // Ajustes de la instalación: qué mueve la empresa, si factura con CFDI…
-    Route::get('/ajustes', Settings::class)->name('settings');
+    Route::middleware(EnsureUserIsSuperAdmin::class)->group(function () {
+        Route::get('/usuarios', UserManager::class)->name('users');
+        Route::get('/solicitudes-demo', DemoRequests::class)->name('demo-requests');
+        Route::get('/ajustes', Settings::class)->name('settings');
+    });
 
     /*
      * Clientes y proveedores. No son catálogos planos: llevan datos fiscales y de

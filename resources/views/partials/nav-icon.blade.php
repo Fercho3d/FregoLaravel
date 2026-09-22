@@ -69,6 +69,15 @@
             <path stroke-linecap="round" stroke-linejoin="round" d="M4 4h7l9 9-7 7-9-9V4z"/>
             <circle cx="7.5" cy="7.5" r="1.2"/>
             @break
+        @case('importacion')
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v11m0 0-4-4m4 4 4-4M4 17v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2"/>
+            @break
+        @case('exportacion')
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 15V4m0 0L8 8m4-4 4 4M4 17v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2"/>
+            @break
+        @case('nuevo')
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v8m-4-4h8M4 12a8 8 0 1 0 16 0 8 8 0 0 0-16 0z"/>
+            @break
         @case('continuidad')
             <path stroke-linecap="round" stroke-linejoin="round" d="M5 21V4m0 1.5 2-.8a4 4 0 0 1 3 0l2 .8a4 4 0 0 0 3 0l3-1.2v8l-3 1.2a4 4 0 0 1-3 0l-2-.8a4 4 0 0 0-3 0L5 13"/>
             @break

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Support\Theme;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -222,10 +223,34 @@ class User extends Authenticatable
         return in_array((int) $this->access, [self::ACCESS_CLIENT, self::ACCESS_PROVIDER], true);
     }
 
-    /** Personal de la empresa. Las cuentas sin `access` se tratan como internas. */
+    /**
+     * Personal de la empresa. Las cuentas sin `access` se tratan como internas.
+     *
+     * Yii2 no las dejaba entrar (`findByUsername` exigía `access = 9`), pero hay
+     * una cuenta real así que hoy trabaja, y no se bloquea a nadie por un dato
+     * que nunca se capturó: el grid de usuarios la señala para corregirla.
+     */
     public function isInternal(): bool
     {
         return ! $this->isPortal();
+    }
+
+    /** Cuenta heredada a la que nunca se le capturó desde dónde entra. */
+    public function sinAccesoDefinido(): bool
+    {
+        return $this->access === null;
+    }
+
+    /** Quién dio de alta la cuenta (`created_by`, como en Yii2). */
+    public function creador(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'created_by', 'usr_id');
+    }
+
+    /** Quién la tocó por última vez (`modified_by`). */
+    public function modificador(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'modified_by', 'usr_id');
     }
 
     /** Cliente al que pertenece la cuenta de portal, si aplica. */
