@@ -134,7 +134,7 @@
     "Cancelar": "Cancel",
     "Cancelar CFDI": "Cancel CFDI",
     "Cancelar ante el SAT": "Cancel with the SAT",
-    "Cancelar el CFDI ante el SAT": "Cancel the CFDI with the SAT",
+    "Cancelar el CFDI ante el SAT": "Cancel the CFDI at the SAT",
     "Cantidad": "Quantity",
     "Cantidad 0": "Quantity 0",
     "Capturar": "Enter",
@@ -378,7 +378,7 @@
     "Flota": "Fleet",
     "Flota y personal": "Fleet and staff",
     "Folio": "Number",
-    "Folio fiscal que la sustituye": "Tax folio replacing it",
+    "Folio fiscal que la sustituye": "Fiscal folio that replaces it",
     "Forma de pago": "Payment form",
     "Forma de transporte": "Way of moving freight",
     "Fuera de vigencia": "Expired",
@@ -1269,5 +1269,8 @@
     "No hay facturas sin timbrar en esta página.": "There are no unstamped invoices on this page.",
     "Las facturas marcadas ya están timbradas.": "The selected invoices are already stamped.",
     "Se omitió :n factura que ya estaba timbrada.|Se omitieron :n facturas que ya estaban timbradas.": "Skipped :n invoice that was already stamped.|Skipped :n invoices that were already stamped.",
-    "Cancelada: no se timbra, no se envía y no entra en una solicitud de pago.": "Cancelled: it cannot be stamped, sent or added to a payment request."
+    "Cancelada: no se timbra, no se envía y no entra en una solicitud de pago.": "Cancelled: it cannot be stamped, sent or added to a payment request.",
+    "Solicitar la cancelación": "Request the cancellation",
+    "Si la factura pasa de mil pesos, el receptor tiene 72 horas para autorizarla.": "If the invoice is over one thousand pesos, the recipient has 72 hours to authorise it.",
+    "Se timbrará esta factura ante el SAT. ¿Continuar?": "This invoice will be stamped at the SAT. Continue?"
 }

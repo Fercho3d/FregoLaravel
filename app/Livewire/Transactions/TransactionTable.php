@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Transactions;
 
+use App\Actions\Transactions\CancelStamp;
 use App\Actions\Transactions\SendInvoice;
 use App\Actions\Transactions\StampTransaction;
 use App\Models\CfdiCancelacion;
@@ -533,6 +534,88 @@ class TransactionTable extends Component
         $this->selected = $todasMarcadas
             ? array_values(array_diff($this->selected, $marcables))
             : array_values(array_unique([...$this->selected, ...$marcables]));
+    }
+
+    /** Factura que se está cancelando desde el listado, y el motivo elegido. */
+    public ?int $cancelling = null;
+
+    public string $cancelReason = '02';
+
+    public string $replacementUuid = '';
+
+    /**
+     * Timbra una sola factura desde el listado.
+     *
+     * El lote sirve para la tanda del día; para una factura suelta, obligar a
+     * marcarla y pulsar dos botones sobra. Es el botón por renglón que tenía la
+     * rejilla del sistema original.
+     */
+    public function stampRow(int $transaccion, StampTransaction $stamp): void
+    {
+        abort_unless($this->allowsStamping() && (auth()->user()?->isAdmin() ?? false), 403);
+
+        $factura = Transaction::findOrFail($transaccion);
+
+        try {
+            $stamp->handle($factura);
+        } catch (CfdiException $e) {
+            $this->addError('cfdi', $e->getMessage());
+
+            return;
+        }
+
+        $this->stampResult = ['done' => 1, 'errors' => [], 'pending' => 0, 'skipped' => 0];
+    }
+
+    /** Abre la elección de motivo para cancelar esa factura. */
+    public function startCancel(int $transaccion): void
+    {
+        abort_unless(auth()->user()?->isAdmin() ?? false, 403);
+
+        $this->cancelling = $transaccion;
+        $this->cancelReason = '02';
+        $this->replacementUuid = '';
+        $this->resetErrorBag();
+    }
+
+    public function cancelCancel(): void
+    {
+        $this->cancelling = null;
+        $this->resetErrorBag();
+    }
+
+    /**
+     * Pide la cancelación ante el SAT sin salir del listado.
+     *
+     * El mensaje dice lo que de verdad contestó el PAC: casi nunca es
+     * «cancelada», sino una solicitud que el receptor tiene que autorizar.
+     */
+    public function cancelRow(CancelStamp $cancelar): void
+    {
+        abort_unless(auth()->user()?->isAdmin() ?? false, 403);
+
+        if ($this->cancelling === null) {
+            return;
+        }
+
+        try {
+            $resultado = $cancelar->handle(
+                Transaction::findOrFail($this->cancelling),
+                $this->cancelReason,
+                $this->replacementUuid ?: null,
+            );
+        } catch (CfdiException $e) {
+            $this->addError('cfdi', $e->getMessage());
+
+            return;
+        }
+
+        session()->flash('status', $resultado->esCancelacionConfirmada()
+            ? __('Factura cancelada ante el SAT.')
+            : __($resultado->mensaje));
+        session()->flash('status_detail', $resultado->codigo);
+
+        $this->cancelling = null;
     }
 
     /**

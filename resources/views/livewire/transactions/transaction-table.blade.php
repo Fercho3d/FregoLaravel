@@ -90,6 +90,49 @@
         </span>
     </nav>
 
+    {{-- Cancelar desde el listado: el SAT exige motivo, y con el 01 también el
+         folio que sustituye al comprobante. --}}
+    @if ($cancelling !== null)
+        <div class="card space-y-3 border-brand/40 p-4">
+            <p class="text-sm font-semibold text-ink">{{ __('Cancelar el CFDI ante el SAT') }}</p>
+
+            <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <label class="block">
+                    <span class="field-label text-xs">{{ __('Motivo') }}</span>
+                    <select wire:model.live="cancelReason" class="field-input mt-1 py-1.5 text-sm">
+                        @foreach (\App\Actions\Transactions\CancelStamp::MOTIVOS as $clave => $texto)
+                            <option value="{{ $clave }}">{{ $texto }}</option>
+                        @endforeach
+                    </select>
+                </label>
+
+                @if ($cancelReason === '01')
+                    <label class="block">
+                        <span class="field-label text-xs">{{ __('Folio fiscal que la sustituye') }}</span>
+                        <input type="text" wire:model="replacementUuid" class="field-input mt-1 py-1.5 text-sm font-mono"
+                               placeholder="00000000-0000-0000-0000-000000000000">
+                    </label>
+                @endif
+            </div>
+
+            @error('cfdi')
+                <p class="text-xs text-brand">{{ $message }}</p>
+            @enderror
+
+            <div class="flex flex-wrap items-center gap-2">
+                <button type="button" wire:click="cancelRow" wire:loading.attr="disabled" wire:target="cancelRow"
+                        class="inline-flex items-center gap-1.5 rounded-lg bg-accent-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-accent-600">
+                    <x-spinner wire:loading wire:target="cancelRow" class="h-3.5 w-3.5" />
+                    {{ __('Solicitar la cancelación') }}
+                </button>
+                <button type="button" wire:click="cancelCancel" class="btn-ghost !py-1.5 !px-3 text-xs">{{ __('Cancelar') }}</button>
+                <span class="text-xs text-ink-faint">
+                    {{ __('Si la factura pasa de mil pesos, el receptor tiene 72 horas para autorizarla.') }}
+                </span>
+            </div>
+        </div>
+    @endif
+
     {{-- Filtros. Se pliegan en pantallas angostas para que la tabla quede a la
          vista sin tener que bajar; en pantallas anchas arrancan abiertos. --}}
     <div class="rounded-xl border border-line bg-panel"
@@ -726,12 +769,21 @@
                                     <span class="badge {{ $insignia[0] }} ml-1" title="{{ $insignia[2] }}{{ $cancelacion?->verificado_at ? ' · '.__('consultado el :fecha', ['fecha' => $cancelacion->verificado_at->format('d/m/Y')]) : '' }}">{{ $insignia[1] }}</span>
                                 @endif
 
-                                {{-- Cancelar el CFDI se pide desde el detalle, donde se
-                                     elige el motivo; aquí va el atajo, como en el
-                                     listado del sistema viejo. --}}
-                                @if (filled($row->seal) && ! $row->cancelled && ! $cancelacion && auth()->user()?->isAdmin())
-                                    <a href="{{ route('transactions.show', $row->transc_id) }}" wire:navigate
-                                       class="ml-1 text-[11px] text-brand hover:underline">{{ __('Cancelar') }}</a>
+                                {{-- Timbrar y cancelar desde el propio renglón, como los
+                                     botones de la rejilla del sistema original. Para una
+                                     factura suelta, marcarla y usar el lote sobra. --}}
+                                @if (auth()->user()?->isAdmin() && ! $row->cancelled && (int) $row->tran_type === Transaction::TYPE_INVOICE)
+                                    @if (blank($row->seal) && $this->allowsStamping())
+                                        <button type="button" wire:click="stampRow({{ $row->transc_id }})"
+                                                wire:confirm="{{ __('Se timbrará esta factura ante el SAT. ¿Continuar?') }}"
+                                                wire:loading.attr="disabled" wire:target="stampRow({{ $row->transc_id }})"
+                                                class="ml-1 text-[11px] font-semibold text-brand hover:underline">
+                                            {{ __('Timbrar') }}
+                                        </button>
+                                    @elseif (filled($row->seal) && ! $cancelacion)
+                                        <button type="button" wire:click="startCancel({{ $row->transc_id }})"
+                                                class="ml-1 text-[11px] text-brand hover:underline">{{ __('Cancelar') }}</button>
+                                    @endif
                                 @endif
                             </td>
                         </tr>

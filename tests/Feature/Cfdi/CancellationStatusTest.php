@@ -422,4 +422,72 @@ class CancellationStatusTest extends TestCase
             'solicitado_at' => $solicitado ?? now()->subDays(10),
         ]);
     }
+
+    // ------------------------------- Timbrar y cancelar desde el listado
+
+    /** Timbrar una factura suelta, sin marcarla ni usar el lote. */
+    public function test_se_timbra_desde_el_renglon_del_listado(): void
+    {
+        $this->actingAs($this->usuario());
+
+        Livewire::test(TransactionTable::class, ['screen' => 'invoice'])
+            ->call('stampRow', 1)
+            ->assertHasNoErrors();
+
+        $this->assertSame($this->pac->uuid, Transaction::find(1)->seal);
+    }
+
+    public function test_el_rechazo_del_pac_se_avisa_en_el_listado(): void
+    {
+        $this->app->instance(PacClient::class, new FakePacClient(falla: 'El PAC respondió: [CFDI40211] Retenciones'));
+
+        $this->actingAs($this->usuario());
+
+        Livewire::test(TransactionTable::class, ['screen' => 'invoice'])
+            ->call('stampRow', 1)
+            ->assertHasErrors('cfdi');
+
+        $this->assertNull(Transaction::find(1)->seal);
+    }
+
+    /** Cancelar desde el listado pide el motivo y avisa lo que contestó el PAC. */
+    public function test_se_cancela_desde_el_listado_eligiendo_el_motivo(): void
+    {
+        DB::table('transaction')->where('transc_id', 1)->update(['seal' => '3ECE3E47-7242-44E9-B6DB-355091F891C2']);
+
+        $this->actingAs($this->usuario());
+
+        Livewire::test(TransactionTable::class, ['screen' => 'invoice'])
+            ->call('startCancel', 1)
+            ->assertSet('cancelling', 1)
+            ->set('cancelReason', '02')
+            ->call('cancelRow')
+            ->assertHasNoErrors()
+            ->assertSet('cancelling', null);
+
+        $this->assertSame('02', CfdiCancelacion::where('transc_id', 1)->value('motivo'));
+    }
+
+    /** El motivo 01 exige el folio que sustituye, y el listado lo dice. */
+    public function test_el_motivo_uno_exige_el_folio_que_sustituye(): void
+    {
+        DB::table('transaction')->where('transc_id', 1)->update(['seal' => '3ECE3E47-7242-44E9-B6DB-355091F891C2']);
+
+        $this->actingAs($this->usuario());
+
+        Livewire::test(TransactionTable::class, ['screen' => 'invoice'])
+            ->call('startCancel', 1)
+            ->set('cancelReason', '01')
+            ->call('cancelRow')
+            ->assertHasErrors('cfdi');
+    }
+
+    public function test_quien_no_es_administrador_no_timbra_desde_el_listado(): void
+    {
+        $this->actingAs($this->usuario(User::ROLE_USER));
+
+        Livewire::test(TransactionTable::class, ['screen' => 'invoice'])
+            ->call('stampRow', 1)
+            ->assertForbidden();
+    }
 }
