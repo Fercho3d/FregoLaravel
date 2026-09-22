@@ -28,6 +28,19 @@ Artisan::command('inspire', function () {
  * En el servidor hace falta la línea de cron que despierta al planificador:
  *   * * * * * cd /ruta/de/la/aplicacion && php8.4 artisan schedule:run >> /dev/null 2>&1
  */
+/*
+ * El dólar del día, de lunes a viernes a primera hora. Antes lo traía el primer
+ * usuario que guardaba una transacción; así ya está cuando llega. Sábado y
+ * domingo Banxico no publica, y si un día falla, la siguiente transacción lo
+ * vuelve a intentar sola (`ExchangeRates::ensureFor()`).
+ */
+Schedule::command('exchange:diario')
+    ->weekdays()
+    ->dailyAt('07:30')
+    ->timezone('America/Mexico_City')
+    ->withoutOverlapping()
+    ->description('Tipo de cambio del dólar (Banxico)');
+
 if (config('marca.correo.avisos_por_correo')) {
     Schedule::command('operacion:avisos-continuidad aviso')
         ->dailyAt('07:00')

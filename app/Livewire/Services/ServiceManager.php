@@ -48,6 +48,8 @@ class ServiceManager extends Component
 
     public function mount(): void
     {
+        $this->assertAdmin();
+
         // Solo se regresa a direcciones propias del sistema.
         if (! str_starts_with($this->volver, '/') || str_starts_with($this->volver, '//')) {
             $this->volver = '';
@@ -97,9 +99,10 @@ class ServiceManager extends Component
         $servicio->forceFill(['active' => $servicio->active ? 0 : 1])->save();
     }
 
+    /** Solo el super administrador, como el `ServiceController` de Yii2. */
     private function assertAdmin(): void
     {
-        abort_unless(auth()->user()?->isAdmin() ?? false, 403);
+        abort_unless(auth()->user()?->isSuperAdmin() ?? false, 403);
     }
 
     public function render()
@@ -115,15 +118,26 @@ class ServiceManager extends Component
             ->when($this->search !== '', fn ($q) => $q->where('s.description', 'like', '%'.$this->search.'%'))
             ->orderBy('s.description')
             ->leftJoin('account as a', 'a.account_id', '=', 's.account_id')
+            // La ruta, el contenedor y quién lo tocó, como en el grid de Yii2.
+            ->leftJoin('loading_ports as pol', 'pol.port_id', '=', 's.loading_port_id')
+            ->leftJoin('dicharge_port as pod', 'pod.dicharge_port_id', '=', 's.dicharge_port_id')
+            ->leftJoin('pickup_place as pp', 'pp.pick_id', '=', 's.pickup_place_id')
+            ->leftJoin('final_destination as fd', 'fd.final_destination_id', '=', 's.final_destination_id')
+            ->leftJoin('container_types as cty', 'cty.contType_id', '=', 's.container_type_id')
+            ->leftJoin('users as u', 'u.usr_id', '=', 's.modified_by')
             ->paginate(25, [
                 's.service_id', 's.description', 's.price', 's.active', 's.contract',
                 's.auto_include', 's.start_date', 's.end_date', 'a.prefix as currency',
                 'ct.charge_type_name', 'c.fullName as client_name', 'p.fullName as provider_name',
+                's.price_type', 'pol.port_name as pol', 'pod.name as pod', 'pp.name as pickup',
+                'fd.name as destination', 'cty.container_name as container',
+                's.modified_at', 'u.username as modified_by_name',
             ], 'page', $this->getPage());
 
         return view('livewire.services.service-manager', [
             'servicios' => $servicios,
             'terceros' => $this->parties(),
+            'tiposDePrecio' => Service::priceTypeLabels(),
         ])->layout('components.app-layout', ['title' => __('Servicios y precios')]);
     }
 }

@@ -2,11 +2,14 @@
 
 namespace App\Support\Catalogs;
 
+use App\Models\Core\Company;
+use App\Support\Cfdi\RegimenesFiscales;
 use App\Support\Expediente;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
@@ -27,6 +30,7 @@ class CatalogRegistry
     {
         $texto = ['required', 'string', 'max:100'];
         $textoOpcional = ['nullable', 'string', 'max:255'];
+        $deducible = fn (array $form) => ! ($form['non_deductible'] ?? false);
 
         $definiciones = [
             new CatalogDefinition(
@@ -54,6 +58,7 @@ class CatalogRegistry
                     new CatalogField('longitud', __('Longitud'), type: 'number', rules: ['nullable', 'numeric', 'between:-180,180'], inList: false),
                 ],
                 softDelete: 'deleted',
+                superAdmin: true,
             ),
             new CatalogDefinition(
                 slug: 'destinos-finales',
@@ -329,6 +334,7 @@ class CatalogRegistry
                 ],
                 orderBy: 'start_date',
                 audited: true,
+                superAdmin: true,
             ),
             new CatalogDefinition(
                 slug: 'monedas',
@@ -348,6 +354,7 @@ class CatalogRegistry
                     ['client', 'account_id'], ['provider', 'account_id'], ['payment_request', 'currency_id'],
                 ],
                 note: __('La moneda base es la que no se convierte: su tipo de cambio vale 1.'),
+                superAdmin: true,
             ),
             new CatalogDefinition(
                 slug: 'companias',
@@ -358,11 +365,20 @@ class CatalogRegistry
                 fields: [
                     new CatalogField('name', __('Nombre corto'), rules: ['required', 'string', 'max:150']),
                     new CatalogField('business_name', __('Razón social'), rules: $textoOpcional),
-                    new CatalogField('rfc', __('RFC'), rules: ['nullable', 'string', 'max:15']),
+                    // Los tres datos que viajan al CFDI, con el formato que exige el SAT.
+                    new CatalogField('rfc', __('RFC'), rules: ['nullable', 'string', 'max:15', 'regex:'.RegimenesFiscales::RFC_REGEX]),
                     // Mismo default que la columna (`DEFAULT '601'`): sin él, una compañía
                     // nueva nacía sin régimen y su CFDI salía incompleto.
-                    new CatalogField('regimen_fiscal', __('Régimen fiscal'), rules: ['nullable', 'string', 'max:5'], inList: false, default: '601'),
-                    new CatalogField('postal_code', __('Código postal'), rules: ['nullable', 'string', 'max:10'], inList: false),
+                    new CatalogField(
+                        'regimen_fiscal',
+                        __('Régimen fiscal'),
+                        type: 'select',
+                        rules: ['nullable', 'string', 'max:5', Rule::in(array_keys(RegimenesFiscales::all()))],
+                        inList: false,
+                        options: fn () => RegimenesFiscales::options(),
+                        default: '601',
+                    ),
+                    new CatalogField('postal_code', __('Código postal'), rules: ['nullable', 'string', 'max:10', 'regex:/^\d{5}$/'], inList: false),
                     new CatalogField('address', __('Dirección'), rules: $textoOpcional, inList: false),
                     // Nace activa, como en el original: si no, no aparece en ningún selector.
                     new CatalogField('active', __('Activa'), type: 'boolean', rules: ['boolean'], default: true),
@@ -371,6 +387,17 @@ class CatalogRegistry
                 searchable: ['name', 'business_name', 'rfc'],
                 usedBy: [['transaction', 'company_id']],
                 note: __('El RFC, el régimen y el código postal son los que salen en el CFDI.'),
+                superAdmin: true,
+                // El semáforo del original: sin los cuatro datos fiscales el PAC rechaza el CFDI.
+                badges: [
+                    __('Facturación') => function (object $fila): array {
+                        $faltan = (new Company)->setRawAttributes((array) $fila)->missingFiscalFields();
+
+                        return $faltan === []
+                            ? [__('Lista para facturar'), true]
+                            : [__('No factura: falta :campos', ['campos' => implode(', ', $faltan)]), false];
+                    },
+                ],
             ),
             new CatalogDefinition(
                 slug: 'tipos-cargo',
@@ -381,8 +408,10 @@ class CatalogRegistry
                 fields: [
                     new CatalogField('charge_type_name', __('Nombre'), rules: ['required', 'string', 'max:25']),
                     new CatalogField('tax_name', __('Nombre del impuesto'), rules: ['nullable', 'string', 'max:25']),
-                    new CatalogField('tax_rate', __('Tasa de IVA'), type: 'number', rules: ['required', 'numeric', 'between:0,1']),
-                    new CatalogField('tax_retention', __('Retención'), type: 'number', rules: ['required', 'numeric', 'between:0,1']),
+                    // Un cargo no deducible no lleva impuestos: se ocultan y se guardan en 0,
+                    // como hacía `ChargeTypeController` en Yii2.
+                    new CatalogField('tax_rate', __('Tasa de IVA'), type: 'number', rules: ['required', 'numeric', 'between:0,1'], visibleWhen: $deducible, hiddenValue: 0),
+                    new CatalogField('tax_retention', __('Retención'), type: 'number', rules: ['required', 'numeric', 'between:0,1'], visibleWhen: $deducible, hiddenValue: 0),
                     new CatalogField('product_code', __('Clave de producto (SAT)'), rules: ['nullable', 'string', 'max:64'], inList: false),
                     new CatalogField('non_deductible', __('No deducible'), type: 'boolean', rules: ['boolean']),
                 ],
@@ -390,6 +419,7 @@ class CatalogRegistry
                 orderBy: 'charge_type_name',
                 searchable: ['charge_type_name', 'tax_name'],
                 note: __('La tasa va en proporción: 0.16 es 16 %. De aquí sale en qué cubeta cae cada concepto.'),
+                superAdmin: true,
             ),
             new CatalogDefinition(
                 slug: 'bancos',
@@ -421,6 +451,7 @@ class CatalogRegistry
                 ],
                 orderBy: 'label',
                 searchable: ['field', 'label'],
+                superAdmin: true,
             ),
             new CatalogDefinition(
                 slug: 'codigos-impuesto',
@@ -431,7 +462,8 @@ class CatalogRegistry
                 fields: [
                     new CatalogField('tax_code', __('Código'), rules: ['required', 'string', 'max:255']),
                     new CatalogField('tax_rate', __('Tasa'), type: 'number', rules: ['nullable', 'numeric']),
-                    new CatalogField('tax_retention', __('Retención'), rules: $textoOpcional),
+                    // La columna es `varchar(255)` por herencia, pero lo que se guarda es una tasa.
+                    new CatalogField('tax_retention', __('Retención'), type: 'number', rules: ['nullable', 'numeric']),
                 ],
                 orderBy: 'tax_code',
                 // El cargo guarda el código como texto, no el id.

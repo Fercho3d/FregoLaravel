@@ -12,17 +12,18 @@ use Livewire\Component;
 use Livewire\WithPagination;
 
 /**
- * Tipos de cambio.
+ * Tipos de cambio. Solo el super administrador entra, como en el
+ * `ExchangeController` de Yii2.
  *
  * De aquí sale con cuánto se valúa cada documento, así que es la pantalla que
  * más cuidado pide: **cambiar un tipo de cambio mueve cifras ya emitidas**.
  *
  * Dos cosas heredadas que conviene tener presentes:
- *  1. La convención del DOF: la fila que «aplica el día X» contiene el tipo de
+ *  1. La convención contable: la fila que «aplica el día X» contiene el tipo de
  *     cambio publicado el día hábil ANTERIOR. Así lo hace el sistema desde
  *     siempre y así se conserva.
- *  2. El alta automática solo trae el **dólar** (indicador 158 del DOF). El euro
- *     no está cableado: hay que capturarlo a mano.
+ *  2. El alta automática solo trae el **dólar** (serie FIX de Banxico, ver
+ *     `ExchangeRates`). El euro no está cableado: hay que capturarlo a mano.
  */
 class ExchangeManager extends Component
 {
@@ -30,6 +31,12 @@ class ExchangeManager extends Component
 
     #[Url(as: 'moneda', except: '')]
     public string $accountId = '';
+
+    #[Url(as: 'desde', except: '')]
+    public string $from = '';
+
+    #[Url(as: 'hasta', except: '')]
+    public string $to = '';
 
     public ?int $editing = null;
 
@@ -41,7 +48,12 @@ class ExchangeManager extends Component
 
     public function mount(): void
     {
-        abort_unless(auth()->user()?->isAdmin() ?? false, 403);
+        $this->assertSuperAdmin();
+    }
+
+    private function assertSuperAdmin(): void
+    {
+        abort_unless(auth()->user()?->isSuperAdmin() ?? false, 403);
     }
 
     public function paginationView(): string
@@ -49,9 +61,11 @@ class ExchangeManager extends Component
         return 'vendor.pagination.app';
     }
 
-    public function updatedAccountId(): void
+    public function updated(string $property): void
     {
-        $this->resetPage();
+        if (in_array($property, ['accountId', 'from', 'to'], true)) {
+            $this->resetPage();
+        }
     }
 
     public function create(): void
@@ -82,7 +96,7 @@ class ExchangeManager extends Component
 
     public function save(): void
     {
-        abort_unless(auth()->user()?->isAdmin() ?? false, 403);
+        $this->assertSuperAdmin();
 
         $this->validate([
             'date' => ['required', 'date'],
@@ -109,8 +123,10 @@ class ExchangeManager extends Component
             'modified_by' => auth()->id(),
         ];
 
+        // `taken_date` es la fecha de publicación que trae Banxico; una captura a
+        // mano no la tiene, igual que en el original.
         $this->editing === 0
-            ? Exchange::create($valores + ['created_by' => auth()->id(), 'taken_date' => $this->date])
+            ? Exchange::create($valores + ['created_by' => auth()->id()])
             : Exchange::findOrFail($this->editing)->forceFill($valores)->save();
 
         session()->flash('status', __('Tipo de cambio guardado.'));
@@ -120,7 +136,7 @@ class ExchangeManager extends Component
     /** Trae de Banxico el dólar del día, si aún no está. */
     public function fetchToday(ExchangeRates $tipos): void
     {
-        abort_unless(auth()->user()?->isAdmin() ?? false, 403);
+        $this->assertSuperAdmin();
 
         $tipos->ensureFor(Carbon::today())
             ? session()->flash('status', __('Tipo de cambio del día registrado.'))
@@ -131,6 +147,8 @@ class ExchangeManager extends Component
     {
         $tipos = Exchange::query()
             ->when($this->accountId !== '', fn ($q) => $q->where('account', (int) $this->accountId))
+            ->when($this->from !== '', fn ($q) => $q->whereDate('date_exchange', '>=', $this->from))
+            ->when($this->to !== '', fn ($q) => $q->whereDate('date_exchange', '<=', $this->to))
             ->orderByDesc('date_exchange')
             ->orderBy('account')
             ->paginate(30, ['*'], 'page', $this->getPage());

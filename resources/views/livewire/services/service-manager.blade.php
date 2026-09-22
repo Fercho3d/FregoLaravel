@@ -1,7 +1,8 @@
 @php
     $money = fn ($v) => number_format((float) $v, 2);
+    $fecha = fn ($v) => $v ? \Illuminate\Support\Carbon::parse($v)->format('d/m/Y') : null;
     $esVenta = $this->isSale();
-    $esAdmin = auth()->user()?->isAdmin() ?? false;
+    $esAdmin = auth()->user()?->isSuperAdmin() ?? false;
 @endphp
 
 <div class="space-y-4">
@@ -70,10 +71,16 @@
             <table class="min-w-full text-sm">
                 <thead class="border-b border-line text-xs uppercase tracking-wide text-ink-muted">
                     <tr>
+                        <th class="px-4 py-2.5 text-right font-semibold">ID</th>
                         <th class="px-4 py-2.5 text-left font-semibold">{{ __('Descripción') }}</th>
                         <th class="px-4 py-2.5 text-left font-semibold">{{ $esVenta ? __('Cliente') : __('Proveedor') }}</th>
                         <th class="px-4 py-2.5 text-left font-semibold">{{ __('Tipo de cargo') }}</th>
                         <th class="px-4 py-2.5 text-right font-semibold">{{ __('Precio') }}</th>
+                        <th class="px-4 py-2.5 text-left font-semibold">{{ __('Tipo de precio') }}</th>
+                        <th class="px-4 py-2.5 text-left font-semibold">{{ __('Ruta') }}</th>
+                        <th class="px-4 py-2.5 text-left font-semibold">{{ __('Contenedor') }}</th>
+                        <th class="px-4 py-2.5 text-left font-semibold">{{ __('Vigencia') }}</th>
+                        <th class="px-4 py-2.5 text-left font-semibold">{{ __('Modificado') }}</th>
                         <th class="px-4 py-2.5 text-left font-semibold">{{ __('Estado') }}</th>
                         @if ($esAdmin)
                             <th class="px-4 py-2.5 text-right font-semibold"><span class="sr-only">{{ __('Acciones') }}</span></th>
@@ -84,6 +91,7 @@
                 <tbody class="divide-y divide-line">
                     @forelse ($servicios as $servicio)
                         <tr class="transition hover:bg-raised {{ $servicio->active ? '' : 'opacity-60' }}">
+                            <td class="whitespace-nowrap px-4 py-2 text-right tabular-nums text-ink-faint">{{ $servicio->service_id }}</td>
                             <td class="max-w-[22rem] px-4 py-2">
                                 <p class="flex items-center gap-1.5 truncate text-ink" title="{{ $servicio->description }}">
                                     <span class="truncate">{{ $servicio->description ?: '—' }}</span>
@@ -99,9 +107,6 @@
                                     <span>{{ $servicio->currency ?: '—' }}</span>
                                     @if ($servicio->auto_include)
                                         <span class="badge badge-neutral">{{ __('Auto-incluible') }}</span>
-                                        @if ($servicio->end_date)
-                                            <span>vigente hasta {{ $servicio->end_date }}</span>
-                                        @endif
                                     @endif
                                 </p>
                             </td>
@@ -114,6 +119,37 @@
                                     <span class="badge badge-warn">{{ __('Abierto') }}</span>
                                 @else
                                     {{ $money($servicio->price) }}
+                                @endif
+                            </td>
+                            <td class="whitespace-nowrap px-4 py-2 text-ink-muted">{{ $tiposDePrecio[$servicio->price_type] ?? '—' }}</td>
+                            <td class="px-4 py-2 text-xs text-ink-muted">
+                                @if ($servicio->pol || $servicio->pod)
+                                    <p class="whitespace-nowrap">{{ $servicio->pol ?: '…' }} → {{ $servicio->pod ?: '…' }}</p>
+                                @endif
+                                @if ($servicio->pickup)
+                                    <p class="whitespace-nowrap">{{ __('Recolección') }}: {{ $servicio->pickup }}</p>
+                                @endif
+                                @if ($servicio->destination)
+                                    <p class="whitespace-nowrap">{{ __('Destino') }}: {{ $servicio->destination }}</p>
+                                @endif
+                                @if (! $servicio->pol && ! $servicio->pod && ! $servicio->pickup && ! $servicio->destination)
+                                    —
+                                @endif
+                            </td>
+                            <td class="whitespace-nowrap px-4 py-2 text-ink-muted">{{ $servicio->container ?: '—' }}</td>
+                            <td class="whitespace-nowrap px-4 py-2 text-xs text-ink-muted">
+                                @if ($servicio->start_date || $servicio->end_date)
+                                    {{ $fecha($servicio->start_date) ?? '…' }} – {{ $fecha($servicio->end_date) ?? '…' }}
+                                @else
+                                    —
+                                @endif
+                            </td>
+                            <td class="whitespace-nowrap px-4 py-2 text-xs text-ink-muted">
+                                @if ($servicio->modified_by_name || $servicio->modified_at)
+                                    {{ $servicio->modified_by_name ?: '—' }}
+                                    <span class="text-ink-faint">{{ $fecha($servicio->modified_at) }}</span>
+                                @else
+                                    —
                                 @endif
                             </td>
                             <td class="whitespace-nowrap px-4 py-2">
@@ -135,7 +171,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="{{ $esAdmin ? 6 : 5 }}" class="px-4 py-12 text-center text-ink-faint">
+                            <td colspan="{{ $esAdmin ? 12 : 11 }}" class="px-4 py-12 text-center text-ink-faint">
                                 {{ __('No hay servicios con estos filtros.') }}
                             </td>
                         </tr>

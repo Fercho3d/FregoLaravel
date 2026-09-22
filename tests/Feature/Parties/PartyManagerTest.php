@@ -4,6 +4,7 @@ namespace Tests\Feature\Parties;
 
 use App\Livewire\Parties\PartyForm;
 use App\Livewire\Parties\PartyManager;
+use App\Models\Core\Client;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Livewire\Features\SupportTesting\Testable;
@@ -361,5 +362,47 @@ class PartyManagerTest extends TestCase
     public function test_quien_no_es_administrador_no_escribe(): void
     {
         $this->ficha('client', null, User::ROLE_USER)->assertForbidden();
+    }
+
+    /**
+     * Los avisos (confirmación del booking, factura timbrada) van al correo
+     * principal Y a la lista de notificación, sin repetidos ni inválidos, como
+     * `Client::getNotificationEmails()` en Yii2. Antes era uno u otro.
+     */
+    public function test_los_correos_de_aviso_unen_el_principal_con_la_lista(): void
+    {
+        $cliente = new Client(['email' => 'contacto@x.mx', 'email_notification' => 'trafico@x.mx; contacto@x.mx, no-es-correo']);
+
+        $this->assertSame(['contacto@x.mx', 'trafico@x.mx'], $cliente->notificationEmails());
+    }
+
+    public function test_sin_lista_de_aviso_queda_solo_el_correo_principal(): void
+    {
+        $cliente = new Client(['email' => 'contacto@x.mx', 'email_notification' => null]);
+
+        $this->assertSame(['contacto@x.mx'], $cliente->notificationEmails());
+    }
+
+    /** Se baja todo el filtro, no la página, con las etiquetas de los selectores en vez de la clave. */
+    public function test_el_listado_se_exporta_a_csv(): void
+    {
+        DB::table('provider')->insert([
+            ['provider_id' => 1, 'fullName' => 'Naviera Uno', 'type_id' => 1, 'rfc' => 'NAV010101AAA', 'email' => 'ops@naviera.mx'],
+            ['provider_id' => 2, 'fullName' => 'Transportes Dos', 'type_id' => 2, 'rfc' => null, 'email' => ''],
+        ]);
+
+        $csv = $this->pantalla('provider')
+            ->set('search', 'naviera')
+            ->call('export')
+            ->assertFileDownloaded()
+            ->effects['download']['content'] ?? '';
+
+        $lineas = array_values(array_filter(explode("\n", trim(base64_decode($csv)))));
+
+        $this->assertStringContainsString('"Nombre o razón social"', $lineas[0]);
+        $this->assertStringContainsString('"Tipo de proveedor"', $lineas[0]);
+        $this->assertCount(2, $lineas);
+        $this->assertStringContainsString('"Naviera Uno",NAV010101AAA,ops@naviera.mx', $lineas[1]);
+        $this->assertStringEndsWith(',Naviera', $lineas[1]);
     }
 }

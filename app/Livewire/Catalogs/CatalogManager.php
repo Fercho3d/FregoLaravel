@@ -40,7 +40,13 @@ class CatalogManager extends Component
     public function mount(string $catalog): void
     {
         $this->slug = $catalog;
-        CatalogRegistry::find($catalog);
+        $this->assertCanRead(CatalogRegistry::find($catalog));
+    }
+
+    /** Un catálogo de super administrador ni se ve, como en Yii2. */
+    private function assertCanRead(CatalogDefinition $definicion): void
+    {
+        abort_if($definicion->superAdmin && ! (auth()->user()?->isSuperAdmin() ?? false), 403);
     }
 
     public function definition(): CatalogDefinition
@@ -103,15 +109,21 @@ class CatalogManager extends Component
 
         $definicion = $this->definition();
 
+        // Un campo oculto por otro valor del formulario no se valida ni se toma
+        // de la pantalla: se guarda lo que su definición manda.
+        $visible = fn (CatalogField $c) => $c->visible($this->form);
+
         $this->validate(
-            collect($definicion->fields)->mapWithKeys(fn (CatalogField $c) => ["form.{$c->name}" => $this->rulesFor($definicion, $c)])->all(),
+            collect($definicion->fields)
+                ->mapWithKeys(fn (CatalogField $c) => ["form.{$c->name}" => $visible($c) ? $this->rulesFor($definicion, $c) : ['nullable']])
+                ->all(),
             attributes: collect($definicion->fields)
                 ->mapWithKeys(fn (CatalogField $c) => ["form.{$c->name}" => mb_strtolower($c->label)])
                 ->all(),
         );
 
         $valores = collect($definicion->fields)
-            ->mapWithKeys(fn (CatalogField $c) => [$c->name => $c->cast($this->form[$c->name] ?? null)])
+            ->mapWithKeys(fn (CatalogField $c) => [$c->name => $c->cast($visible($c) ? ($this->form[$c->name] ?? null) : $c->hiddenValue)])
             ->all();
 
         try {
@@ -238,6 +250,7 @@ class CatalogManager extends Component
     private function assertAdmin(): void
     {
         abort_unless(auth()->user()?->isAdmin() ?? false, 403);
+        $this->assertCanRead($this->definition());
     }
 
     // --------------------------------------------------------- Pintado

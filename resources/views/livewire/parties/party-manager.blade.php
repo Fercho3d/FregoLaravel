@@ -34,6 +34,11 @@
             <input type="search" wire:model.live.debounce.300ms="search" value="{{ $search }}"
                    class="field-input py-1.5 text-sm" placeholder="{{ __('Buscar por nombre, RFC o ciudad…') }}">
             @if ($esAdmin)
+                <button type="button" wire:click="export" wire:loading.attr="disabled" wire:target="export"
+                        class="btn-ghost !px-3 !py-1.5 text-xs">
+                    <x-spinner wire:loading wire:target="export" class="h-3.5 w-3.5" />
+                    {{ __('Exportar CSV') }}
+                </button>
                 <a href="{{ route($this->listRoute().'.create', ['volver' => $this->currentUrl()]) }}" wire:navigate
                    class="btn-accent !px-3 !py-1.5 text-xs">{{ __('Agregar') }}</a>
             @endif

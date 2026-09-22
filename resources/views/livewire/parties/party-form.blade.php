@@ -103,7 +103,10 @@
                     <h3 class="text-sm font-semibold text-ink">{{ __('Servicios y precios') }}</h3>
                     <p class="text-xs text-ink-faint">{{ trans_choice(':n servicio|:n servicios', $servicios->count(), ['n' => $servicios->count()]) }}</p>
                 </div>
-                <a href="{{ $this->servicesUrl() }}" wire:navigate class="btn-ghost px-3 py-1.5 text-xs">{{ __('Editar servicios') }}</a>
+                {{-- Servicios y precios es del super administrador, como en Yii2 --}}
+                @if (auth()->user()?->isSuperAdmin())
+                    <a href="{{ $this->servicesUrl() }}" wire:navigate class="btn-ghost px-3 py-1.5 text-xs">{{ __('Editar servicios') }}</a>
+                @endif
             </header>
 
             <div class="overflow-x-auto border-t border-line">

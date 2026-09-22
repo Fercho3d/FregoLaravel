@@ -103,6 +103,11 @@ En `transaction` es un `decimal(10,4)` (un valor); en `payment_request`, un
 
 `account.default` y `charge.prepaid` son `int(11)`.
 
+### 11. ⬜ `tax_code.tax_retention` es `varchar(255)`
+
+Guarda una tasa (`0.04`) pero la columna es texto. La pantalla ya la captura y
+valida como número; cuando se migre, `decimal(6,4)` como `tax_rate`.
+
 ---
 
 ## Cómo aplicarlo

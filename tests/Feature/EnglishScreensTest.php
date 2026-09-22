@@ -51,8 +51,11 @@ class EnglishScreensTest extends LegacyDatabaseTestCase
 
     private function admin(): User
     {
+        // Primero el super administrador: hay catálogos (compañías, tipos de
+        // cargo…) y pantallas (servicios, tipos de cambio) que solo él abre.
         $usuario = User::query()
             ->whereIn('role', [User::ROLE_ADMIN, User::ROLE_SUPER_ADMIN])
+            ->orderByDesc('role')
             ->orderBy('usr_id')
             ->first();
 

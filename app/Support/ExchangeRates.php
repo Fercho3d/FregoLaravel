@@ -42,10 +42,14 @@ class ExchangeRates
         return Cache::get(self::CLAVE_FALLA);
     }
 
-    /** @return bool Si al terminar hay un tipo de cambio registrado para la fecha. */
+    /**
+     * @return bool Si al terminar hay un tipo de cambio del dólar para la fecha.
+     *              Se busca por fecha **y** moneda: un euro capturado a mano ese
+     *              día no cuenta como si ya estuviera el dólar.
+     */
     public function ensureFor(Carbon $fecha): bool
     {
-        if (Exchange::whereDate('date_exchange', $fecha)->exists()) {
+        if (Exchange::whereDate('date_exchange', $fecha)->where('account', self::CUENTA_USD)->exists()) {
             return true;
         }
 

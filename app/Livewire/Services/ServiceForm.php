@@ -15,7 +15,8 @@ use Livewire\WithFileUploads;
 
 /**
  * Alta y edición de un servicio en su propia pantalla, con regreso a la lista
- * de servicios tal como se dejó (y, desde ahí, a la ficha del tercero).
+ * de servicios tal como se dejó (y, desde ahí, a la ficha del tercero). Solo
+ * el super administrador, como el `ServiceController` de Yii2.
  *
  * Un servicio con **precio 0 es un precio abierto**: al capturar el concepto se
  * escribe a mano. Los **auto-incluibles** son los que el booking usa para
@@ -105,6 +106,38 @@ class ServiceForm extends Component
         $this->form['price_type'] = '';
     }
 
+    /** Tipo del proveedor elegido (naviera, transportista, agente aduanal); null en venta o sin proveedor. */
+    public function providerType(): ?int
+    {
+        if ($this->isSale() || ($this->form['party_id'] ?? '') === '') {
+            return null;
+        }
+
+        $tipo = Provider::whereKey((int) $this->form['party_id'])->value('type_id');
+
+        return $tipo === null ? null : (int) $tipo;
+    }
+
+    /**
+     * Qué campos de ruta aplican, como `_form.php` en Yii2: al cliente y a la
+     * naviera se les pide todo; al transportista solo puerto de carga y lugar
+     * de recolección; al agente aduanal nada.
+     *
+     * @return string[]
+     */
+    public function routeFields(): array
+    {
+        if ($this->isSale()) {
+            return Service::ROUTE_FIELDS;
+        }
+
+        return match ($this->providerType()) {
+            Provider::TYPE_CARRIER => Service::ROUTE_FIELDS,
+            Provider::TYPE_TRANSPORT => ['loading_port_id', 'pickup_place_id'],
+            default => [],
+        };
+    }
+
     public function isSale(): bool
     {
         return (int) $this->type === Service::TYPE_CLIENT;
@@ -154,17 +187,11 @@ class ServiceForm extends Component
      */
     public function priceTypes(): array
     {
-        $tipos = [
-            Service::PRICE_BY_CONTAINER => __('Por contenedor'),
-            Service::PRICE_BY_BL => __('Por BL'),
-        ];
+        $tipos = Service::priceTypeLabels();
 
         return $this->isSale()
-            ? $tipos + [
-                Service::PRICE_BY_BROKER_CONTAINER => __('Aduana, por contenedor'),
-                Service::PRICE_BY_BROKER_BL => __('Aduana, por BL'),
-            ]
-            : $tipos;
+            ? $tipos
+            : array_intersect_key($tipos, array_flip([Service::PRICE_BY_CONTAINER, Service::PRICE_BY_BL]));
     }
 
     public function save(): void
@@ -214,7 +241,14 @@ class ServiceForm extends Component
             'min' => $numero('min'),
             'max' => $numero('max'),
             'modified_by' => auth()->id(),
+            'modified_at' => now(),
         ];
+
+        // La ruta que no aplica a este tipo de proveedor no se guarda, aunque
+        // quedara puesta de cuando el servicio era de otro.
+        foreach (array_diff(Service::ROUTE_FIELDS, $this->routeFields()) as $campo) {
+            $valores[$campo] = null;
+        }
 
         if ($this->serviceId === null) {
             $id = (int) DB::table('service')->insertGetId($valores + ['created_by' => auth()->id(), 'created_at' => now()], 'service_id');
@@ -276,7 +310,7 @@ class ServiceForm extends Component
 
     private function assertAdmin(): void
     {
-        abort_unless(auth()->user()?->isAdmin() ?? false, 403);
+        abort_unless(auth()->user()?->isSuperAdmin() ?? false, 403);
     }
 
     public function render()

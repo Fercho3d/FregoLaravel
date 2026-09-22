@@ -1,5 +1,6 @@
 @php
     $esVenta = $this->isSale();
+    $ruta = $this->routeFields();
 @endphp
 
 <div class="mx-auto max-w-5xl space-y-4">
@@ -36,7 +37,8 @@
 
             <label class="block">
                 <span class="field-label">{{ $esVenta ? __('Cliente') : __('Proveedor') }}</span>
-                <select wire:model="form.party_id" class="field-input mt-1.5" required>
+                {{-- En vivo: el tipo del proveedor decide qué campos de ruta se enseñan --}}
+                <select wire:model.live="form.party_id" class="field-input mt-1.5" required>
                     <option value="">{{ __('Selecciona') }}</option>
                     @foreach ($terceros as $id => $nombre)
                         <option value="{{ $id }}" @selected((string) $id === (string) ($form['party_id'] ?? ''))>{{ $nombre }}</option>
@@ -119,6 +121,15 @@
                     @error('form.price_type') <span class="mt-1 block text-xs text-brand">{{ $message }}</span> @enderror
                 </label>
 
+                {{-- La ruta que aplica según el tercero: todo al cliente y a la naviera, POL y
+                     recolección al transportista, nada al agente aduanal (como en Yii2). --}}
+                @if (! $esVenta && $ruta === [])
+                    <p class="text-xs text-ink-faint sm:col-span-2 lg:col-span-3">
+                        {{ ($form['party_id'] ?? '') === ''
+                            ? __('Elige el proveedor: los campos de ruta dependen de su tipo.')
+                            : __('Un agente aduanal no lleva ruta.') }}
+                    </p>
+                @endif
                 @foreach ([
                     ['loading_port_id', __('Puerto de carga'), $puertosCarga],
                     ['dicharge_port_id', __('Puerto de descarga'), $puertosDescarga],
@@ -126,6 +137,7 @@
                     ['final_destination_id', __('Destino final'), $destinos],
                     ['container_type_id', __('Tipo de contenedor'), $tiposContenedor],
                 ] as [$campo, $etiqueta, $opciones])
+                    @continue(! in_array($campo, $ruta, true))
                     <label class="block">
                         <span class="field-label">{{ $etiqueta }}</span>
                         <select wire:model="form.{{ $campo }}" class="field-input mt-1.5">

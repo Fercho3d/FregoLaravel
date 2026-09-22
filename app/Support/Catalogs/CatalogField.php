@@ -20,6 +20,10 @@ final class CatalogField
      *                          default de la columna en la base.
      * @param  bool  $unique  No puede repetirse en la tabla (se ignora el propio
      *                        renglón al editar).
+     * @param  ?Closure(array<string, mixed>): bool  $visibleWhen  Con qué valores del
+     *                                                             formulario se enseña el campo. Oculto, no se
+     *                                                             valida y se guarda `$hiddenValue`.
+     * @param  mixed  $hiddenValue  Lo que se escribe cuando el campo está oculto.
      */
     public function __construct(
         public readonly string $name,
@@ -30,7 +34,15 @@ final class CatalogField
         public readonly ?Closure $options = null,
         public readonly mixed $default = null,
         public readonly bool $unique = false,
+        public readonly ?Closure $visibleWhen = null,
+        public readonly mixed $hiddenValue = null,
     ) {}
+
+    /** @param  array<string, mixed>  $form */
+    public function visible(array $form): bool
+    {
+        return $this->visibleWhen === null || ($this->visibleWhen)($form);
+    }
 
     /** Con qué valor arranca el campo en un alta. */
     public function initial(): mixed

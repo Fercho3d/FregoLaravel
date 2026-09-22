@@ -3,10 +3,13 @@
 namespace App\Livewire\Parties;
 
 use App\Livewire\Parties\Concerns\PartyFields;
+use App\Support\Export\PartiesExport;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Clientes y proveedores.
@@ -50,9 +53,10 @@ class PartyManager extends Component
         ]), absolute: false);
     }
 
-    public function render()
+    /** La lista con su búsqueda, tal como se ve. */
+    private function query(): Builder
     {
-        $filas = DB::table($this->table())
+        return DB::table($this->table())
             ->when($this->search !== '', function ($q) {
                 $q->where(function ($w) {
                     foreach (['fullName', 'rfc', 'email', 'city'] as $columna) {
@@ -60,11 +64,28 @@ class PartyManager extends Component
                     }
                 });
             })
-            ->orderBy('fullName')
-            ->paginate(25, ['*'], 'page', $this->getPage());
+            ->orderBy('fullName');
+    }
 
+    /** Descarga en CSV de lo que se está viendo: todo el filtro, no la página. */
+    public function export(PartiesExport $exportacion): StreamedResponse
+    {
+        abort_unless(auth()->user()?->isAdmin() ?? false, 403);
+
+        $campos = $this->fields();
+
+        return $exportacion->stream(
+            $this->query(),
+            ['ID' => $this->key()] + collect($campos)->mapWithKeys(fn ($d, $campo) => [$d[0] => $campo])->all(),
+            collect($campos)->filter(fn ($d) => $d[1] === 'select')->mapWithKeys(fn ($d, $campo) => [$campo => $this->optionsFor($campo)])->all(),
+            ($this->isClient() ? 'clientes' : 'proveedores').'-'.now()->format('Ymd-His').'.csv',
+        );
+    }
+
+    public function render()
+    {
         return view('livewire.parties.party-manager', [
-            'filas' => $filas,
+            'filas' => $this->query()->paginate(25, ['*'], 'page', $this->getPage()),
         ])->layout('components.app-layout', ['title' => $this->title()]);
     }
 }

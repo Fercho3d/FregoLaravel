@@ -6,6 +6,7 @@ use App\Livewire\Exchange\ExchangeManager;
 use App\Models\Core\Exchange;
 use App\Models\User;
 use App\Support\ExchangeRates;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -37,14 +38,15 @@ class ExchangeManagerTest extends TestCase
         ]);
     }
 
-    private function usuario(int $rol = User::ROLE_ADMIN): User
+    /** Super administrador: en Yii2 el `ExchangeController` no dejaba entrar a nadie más. */
+    private function usuario(int $rol = User::ROLE_SUPER_ADMIN): User
     {
         return User::create([
             'username' => 'operador'.$rol, 'password' => 'secreto-de-prueba', 'role' => $rol, 'status' => 1,
         ]);
     }
 
-    private function pantalla(int $rol = User::ROLE_ADMIN): Testable
+    private function pantalla(int $rol = User::ROLE_SUPER_ADMIN): Testable
     {
         $this->actingAs($this->usuario($rol));
 
@@ -65,6 +67,30 @@ class ExchangeManagerTest extends TestCase
 
         $this->assertSame(17.4321, $tipo->exchange_value);
         $this->assertSame('2026-02-10', $tipo->date_exchange->toDateString());
+    }
+
+    /** La fecha de publicación la pone Banxico; una captura a mano no la tiene, como en el original. */
+    public function test_la_captura_manual_no_inventa_fecha_de_publicacion(): void
+    {
+        $this->pantalla()
+            ->call('create')
+            ->set('date', '2026-02-10')
+            ->set('account', '2')
+            ->set('value', '17.4321')
+            ->call('save');
+
+        $this->assertNull(Exchange::first()->taken_date);
+    }
+
+    public function test_el_listado_se_acota_por_rango_de_fechas(): void
+    {
+        Exchange::create(['exchange_id' => 1, 'date_exchange' => '2026-01-15', 'account' => 2, 'exchange_value' => 17]);
+        Exchange::create(['exchange_id' => 2, 'date_exchange' => '2026-02-10', 'account' => 2, 'exchange_value' => 18]);
+        Exchange::create(['exchange_id' => 3, 'date_exchange' => '2026-03-05', 'account' => 2, 'exchange_value' => 19]);
+
+        $tipos = $this->pantalla()->set('from', '2026-02-01')->set('to', '2026-02-28')->viewData('tipos');
+
+        $this->assertSame([2], $tipos->pluck('exchange_id')->all());
     }
 
     /** El motor une por (fecha, moneda): dos filas duplicarían los importes. */
@@ -144,6 +170,59 @@ class ExchangeManagerTest extends TestCase
         );
     }
 
+    /**
+     * La comprobación es por fecha Y moneda: un euro capturado a mano ese día
+     * no debe hacer creer que el dólar ya está.
+     */
+    public function test_un_euro_del_dia_no_impide_traer_el_dolar(): void
+    {
+        Exchange::create(['exchange_id' => 1, 'date_exchange' => '2026-08-24', 'account' => 3, 'exchange_value' => 19.5]);
+        Http::fake(['www.banxico.org.mx/*' => Http::response(['bmx' => ['series' => [
+            ['idSerie' => 'SF60653', 'datos' => [['fecha' => '24/08/2026', 'dato' => '16.9583']]],
+        ]]])]);
+
+        app(ExchangeRates::class)->ensureFor(Carbon::parse('2026-08-24'));
+
+        $this->assertSame(2, Exchange::whereDate('date_exchange', '2026-08-24')->count());
+    }
+
+    public function test_con_el_dolar_del_dia_ya_registrado_no_se_consulta_banxico(): void
+    {
+        Exchange::create(['exchange_id' => 1, 'date_exchange' => '2026-08-24', 'account' => 2, 'exchange_value' => 17]);
+        Http::fake();
+
+        $this->assertTrue(app(ExchangeRates::class)->ensureFor(Carbon::parse('2026-08-24')));
+        Http::assertNothingSent();
+    }
+
+    /** El comando programado de las 07:30: registra el dólar de hoy y avisa si Banxico no contestó. */
+    public function test_el_comando_diario_registra_el_dolar_de_hoy(): void
+    {
+        Carbon::setTestNow('2026-08-24 07:30:00');
+        Http::fake(['www.banxico.org.mx/*' => Http::response(['bmx' => ['series' => [
+            ['idSerie' => 'SF60653', 'datos' => [['fecha' => '24/08/2026', 'dato' => '16.9583']]],
+        ]]])]);
+
+        $this->artisan('exchange:diario')->assertSuccessful();
+
+        $this->assertSame(16.9583, Exchange::whereDate('date_exchange', '2026-08-24')->where('account', 2)->first()->exchange_value);
+    }
+
+    public function test_el_comando_diario_falla_cuando_banxico_no_contesta(): void
+    {
+        Http::fake(['www.banxico.org.mx/*' => Http::failedConnection()]);
+
+        $this->artisan('exchange:diario')->assertFailed();
+    }
+
+    public function test_el_comando_diario_esta_programado_de_lunes_a_viernes(): void
+    {
+        $evento = collect(app(Schedule::class)->events())
+            ->first(fn ($e) => str_contains($e->command, 'exchange:diario'));
+
+        $this->assertSame(['30 7 * * 1-5', 'America/Mexico_City'], [$evento?->expression, $evento?->timezone]);
+    }
+
     /** Banxico rechaza el token: cualquier pantalla avisa que hay que llamar al administrador. */
     public function test_avisa_cuando_banxico_rechaza_el_token(): void
     {
@@ -182,6 +261,14 @@ class ExchangeManagerTest extends TestCase
     public function test_quien_no_es_administrador_no_entra(): void
     {
         $this->actingAs($this->usuario(User::ROLE_USER));
+
+        Livewire::test(ExchangeManager::class)->assertForbidden();
+    }
+
+    /** Como en Yii2: un administrador normal tampoco entra. */
+    public function test_un_administrador_normal_tampoco_entra(): void
+    {
+        $this->actingAs($this->usuario(User::ROLE_ADMIN));
 
         Livewire::test(ExchangeManager::class)->assertForbidden();
     }

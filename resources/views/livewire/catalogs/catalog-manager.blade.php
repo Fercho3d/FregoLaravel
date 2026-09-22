@@ -55,10 +55,12 @@
 
             <div class="grid gap-4 sm:grid-cols-2">
                 @foreach ($definicion->fields as $campo)
+                    @continue(! $campo->visible($form))
                     <label class="block {{ $campo->isBoolean() ? 'sm:col-span-2' : '' }}">
                         @if ($campo->isBoolean())
+                            {{-- En vivo: una casilla puede ocultar otros campos («no deducible» quita los impuestos) --}}
                             <span class="flex items-center gap-2 text-sm text-ink-soft">
-                                <input type="checkbox" wire:model="form.{{ $campo->name }}"
+                                <input type="checkbox" wire:model.live="form.{{ $campo->name }}"
                                        @checked($form[$campo->name] ?? false)
                                        class="h-4 w-4 rounded border-line bg-panel text-accent-500 focus:ring-accent-500">
                                 {{ $campo->label }}
@@ -123,6 +125,13 @@
                             </span>
                         </div>
                     @endforeach
+                    @foreach ($definicion->badges as $etiqueta => $calcular)
+                        @php [$texto, $bien] = $calcular($fila); @endphp
+                        <div class="flex justify-between gap-3 text-xs">
+                            <span class="text-ink-faint">{{ $etiqueta }}</span>
+                            <span class="badge {{ $bien ? 'badge-ok' : 'badge-warn' }}">{{ $texto }}</span>
+                        </div>
+                    @endforeach
 
                     @if (auth()->user()?->isAdmin())
                         <div class="flex gap-3 pt-1 text-xs">
@@ -147,6 +156,9 @@
                         @foreach ($definicion->listFields() as $campo)
                             <th class="px-4 py-2.5 text-left font-semibold">{{ $campo->label }}</th>
                         @endforeach
+                        @foreach ($definicion->badges as $etiqueta => $calcular)
+                            <th class="px-4 py-2.5 text-left font-semibold">{{ $etiqueta }}</th>
+                        @endforeach
                         @if (auth()->user()?->isAdmin())
                             <th class="px-4 py-2.5 text-right font-semibold"><span class="sr-only">{{ __('Acciones') }}</span></th>
                         @endif
@@ -167,6 +179,12 @@
                                     @endif
                                 </td>
                             @endforeach
+                            @foreach ($definicion->badges as $calcular)
+                                @php [$texto, $bien] = $calcular($fila); @endphp
+                                <td class="px-4 py-2">
+                                    <span class="badge {{ $bien ? 'badge-ok' : 'badge-warn' }}">{{ $texto }}</span>
+                                </td>
+                            @endforeach
 
                             @if (auth()->user()?->isAdmin())
                                 <td class="whitespace-nowrap px-4 py-2 text-right">
@@ -180,7 +198,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="{{ count($definicion->listFields()) + 1 }}" class="px-4 py-12 text-center text-ink-faint">
+                            <td colspan="{{ count($definicion->listFields()) + count($definicion->badges) + 1 }}" class="px-4 py-12 text-center text-ink-faint">
                                 {{ $search === '' ? __('Este catálogo está vacío.') : __('Nada coincide con la búsqueda.') }}
                             </td>
                         </tr>

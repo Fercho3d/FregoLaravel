@@ -25,6 +25,10 @@ final class CatalogDefinition
      *                                                                       borrarían la operación sin avisar.
      * @param  ?Closure(): array<string, mixed>  $insertDefaults  Columnas que no se
      *                                                            capturan pero la tabla exige al insertar (`NOT NULL` sin default).
+     * @param  bool  $superAdmin  Solo el super administrador entra y escribe, como en
+     *                            los controladores de Yii2 que exigían `isSuperAdmin()`.
+     * @param  array<string, Closure(object): array{0: string, 1: bool}>  $badges
+     *                                                                             Columnas calculadas del listado: etiqueta => `[texto, está bien]`.
      */
     public function __construct(
         public readonly string $slug,
@@ -40,6 +44,8 @@ final class CatalogDefinition
         public readonly ?string $note = null,
         public readonly array $usedBy = [],
         public readonly ?Closure $insertDefaults = null,
+        public readonly bool $superAdmin = false,
+        public readonly array $badges = [],
     ) {}
 
     /** @return array<string, mixed> */
