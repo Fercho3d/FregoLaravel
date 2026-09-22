@@ -4,7 +4,9 @@ namespace App\Support\Catalogs;
 
 use App\Support\Expediente;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
@@ -73,6 +75,7 @@ class CatalogRegistry
                 singular: __('Buque'),
                 plural: __('Buques'),
                 fields: [new CatalogField('vessel_name', __('Nombre'), rules: $texto)],
+                usedBy: [['booking', 'vessel']],
             ),
             new CatalogDefinition(
                 slug: 'tipos-contenedor',
@@ -81,6 +84,9 @@ class CatalogRegistry
                 singular: __('Tipo de contenedor'),
                 plural: __('Tipos de contenedor'),
                 fields: [new CatalogField('container_name', __('Nombre'), rules: ['required', 'string', 'max:25'])],
+                // `containers.container_type` es `ON DELETE CASCADE`: borrar un tipo
+                // en uso borraría los contenedores de todos sus bookings.
+                usedBy: [['containers', 'container_type'], ['booking', 'container_type'], ['service', 'container_type_id']],
             ),
             new CatalogDefinition(
                 slug: 'navieras',
@@ -90,13 +96,19 @@ class CatalogRegistry
                 plural: __('Navieras'),
                 fields: [
                     new CatalogField('name', __('Nombre'), rules: $texto),
-                    new CatalogField('email', __('Correo'), rules: ['nullable', 'email', 'max:50']),
+                    // `email` es `NOT NULL` y es el usuario del portal: sin él o repetido, la
+                    // naviera no podría entrar.
+                    new CatalogField('email', __('Correo'), rules: ['required', 'email', 'max:50'], unique: true),
                 ],
                 audited: true,
                 searchable: ['name', 'email'],
+                usedBy: [['carrier_booking', 'carrier_id']],
                 // La tabla guarda además contraseña y llaves de acceso del portal;
                 // no se exponen aquí porque este catálogo es solo el directorio.
-                note: __('Los accesos al portal de la naviera se administran aparte.'),
+                // `password` es `NOT NULL`: se escribe una al azar que nadie conoce y
+                // la real se fija desde Usuarios.
+                insertDefaults: fn () => ['password' => Hash::make(Str::random(32))],
+                note: __('La contraseña del portal de la naviera se fija desde Usuarios, no aquí.'),
             ),
             /*
              * Flota propia. Un agente de carga subcontrata y no los usa; una
@@ -270,6 +282,9 @@ class CatalogRegistry
                 singular: __('Modalidad'),
                 plural: __('Modalidades'),
                 fields: [new CatalogField('modality_name', __('Nombre'), rules: ['required', 'string', 'max:15'])],
+                // `booking_continuity.modality` es `ON DELETE CASCADE`: borrar una
+                // modalidad en uso borraría la continuidad de todos sus bookings.
+                usedBy: [['booking_continuity', 'modality']],
             ),
             new CatalogDefinition(
                 slug: 'terminos-pago',
@@ -278,6 +293,7 @@ class CatalogRegistry
                 singular: __('Término de pago'),
                 plural: __('Términos de pago'),
                 fields: [new CatalogField('pay_terms', __('Término'), rules: ['required', 'string', 'max:50'])],
+                usedBy: [['transaction', 'payment_terms']],
             ),
             new CatalogDefinition(
                 slug: 'lugares-recoleccion',
@@ -298,6 +314,7 @@ class CatalogRegistry
                 ],
                 audited: true,
                 searchable: ['name', 'city', 'state'],
+                usedBy: [['booking', 'pick_up_place_id'], ['service', 'pickup_place_id']],
             ),
             new CatalogDefinition(
                 slug: 'dias-festivos',
@@ -326,6 +343,10 @@ class CatalogRegistry
                 ],
                 orderBy: 'account_id',
                 searchable: ['account_name', 'prefix'],
+                usedBy: [
+                    ['transaction', 'account'], ['service', 'account_id'], ['exchange', 'account'],
+                    ['client', 'account_id'], ['provider', 'account_id'], ['payment_request', 'currency_id'],
+                ],
                 note: __('La moneda base es la que no se convierte: su tipo de cambio vale 1.'),
             ),
             new CatalogDefinition(
@@ -338,13 +359,17 @@ class CatalogRegistry
                     new CatalogField('name', __('Nombre corto'), rules: ['required', 'string', 'max:150']),
                     new CatalogField('business_name', __('Razón social'), rules: $textoOpcional),
                     new CatalogField('rfc', __('RFC'), rules: ['nullable', 'string', 'max:15']),
-                    new CatalogField('regimen_fiscal', __('Régimen fiscal'), rules: ['nullable', 'string', 'max:5'], inList: false),
+                    // Mismo default que la columna (`DEFAULT '601'`): sin él, una compañía
+                    // nueva nacía sin régimen y su CFDI salía incompleto.
+                    new CatalogField('regimen_fiscal', __('Régimen fiscal'), rules: ['nullable', 'string', 'max:5'], inList: false, default: '601'),
                     new CatalogField('postal_code', __('Código postal'), rules: ['nullable', 'string', 'max:10'], inList: false),
                     new CatalogField('address', __('Dirección'), rules: $textoOpcional, inList: false),
-                    new CatalogField('active', __('Activa'), type: 'boolean', rules: ['boolean']),
+                    // Nace activa, como en el original: si no, no aparece en ningún selector.
+                    new CatalogField('active', __('Activa'), type: 'boolean', rules: ['boolean'], default: true),
                 ],
                 orderBy: 'name',
                 searchable: ['name', 'business_name', 'rfc'],
+                usedBy: [['transaction', 'company_id']],
                 note: __('El RFC, el régimen y el código postal son los que salen en el CFDI.'),
             ),
             new CatalogDefinition(
@@ -375,12 +400,13 @@ class CatalogRegistry
                 fields: [
                     new CatalogField('bank_name', __('Nombre'), rules: $texto),
                     new CatalogField('account_number', __('Número de cuenta'), rules: ['nullable', 'string', 'max:64']),
-                    new CatalogField('active', __('Activo'), type: 'boolean', rules: ['boolean']),
+                    new CatalogField('active', __('Activo'), type: 'boolean', rules: ['boolean'], default: true),
                     new CatalogField('default', __('Predeterminado'), type: 'boolean', rules: ['boolean']),
                 ],
                 orderBy: 'bank_name',
                 audited: true,
                 searchable: ['bank_name', 'account_number'],
+                usedBy: [['payment_request', 'bank_id'], ['transaction', 'bank_id'], ['bank_entry', 'bank_id'], ['liquidacion', 'bank_id']],
             ),
             new CatalogDefinition(
                 slug: 'campos-archivo',
@@ -408,6 +434,8 @@ class CatalogRegistry
                     new CatalogField('tax_retention', __('Retención'), rules: $textoOpcional),
                 ],
                 orderBy: 'tax_code',
+                // El cargo guarda el código como texto, no el id.
+                usedBy: [['charge', 'tax_code', 'tax_code']],
             ),
         ];
 

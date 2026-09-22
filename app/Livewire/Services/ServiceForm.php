@@ -6,9 +6,12 @@ use App\Models\Core\Account;
 use App\Models\Core\Client;
 use App\Models\Core\Provider;
 use App\Models\Core\Service;
+use App\Support\ServiceFiles;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 /**
  * Alta y edición de un servicio en su propia pantalla, con regreso a la lista
@@ -21,8 +24,16 @@ use Livewire\Component;
  */
 class ServiceForm extends Component
 {
+    use WithFileUploads;
+
     /** Id del servicio, o null si es alta. */
     public ?int $serviceId = null;
+
+    /** @var UploadedFile|null Contrato en PDF recién elegido, pendiente de guardar. */
+    public $contract = null;
+
+    /** Nombre del contrato ya guardado (`service.contract`). */
+    public string $contractName = '';
 
     /** 1 = de venta (cliente), 2 = de compra (proveedor). */
     public string $type = '1';
@@ -76,6 +87,15 @@ class ServiceForm extends Component
             'max' => (string) $servicio->max,
         ]);
         $this->type = (string) $servicio->type;
+        $this->contractName = (string) $servicio->contract;
+    }
+
+    /** Enlace para abrir el contrato guardado, o null si no hay. */
+    public function contractUrl(): ?string
+    {
+        return $this->serviceId !== null && $this->contractName !== ''
+            ? route('parties.services.contract', $this->serviceId, absolute: false)
+            : null;
     }
 
     /** Al cambiar de venta a compra en un alta, el tercero elegido ya no aplica. */
@@ -167,6 +187,7 @@ class ServiceForm extends Component
             'form.min' => __('precio mínimo'),
             'form.max' => __('precio máximo'),
             'form.party_id' => $this->isSale() ? 'cliente' : 'proveedor',
+            'contract' => __('contrato'),
         ])['form'];
 
         $entero = fn (string $campo) => ($datos[$campo] ?? '') === '' ? null : (int) $datos[$campo];
@@ -195,9 +216,18 @@ class ServiceForm extends Component
             'modified_by' => auth()->id(),
         ];
 
-        $this->serviceId === null
-            ? DB::table('service')->insert($valores + ['created_by' => auth()->id(), 'created_at' => now()])
-            : DB::table('service')->where('service_id', $this->serviceId)->update($valores);
+        if ($this->serviceId === null) {
+            $id = (int) DB::table('service')->insertGetId($valores + ['created_by' => auth()->id(), 'created_at' => now()], 'service_id');
+        } else {
+            $id = $this->serviceId;
+            DB::table('service')->where('service_id', $id)->update($valores);
+        }
+
+        // El contrato se guarda después: en un alta la carpeta lleva el id nuevo.
+        if ($this->contract !== null) {
+            $nombre = app(ServiceFiles::class)->store($id, $this->contract);
+            DB::table('service')->where('service_id', $id)->update(['contract' => $nombre]);
+        }
 
         session()->flash('status', $this->serviceId === null ? __('Servicio creado.') : __('Servicio actualizado.'));
         $this->redirect($this->volver, navigate: true);
@@ -216,6 +246,8 @@ class ServiceForm extends Component
         $catalogo = fn (string $tabla, string $llave) => ['nullable', Rule::exists($tabla, $llave)];
 
         return [
+            // Solo PDF y hasta 5 MB, como los 156 contratos que ya hay.
+            'contract' => ['nullable', 'file', 'mimes:pdf', 'max:5120'],
             'form.description' => ['required', 'string', 'max:255'],
             'form.price' => ['required', 'numeric', 'min:0'],
             'form.charge_type_id' => ['required', Rule::exists('charge_type', 'charge_type_id')],

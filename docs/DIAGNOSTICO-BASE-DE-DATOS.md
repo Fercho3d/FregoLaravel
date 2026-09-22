@@ -56,6 +56,11 @@ del límite del entero**. Con lada internacional no caben.
 **Arreglo:** `varchar(30)`. Los que ya se truncaron no se recuperan; hay que
 volver a capturarlos.
 
+Mientras tanto, la ficha de clientes y proveedores acepta el teléfono como se
+lee («(55) 1234-5678»), lo deja solo con dígitos y rechaza con aviso lo que no
+quepa en el entero (más de 10 dígitos o mayor que 2 147 483 647): antes la
+conexión estricta reventaba al guardar.
+
 ## Medias
 
 ### 6. ⬜ 37 tablas en `utf8mb3`

@@ -148,6 +148,28 @@
             </div>
         </div>
 
+        {{-- Contrato en PDF: el mismo archivo por servicio que subía el original --}}
+        <div class="rounded-xl border border-line bg-raised/40 p-4">
+            <p class="text-sm font-medium text-ink">{{ __('Contrato') }}</p>
+            <p class="mt-0.5 text-xs text-ink-faint">{{ __('Un PDF de hasta 5 MB. Subir otro reemplaza al anterior.') }}</p>
+
+            <div class="mt-3 flex flex-wrap items-center gap-4">
+                @if ($this->contractUrl())
+                    <a href="{{ $this->contractUrl() }}" target="_blank" rel="noopener"
+                       class="inline-flex items-center gap-1.5 text-sm text-brand hover:underline">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6M7 3h7l5 5v13H7z"/></svg>
+                        {{ __('Ver contrato') }} <span class="text-ink-faint">({{ $contractName }})</span>
+                    </a>
+                @endif
+
+                <label class="block text-sm text-ink-soft">
+                    <input type="file" wire:model="contract" accept="application/pdf" class="text-xs">
+                    <span wire:loading wire:target="contract" class="ml-2 text-xs text-ink-faint">{{ __('Subiendo…') }}</span>
+                </label>
+            </div>
+            @error('contract') <span class="mt-1 block text-xs text-brand">{{ $message }}</span> @enderror
+        </div>
+
         <div class="flex flex-wrap justify-end gap-3 border-t border-line pt-4">
             <a href="{{ $volver }}" wire:navigate class="btn-ghost !px-3 !py-1.5 text-xs">{{ __('Cancelar') }}</a>
             <button type="submit" wire:loading.attr="disabled" wire:target="save" class="btn-accent !px-3 !py-1.5 text-xs">

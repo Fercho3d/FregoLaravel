@@ -23,6 +23,11 @@ class CatalogSchema
                 self::column($table, $campo);
             }
 
+            // Columnas que la tabla exige y la pantalla no captura (`carrier.password`).
+            foreach (array_keys($definicion->insertDefaults()) as $columna) {
+                $table->string($columna);
+            }
+
             if ($definicion->softDelete !== null) {
                 $table->integer($definicion->softDelete)->default(0);
             }
@@ -36,13 +41,24 @@ class CatalogSchema
         });
     }
 
+    /** Un campo obligatorio se levanta `NOT NULL`, como en la base real. */
     private static function column(object $table, CatalogField $campo): void
     {
-        match ($campo->type) {
-            'boolean' => $table->boolean($campo->name)->default(false),
-            'number' => $table->decimal($campo->name, 12, 4)->nullable(),
-            'date' => $table->date($campo->name)->nullable(),
-            default => $table->string($campo->name)->nullable(),
+        $columna = match ($campo->type) {
+            'boolean' => $table->boolean($campo->name)->default($campo->default ?? false),
+            'number' => $table->decimal($campo->name, 12, 4),
+            'date' => $table->date($campo->name),
+            default => $table->string($campo->name),
         };
+
+        if ($campo->isBoolean()) {
+            return;
+        }
+
+        $campo->isRequired() ? $columna->nullable(false) : $columna->nullable();
+
+        if ($campo->default !== null) {
+            $columna->default($campo->default);
+        }
     }
 }

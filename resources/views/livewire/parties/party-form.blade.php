@@ -22,20 +22,39 @@
 
         @include('partials.validation-errors')
 
+        @if ($this->requiresCfdi())
+            <p class="text-xs text-ink-faint">
+                {{ __('El RFC, la dirección, el código postal y el régimen fiscal son obligatorios: viajan al CFDI 4.0 y el SAT los valida.') }}
+            </p>
+        @endif
+
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             @foreach ($this->fields() as $campo => [$etiqueta, $tipo, $reglas])
-                <label class="block">
-                    <span class="field-label">{{ $etiqueta }}</span>
-
-                    @if ($tipo === 'select')
-                        <select wire:model="form.{{ $campo }}" class="field-input mt-1.5">
-                            <option value="">{{ __('Sin especificar') }}</option>
-                            @foreach ($this->optionsFor($campo) as $id => $nombre)
-                                <option value="{{ $id }}" @selected((string) $id === (string) ($form[$campo] ?? ''))>{{ $nombre }}</option>
-                            @endforeach
-                        </select>
+                @php $obligatorio = in_array('required', $reglas, true); @endphp
+                <label class="block {{ in_array($tipo, ['checkbox', 'textarea'], true) ? 'sm:col-span-2 lg:col-span-3' : '' }}">
+                    @if ($tipo === 'checkbox')
+                        <span class="flex items-center gap-2 text-sm text-ink-soft">
+                            <input type="checkbox" wire:model="form.{{ $campo }}" @checked($form[$campo] ?? false)
+                                   class="h-4 w-4 rounded border-line bg-panel text-accent-500 focus:ring-accent-500">
+                            {{ $etiqueta }}
+                        </span>
                     @else
-                        <input type="text" wire:model="form.{{ $campo }}" value="{{ $form[$campo] ?? '' }}" class="field-input mt-1.5">
+                        <span class="field-label">{{ $etiqueta }}@if ($obligatorio) <span class="text-brand">*</span>@endif</span>
+
+                        @if ($tipo === 'select')
+                            <select wire:model="form.{{ $campo }}" class="field-input mt-1.5">
+                                <option value="">{{ __('Sin especificar') }}</option>
+                                @foreach ($this->optionsFor($campo) as $id => $nombre)
+                                    <option value="{{ $id }}" @selected((string) $id === (string) ($form[$campo] ?? ''))>{{ $nombre }}</option>
+                                @endforeach
+                            </select>
+                        @elseif ($tipo === 'textarea')
+                            <textarea wire:model="form.{{ $campo }}" rows="3" class="field-input mt-1.5">{{ $form[$campo] ?? '' }}</textarea>
+                        @else
+                            <input type="text" wire:model="form.{{ $campo }}" value="{{ $form[$campo] ?? '' }}"
+                                   class="field-input mt-1.5 {{ $campo === 'rfc' ? 'uppercase' : '' }}"
+                                   @if ($campo === 'phone') inputmode="tel" placeholder="{{ __('Solo dígitos, sin lada internacional') }}" @endif>
+                        @endif
                     @endif
 
                     @error('form.'.$campo) <span class="mt-1 block text-xs text-brand">{{ $message }}</span> @enderror

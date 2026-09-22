@@ -25,6 +25,10 @@ class ClientDocumentFieldsTest extends TestCase
         CoreSchema::create();
         CoreSchema::createUsers();
 
+        // Aquí se prueban los documentos, no los datos del CFDI: sin timbrado la
+        // ficha no exige RFC, dirección, código postal ni régimen.
+        config(['timbrado.habilitado' => false]);
+
         DB::table('file_fields')->insert([
             ['field_id' => 1, 'field' => 'entrusts_letter_file', 'label' => 'Entrust Letter', 'default' => 1],
             ['field_id' => 2, 'field' => 'petition_file', 'label' => 'Petition', 'default' => 1],
@@ -79,6 +83,23 @@ class ClientDocumentFieldsTest extends TestCase
         DB::table('fields_by_client')->insert([['client_id' => 5, 'field_id' => 2]]);
 
         $this->pantalla()->assertSet('documentFields', ['2']);
+    }
+
+    /** Como `Client::generateFields()` en Yii2: los marcados «por omisión» vienen elegidos. */
+    public function test_un_cliente_nuevo_trae_marcados_los_documentos_por_omision(): void
+    {
+        $this->actingAs(User::create([
+            'username' => 'admin3', 'password' => 'secreto-de-prueba', 'role' => User::ROLE_ADMIN, 'status' => 1,
+        ]));
+
+        Livewire::test(PartyForm::class, ['mode' => 'client', 'party' => null])
+            ->assertSet('documentFields', ['1', '2'])
+            ->set('form.fullName', 'Cliente nuevo')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame([1, 2], DB::table('fields_by_client')->orderBy('field_id')
+            ->pluck('field_id')->map(fn ($id) => (int) $id)->all());
     }
 
     public function test_el_proveedor_no_los_pide(): void

@@ -2,8 +2,10 @@
     $campos = $this->fields();
     $esAdmin = auth()->user()?->isAdmin() ?? false;
 
-    // En el listado solo las columnas que sirven para reconocer al tercero.
-    $enLista = array_intersect_key($campos, array_flip(['fullName', 'rfc', 'email', 'city', 'phone']));
+    // En el listado solo las columnas que sirven para reconocer al tercero. El
+    // tipo del proveedor decide en qué selector del booking aparece, así que se ve.
+    $enLista = array_intersect_key($campos, array_flip(['fullName', 'rfc', 'email', 'city', 'phone', 'type_id']));
+    $tipos = $this->optionsFor('type_id');
 @endphp
 
 <div class="space-y-4">
@@ -65,7 +67,15 @@
                             @foreach ($enLista as $campo => $definicion)
                                 <td class="max-w-[18rem] truncate px-4 py-2 {{ $loop->first ? 'text-ink' : 'text-ink-muted' }}"
                                     title="{{ $fila->{$campo} }}">
-                                    {{ $fila->{$campo} ?: '—' }}
+                                    @if ($campo === 'type_id')
+                                        @if (isset($tipos[$fila->type_id]))
+                                            <span class="badge badge-neutral">{{ $tipos[$fila->type_id] }}</span>
+                                        @else
+                                            <span class="badge badge-warn" title="{{ __('Sin tipo no aparece en el booking') }}">{{ __('Sin tipo') }}</span>
+                                        @endif
+                                    @else
+                                        {{ $fila->{$campo} ?: '—' }}
+                                    @endif
                                 </td>
                             @endforeach
                             @if ($esAdmin)

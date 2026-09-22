@@ -85,7 +85,16 @@
                     @forelse ($servicios as $servicio)
                         <tr class="transition hover:bg-raised {{ $servicio->active ? '' : 'opacity-60' }}">
                             <td class="max-w-[22rem] px-4 py-2">
-                                <p class="truncate text-ink" title="{{ $servicio->description }}">{{ $servicio->description ?: '—' }}</p>
+                                <p class="flex items-center gap-1.5 truncate text-ink" title="{{ $servicio->description }}">
+                                    <span class="truncate">{{ $servicio->description ?: '—' }}</span>
+                                    @if (! empty($servicio->contract))
+                                        <a href="{{ route('parties.services.contract', $servicio->service_id) }}" target="_blank" rel="noopener"
+                                           class="shrink-0 text-ink-muted hover:text-brand" title="{{ __('Ver contrato') }}">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6M7 3h7l5 5v13H7z"/></svg>
+                                            <span class="sr-only">{{ __('Ver contrato') }}</span>
+                                        </a>
+                                    @endif
+                                </p>
                                 <p class="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-ink-faint">
                                     <span>{{ $servicio->currency ?: '—' }}</span>
                                     @if ($servicio->auto_include)

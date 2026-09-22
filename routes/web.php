@@ -5,6 +5,7 @@ use App\Http\Controllers\BookingFileController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\PaymentRequestDocumentController;
 use App\Http\Controllers\PortalFileController;
+use App\Http\Controllers\ServiceContractController;
 use App\Http\Controllers\ThemeController;
 use App\Http\Controllers\TransactionExportController;
 use App\Http\Controllers\TransactionFileController;
@@ -123,6 +124,7 @@ Route::middleware(['auth', EnsureUserIsInternal::class])->group(function () {
         Route::get('/servicios', ServiceManager::class)->name('services');
         Route::get('/servicios/nuevo', ServiceForm::class)->name('services.create');
         Route::get('/servicios/{service}/editar', ServiceForm::class)->whereNumber('service')->name('services.edit');
+        Route::get('/servicios/{service}/contrato', ServiceContractController::class)->whereNumber('service')->name('services.contract');
     });
 
     /*

@@ -116,7 +116,7 @@ class ServiceManager extends Component
             ->orderBy('s.description')
             ->leftJoin('account as a', 'a.account_id', '=', 's.account_id')
             ->paginate(25, [
-                's.service_id', 's.description', 's.price', 's.active',
+                's.service_id', 's.description', 's.price', 's.active', 's.contract',
                 's.auto_include', 's.start_date', 's.end_date', 'a.prefix as currency',
                 'ct.charge_type_name', 'c.fullName as client_name', 'p.fullName as provider_name',
             ], 'page', $this->getPage());

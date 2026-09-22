@@ -49,6 +49,10 @@
                 {{ $editing === 0 ? __('Nuevo :cosa', ['cosa' => mb_strtolower($definicion->singular)]) : __('Editar :cosa', ['cosa' => mb_strtolower($definicion->singular)]) }}
             </p>
 
+            @error('form')
+                <p class="alert-danger">{{ $message }}</p>
+            @enderror
+
             <div class="grid gap-4 sm:grid-cols-2">
                 @foreach ($definicion->fields as $campo)
                     <label class="block {{ $campo->isBoolean() ? 'sm:col-span-2' : '' }}">

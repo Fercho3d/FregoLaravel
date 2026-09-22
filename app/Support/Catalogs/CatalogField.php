@@ -15,6 +15,11 @@ final class CatalogField
      *                                                          declarar: si no, un catálogo
      *                                                          consultaría la base en cada
      *                                                          arranque, incluso sin usarse.
+     * @param  mixed  $default  Valor con el que nace un registro nuevo. Si al guardar
+     *                          queda vacío se omite del `INSERT` para que aplique el
+     *                          default de la columna en la base.
+     * @param  bool  $unique  No puede repetirse en la tabla (se ignora el propio
+     *                        renglón al editar).
      */
     public function __construct(
         public readonly string $name,
@@ -23,7 +28,20 @@ final class CatalogField
         public readonly array $rules = ['nullable', 'string', 'max:255'],
         public readonly bool $inList = true,
         public readonly ?Closure $options = null,
+        public readonly mixed $default = null,
+        public readonly bool $unique = false,
     ) {}
+
+    /** Con qué valor arranca el campo en un alta. */
+    public function initial(): mixed
+    {
+        return $this->default ?? ($this->isBoolean() ? false : '');
+    }
+
+    public function isRequired(): bool
+    {
+        return in_array('required', $this->rules, true);
+    }
 
     /** @return array<int|string, string> */
     public function opciones(): array
