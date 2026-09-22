@@ -146,8 +146,25 @@ class HitosDelExpedienteTest extends TestCase
         $this->pantalla()->call('marcaHito', 'asignado')->assertStatus(403);
     }
 
-    public function test_quien_no_es_administrador_no_marca(): void
+    /** Marcar y fechar son de cualquier usuario interno, como `check` y `setdate` en el original. */
+    public function test_quien_no_es_administrador_marca_y_pone_fecha(): void
     {
+        $this->pantalla(User::ROLE_USER)->call('marcaHito', 'asignado')->assertHasNoErrors();
+        $this->pantalla(User::ROLE_USER)->call('editaHito', 'cargado')->set('hitoFecha', '2026-05-04T08:00')->call('guardaHito')->assertHasNoErrors();
+
+        $this->assertSame(
+            [now()->toDateString(), '2026-05-04 08:00:00'],
+            [substr(BookingMilestones::de(1)['asignado'], 0, 10), BookingMilestones::de(1)['cargado']],
+        );
+    }
+
+    /** Quitar la marca de un hito sin casilla es desmarcar: de administradores. */
+    public function test_quien_no_es_administrador_no_desmarca_un_hito_sin_casilla(): void
+    {
+        $this->pantalla()->call('marcaHito', 'asignado');
+
         $this->pantalla(User::ROLE_USER)->call('marcaHito', 'asignado')->assertForbidden();
+
+        $this->assertArrayHasKey('asignado', BookingMilestones::de(1));
     }
 }

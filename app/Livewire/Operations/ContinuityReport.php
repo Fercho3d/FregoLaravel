@@ -77,22 +77,25 @@ class ContinuityReport extends Component
         $this->resetPage();
     }
 
-    /** Abre la captura de un hito concreto de un booking. */
+    /**
+     * Abre la captura de un hito concreto de un booking.
+     *
+     * Para cualquier usuario interno, como el `setdate` del original. La fecha
+     * va con hora (`datetime-local`), que es como la guardaba el sistema viejo;
+     * quien no la sepa deja las 00:00 que vienen puestas.
+     */
     public function editMilestone(int $bookingId, string $hito, ?string $actual = null): void
     {
-        $this->assertAdmin();
         abort_if($this->verCumplidas, 422, __('Las fechas de cumplimiento se marcan desde el detalle del booking.'));
         abort_unless(MilestoneCatalog::porClave($hito)?->activo ?? false, 404);
 
         $this->editing = $bookingId.'|'.$hito;
-        $this->value = $actual ? substr($actual, 0, 10) : now()->toDateString();
+        $this->value = BookingMilestones::paraCaptura($actual);
         $this->resetErrorBag();
     }
 
     public function saveMilestone(): void
     {
-        $this->assertAdmin();
-
         [$bookingId, $hito] = explode('|', (string) $this->editing);
 
         abort_unless(MilestoneCatalog::porClave($hito)?->activo ?? false, 404);
@@ -111,11 +114,6 @@ class ContinuityReport extends Component
     {
         $this->reset(['editing', 'value']);
         $this->resetErrorBag();
-    }
-
-    private function assertAdmin(): void
-    {
-        abort_unless(auth()->user()?->isAdmin() ?? false, 403);
     }
 
     public function render()

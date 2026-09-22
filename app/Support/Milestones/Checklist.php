@@ -39,6 +39,39 @@ class Checklist
         'delivered', 'pick_up_place', 'insurance', 'corrected_draft', 'vgm',
     ];
 
+    /**
+     * Las verificaciones de DATOS del booking, en el orden del original: que
+     * el número, el cliente, el buque… estén bien capturados, más la modalidad.
+     * Son casillas de `check_list` sin hito detrás, y abren la lista en el
+     * sistema de origen (`booking-continuity/_form.php`).
+     *
+     * Solo aplican donde el avance es el heredado (`marca.avance` en
+     * `verificacion`): ahí cuentan en el porcentaje. En cualquier otra
+     * instalación el avance son los hitos y estas casillas no significan nada.
+     *
+     * @var array<string, string> casilla => etiqueta
+     */
+    public const DATOS_DEL_BOOKING = [
+        'booking_number' => 'Número de booking',
+        'client' => 'Cliente',
+        'vessel' => 'Buque',
+        'loading_port' => 'Puerto de carga',
+        'loading_EDT' => 'Fecha de carga',
+        'dicharge_port' => 'Puerto de descarga',
+        'dicharge_ETA' => 'Fecha de arribo',
+        'container_type' => 'Tipo de contenedor',
+        'commodity' => 'Mercancía',
+        'set_point' => 'Temperatura',
+        'pick_up_place' => 'Lugar de recolección',
+        'modality' => 'Modalidad',
+    ];
+
+    /** ¿Esta instalación verifica los datos del booking? Ver `DATOS_DEL_BOOKING`. */
+    public static function conDatosDelBooking(): bool
+    {
+        return config('marca.avance') === 'verificacion';
+    }
+
     /** Prefijo de la casilla de un hito en `check_list`, o null si no tiene. */
     public static function casilla(?object $hito): ?string
     {
@@ -62,31 +95,51 @@ class Checklist
      * Lo mismo para varios expedientes en una consulta, para la rejilla.
      *
      * @param  list<int>  $bookings
-     * @return array<int, array<string, array{fecha: string, por: ?int}>>
+     * @return array<int, array<string, array<string, array{fecha: string, por: ?int}>>>
      */
     public static function deVarios(array $bookings): array
     {
         $hitos = MilestoneCatalog::todos()->filter(fn (object $hito) => self::casilla($hito) !== null);
+        $salida = [];
 
-        if ($bookings === [] || $hitos->isEmpty() || ! Schema::hasTable('check_list')) {
-            return [];
+        foreach (self::casillasDeVarios($bookings) as $booking => $casillas) {
+            foreach ($hitos as $hito) {
+                if (isset($casillas[self::casilla($hito)])) {
+                    $salida[$booking][$hito->clave] = $casillas[self::casilla($hito)];
+                }
+            }
         }
 
-        $columnas = ['booking'];
+        return $salida;
+    }
 
-        foreach ($hitos as $hito) {
-            $columnas[] = self::casilla($hito).'_chk_date';
-            $columnas[] = self::casilla($hito).'_chk_by';
+    /**
+     * Las casillas marcadas de un expediente, por casilla y no por hito: es lo
+     * que necesitan las verificaciones de datos y la regla de orden.
+     *
+     * @return array<string, array{fecha: string, por: ?int}>
+     */
+    public static function casillasDe(int $booking): array
+    {
+        return self::casillasDeVarios([$booking])[$booking] ?? [];
+    }
+
+    /**
+     * @param  list<int>  $bookings
+     * @return array<int, array<string, array{fecha: string, por: ?int}>>
+     */
+    private static function casillasDeVarios(array $bookings): array
+    {
+        if ($bookings === [] || ! Schema::hasTable('check_list')) {
+            return [];
         }
 
         $salida = [];
 
-        foreach (DB::table('check_list')->whereIn('booking', $bookings)->get($columnas) as $fila) {
-            foreach ($hitos as $hito) {
-                $casilla = self::casilla($hito);
-
-                if ($fila->{$casilla.'_chk_date'} !== null) {
-                    $salida[(int) $fila->booking][$hito->clave] = [
+        foreach (DB::table('check_list')->whereIn('booking', $bookings)->get() as $fila) {
+            foreach (self::CASILLAS as $casilla) {
+                if (($fila->{$casilla.'_chk_date'} ?? null) !== null) {
+                    $salida[(int) $fila->booking][$casilla] = [
                         'fecha' => (string) $fila->{$casilla.'_chk_date'},
                         'por' => $fila->{$casilla.'_chk_by'} === null ? null : (int) $fila->{$casilla.'_chk_by'},
                     ];
@@ -102,15 +155,9 @@ class Checklist
     {
         $casilla = self::casilla(MilestoneCatalog::porClave($clave));
 
-        if ($casilla === null) {
-            return;
+        if ($casilla !== null) {
+            self::marcaCasilla($booking, $casilla, $usuario, $fecha);
         }
-
-        self::escribe($booking, [
-            $casilla.'_chk_date' => $fecha ?? now()->format('Y-m-d H:i:s'),
-            $casilla.'_chk_by' => $usuario,
-            'modified_by' => $usuario,
-        ]);
     }
 
     /** Quita la marca: fecha y autor en nulo. Quién lo quitó queda en `modified_by`. */
@@ -118,10 +165,23 @@ class Checklist
     {
         $casilla = self::casilla(MilestoneCatalog::porClave($clave));
 
-        if ($casilla === null) {
-            return;
+        if ($casilla !== null) {
+            self::desmarcaCasilla($booking, $casilla, $usuario);
         }
+    }
 
+    /** Lo mismo por casilla, para las verificaciones de datos. */
+    public static function marcaCasilla(int $booking, string $casilla, int $usuario, ?string $fecha = null): void
+    {
+        self::escribe($booking, [
+            $casilla.'_chk_date' => $fecha ?? now()->format('Y-m-d H:i:s'),
+            $casilla.'_chk_by' => $usuario,
+            'modified_by' => $usuario,
+        ]);
+    }
+
+    public static function desmarcaCasilla(int $booking, string $casilla, int $usuario): void
+    {
         self::escribe($booking, [
             $casilla.'_chk_date' => null,
             $casilla.'_chk_by' => null,
@@ -141,17 +201,47 @@ class Checklist
     }
 
     /**
-     * El hito con casilla que va antes de este en el orden del catálogo.
+     * La lista completa, en el orden en que se marca: primero las
+     * verificaciones de datos (donde aplican) y luego los hitos activos con
+     * casilla, en el orden del catálogo.
+     *
+     * @return array<string, string> casilla => etiqueta
+     */
+    public static function orden(): array
+    {
+        $datos = self::conDatosDelBooking()
+            ? array_map(fn (string $etiqueta) => __($etiqueta), self::DATOS_DEL_BOOKING)
+            : [];
+
+        $hitos = MilestoneCatalog::activos()
+            ->filter(fn (object $hito) => self::casilla($hito) !== null)
+            ->mapWithKeys(fn (object $hito) => [self::casilla($hito) => $hito->etiqueta])
+            ->all();
+
+        return $datos + $hitos;
+    }
+
+    /**
+     * La casilla que va antes de esta en `orden()`, con su etiqueta.
      *
      * Es la regla del original para quien no es administrador: no se marca una
-     * tarea si la anterior no está marcada.
+     * tarea si la anterior no está marcada. Y como allá, la cadena es una sola:
+     * el primer hito exige la última verificación de datos.
+     *
+     * @return object{casilla: string, etiqueta: string}|null
      */
-    public static function anterior(string $clave): ?object
+    public static function anterior(string $casilla): ?object
     {
-        $conCasilla = MilestoneCatalog::activos()->filter(fn (object $hito) => self::casilla($hito) !== null)->values();
-        $posicion = $conCasilla->search(fn (object $hito) => $hito->clave === $clave);
+        $orden = array_keys(self::orden());
+        $posicion = array_search($casilla, $orden, true);
 
-        return $posicion === false || $posicion === 0 ? null : $conCasilla[$posicion - 1];
+        if ($posicion === false || $posicion === 0) {
+            return null;
+        }
+
+        $previa = $orden[$posicion - 1];
+
+        return (object) ['casilla' => $previa, 'etiqueta' => self::orden()[$previa]];
     }
 
     /**

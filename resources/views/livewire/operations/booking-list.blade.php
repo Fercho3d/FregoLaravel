@@ -26,6 +26,14 @@
             </h2>
             <p class="text-sm text-ink-muted">
                 {{ __('Embarques y el avance de su lista de verificación.') }}
+                {{-- Qué rango se está viendo: el año en curso es un filtro
+                     silencioso y hay que decirlo, o alguien busca un booking
+                     viejo y cree que se perdió. --}}
+                <span class="text-ink-faint">
+                    · {{ $this->soloEsteAnio()
+                        ? __('Creados en :anio', ['anio' => now()->year])
+                        : ($dates || $loadingDates || $arrivalDates || $siDates ? __('Por el rango de fechas elegido') : __('Todos los años')) }}
+                </span>
             </p>
         </div>
         <div class="flex items-center gap-3">
@@ -101,6 +109,40 @@
             </label>
 
             <label class="block">
+                <span class="field-label text-xs">{{ __('Arribo') }} <span class="text-ink-faint">{{ __('(rango)') }}</span></span>
+                <input type="text" wire:model.live.debounce.600ms="arrivalDates" value="{{ $arrivalDates }}"
+                       class="field-input mt-1 py-1.5 text-sm" placeholder="01/01/2025 - 31/12/2025">
+            </label>
+
+            @if ($verBuque)
+                <label class="block">
+                    <span class="field-label text-xs">{{ __('Corte SI') }} <span class="text-ink-faint">{{ __('(rango)') }}</span></span>
+                    <input type="text" wire:model.live.debounce.600ms="siDates" value="{{ $siDates }}"
+                           class="field-input mt-1 py-1.5 text-sm" placeholder="01/01/2025 - 31/12/2025">
+                </label>
+            @endif
+
+            <label class="block">
+                <span class="field-label text-xs">{{ __('Puerto de descarga') }}</span>
+                <select wire:model.live="dischargePort" class="field-input mt-1 py-1.5 text-sm">
+                    <option value="">{{ __('Todos') }}</option>
+                    @foreach ($puertosDescarga as $id => $nombre)
+                        <option value="{{ $id }}" @selected((string) $id === $dischargePort)>{{ $nombre }}</option>
+                    @endforeach
+                </select>
+            </label>
+
+            <label class="block">
+                <span class="field-label text-xs">{{ __('Lugar de recolección') }}</span>
+                <select wire:model.live="pickupPlace" class="field-input mt-1 py-1.5 text-sm">
+                    <option value="">{{ __('Todos') }}</option>
+                    @foreach ($lugares as $id => $nombre)
+                        <option value="{{ $id }}" @selected((string) $id === $pickupPlace)>{{ $nombre }}</option>
+                    @endforeach
+                </select>
+            </label>
+
+            <label class="block">
                 <span class="field-label text-xs">{{ __('Ver') }}</span>
                 <select wire:model.live="mode" class="field-input mt-1 py-1.5 text-sm">
                     @foreach (['10' => __('Bookings'), '9' => __('Cotizaciones')] as $valor => $etiqueta)
@@ -139,8 +181,18 @@
             </label>
         </div>
 
-        <div class="mt-3 flex flex-wrap items-end gap-2">
+        <div class="mt-3 flex flex-wrap items-center gap-3">
             <button type="button" wire:click="clearFilters" class="btn-ghost !px-3 !py-1.5 text-xs">{{ __('Limpiar filtros') }}</button>
+            {{-- El año en curso se quita de un clic; y se vuelve a poner igual. --}}
+            @if ($this->soloEsteAnio())
+                <button type="button" wire:click="$set('allYears', '1')" class="text-xs text-brand hover:underline">
+                    {{ __('Ver todos los años') }}
+                </button>
+            @elseif (! ($dates || $loadingDates || $arrivalDates || $siDates))
+                <button type="button" wire:click="$set('allYears', '0')" class="text-xs text-brand hover:underline">
+                    {{ __('Solo :anio', ['anio' => now()->year]) }}
+                </button>
+            @endif
             <label class="ml-auto flex items-center gap-2 text-xs text-ink-muted">
                 {{ __('Por página') }}
                 <select wire:model.live="perPage" class="field-input !w-auto py-1 text-xs">
@@ -197,9 +249,23 @@
                             </div>
                         @endif
                         <div class="flex justify-between gap-2">
+                            <dt class="text-ink-faint">ID</dt>
+                            <dd class="text-ink-soft">{{ $fila->booking_id }}</dd>
+                        </div>
+                        <div class="flex justify-between gap-2">
+                            <dt class="text-ink-faint">{{ __('Lugar de recolección') }}</dt>
+                            <dd class="truncate text-ink-soft">{{ $fila->pickup_name ?: '—' }}</dd>
+                        </div>
+                        <div class="flex justify-between gap-2">
                             <dt class="text-ink-faint">{{ __('Carga') }}</dt>
                             <dd class="text-ink-soft">{{ $fecha($fila->loading_EDT) }}</dd>
                         </div>
+                        @if ($verBuque)
+                            <div class="flex justify-between gap-2">
+                                <dt class="text-ink-faint">{{ __('Corte SI') }}</dt>
+                                <dd class="text-ink-soft">{{ $fecha($fila->SI_date) }}</dd>
+                            </div>
+                        @endif
                         @if ($verTipo)
                             <div class="flex justify-between gap-2">
                                 <dt class="text-ink-faint">{{ __('Tipo') }}</dt>
@@ -208,8 +274,16 @@
                         @endif
                     </dl>
 
-                    {{-- Acciones (mismas que la tabla). --}}
+                    {{-- Acciones (mismas que la tabla). «Continuidad» abre el
+                         detalle en la lista de verificación, sin wire:navigate
+                         para que el navegador respete el ancla. --}}
                     <div class="flex items-center gap-1 pt-1">
+                        <a href="{{ route('operations.bookings.show', $fila->booking_id) }}#lista-de-verificacion"
+                           title="{{ __('Continuidad') }}" class="booking-accion">
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 5l7 7-7 7M13 5l7 7-7 7"/>
+                            </svg>
+                        </a>
                         <a href="{{ route('transactions.booking', $fila->booking_id) }}" wire:navigate
                            title="{{ __('Transacciones') }}" class="booking-accion">
                             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
@@ -224,13 +298,17 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M15.5 5.5l3 3M4 20l1-4L16.5 4.5a1.5 1.5 0 0 1 2 0l1 1a1.5 1.5 0 0 1 0 2L8 19l-4 1z"/>
                                 </svg>
                             </a>
-                            <a href="{{ route('operations.bookings.generate', $fila->booking_id) }}" wire:navigate
-                               title="{{ __('Generar factura') }}" class="booking-accion">
-                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M7 3h7l4 4v14H7z"/>
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 3v5h5M10 13h5M10 17h5"/>
-                                </svg>
-                            </a>
+                            {{-- Un booking cerrado ya tiene su facturación fija:
+                                 entrar a generarla solo daba un error. --}}
+                            @if (! $fila->locked)
+                                <a href="{{ route('operations.bookings.generate', $fila->booking_id) }}" wire:navigate
+                                   title="{{ __('Generar factura') }}" class="booking-accion">
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M7 3h7l4 4v14H7z"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 3v5h5M10 13h5M10 17h5"/>
+                                    </svg>
+                                </a>
+                            @endif
                         @endif
                         <a href="{{ route('operations.bookings.pdf', $fila->booking_id) }}" target="_blank"
                            title="{{ __('PDF de confirmación') }}" class="booking-accion">
@@ -250,6 +328,7 @@
             <table class="min-w-full text-sm">
                 <thead class="border-b border-line bg-panel text-xs uppercase tracking-wide text-ink-muted">
                     <tr>
+                        <th class="px-3 py-2.5 text-left font-semibold">ID</th>
                         <th class="px-3 py-2.5 text-left font-semibold">{{ __('Booking') }}</th>
                         <th class="px-3 py-2.5 text-left font-semibold">{{ __('Cliente') }}</th>
                         @if ($verTipo)
@@ -260,7 +339,11 @@
                         @endif
                         <th class="px-3 py-2.5 text-left font-semibold">{{ __('Origen') }}</th>
                         <th class="px-3 py-2.5 text-left font-semibold">{{ __('Destino') }}</th>
+                        <th class="px-3 py-2.5 text-left font-semibold">{{ __('Lugar de recolección') }}</th>
                         <th class="px-3 py-2.5 text-left font-semibold">{{ __('Recolección') }}</th>
+                        @if ($verBuque)
+                            <th class="px-3 py-2.5 text-left font-semibold">{{ __('Corte SI') }}</th>
+                        @endif
                         <th class="px-3 py-2.5 text-left font-semibold">{{ __('Carga') }}</th>
                         <th class="px-3 py-2.5 text-left font-semibold">{{ __('Arribo') }}</th>
                         <th class="w-40 px-3 py-2.5 text-left font-semibold">{{ __('Avance') }}</th>
@@ -271,6 +354,7 @@
                 <tbody class="divide-y divide-line">
                     @forelse ($filas as $fila)
                         <tr class="transition hover:bg-raised">
+                            <td class="whitespace-nowrap px-3 py-2 tabular-nums text-ink-muted">{{ $fila->booking_id }}</td>
                             <td class="whitespace-nowrap px-3 py-2">
                                 <a href="{{ route('operations.bookings.show', $fila->booking_id) }}" wire:navigate
                                    class="font-medium text-brand hover:underline">{{ trim((string) $fila->booking_number) ?: '—' }}</a>
@@ -289,8 +373,12 @@
                                 <td class="max-w-[12rem] truncate px-3 py-2 text-ink-muted" title="{{ $fila->vessel_name }}">{{ $fila->vessel_name ?: '—' }}</td>
                             @endif
                             <td class="max-w-[10rem] truncate px-3 py-2 text-ink-muted">{{ trim((string) $fila->port_name) ?: '—' }}</td>
-                            <td class="max-w-[10rem] truncate px-3 py-2 text-ink-muted">{{ $fila->discharge_name ?: '—' }}</td>
+                            <td class="max-w-[10rem] truncate px-3 py-2 text-ink-muted" title="{{ $fila->discharge_name }}">{{ $fila->discharge_name ?: '—' }}</td>
+                            <td class="max-w-[10rem] truncate px-3 py-2 text-ink-muted" title="{{ $fila->pickup_name }}">{{ $fila->pickup_name ?: '—' }}</td>
                             <td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ $fecha($fila->pickup_date) }}</td>
+                            @if ($verBuque)
+                                <td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ $fecha($fila->SI_date) }}</td>
+                            @endif
                             <td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ $fecha($fila->loading_EDT) }}</td>
                             <td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ $fecha($fila->dicharge_ETA) }}</td>
                             <td class="px-3 py-2">
@@ -302,11 +390,17 @@
                                     <span class="shrink-0 text-xs tabular-nums text-ink-muted">{{ number_format((float) $fila->total_completed, 0) }}%</span>
                                 </div>
                             </td>
-                            {{-- Acciones por fila, como en el sistema viejo: transacciones,
-                                 editar, generar factura y PDF. Editar/generar solo para
-                                 administradores; ver y PDF, para todos. --}}
+                            {{-- Acciones por fila, como en el sistema viejo: continuidad,
+                                 transacciones, editar, generar factura y PDF. Editar/generar
+                                 solo para administradores; ver, continuidad y PDF, para todos. --}}
                             <td class="whitespace-nowrap px-3 py-2 text-right">
                                 <div class="inline-flex items-center gap-1">
+                                    <a href="{{ route('operations.bookings.show', $fila->booking_id) }}#lista-de-verificacion"
+                                       title="{{ __('Continuidad') }}" class="booking-accion">
+                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 5l7 7-7 7M13 5l7 7-7 7"/>
+                                        </svg>
+                                    </a>
                                     <a href="{{ route('transactions.booking', $fila->booking_id) }}" wire:navigate
                                        title="{{ __('Transacciones') }}" class="booking-accion">
                                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
@@ -321,13 +415,15 @@
                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M15.5 5.5l3 3M4 20l1-4L16.5 4.5a1.5 1.5 0 0 1 2 0l1 1a1.5 1.5 0 0 1 0 2L8 19l-4 1z"/>
                                             </svg>
                                         </a>
-                                        <a href="{{ route('operations.bookings.generate', $fila->booking_id) }}" wire:navigate
-                                           title="{{ __('Generar factura') }}" class="booking-accion">
-                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M7 3h7l4 4v14H7z"/>
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M13 3v5h5M10 13h5M10 17h5"/>
-                                            </svg>
-                                        </a>
+                                        @if (! $fila->locked)
+                                            <a href="{{ route('operations.bookings.generate', $fila->booking_id) }}" wire:navigate
+                                               title="{{ __('Generar factura') }}" class="booking-accion">
+                                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M7 3h7l4 4v14H7z"/>
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 3v5h5M10 13h5M10 17h5"/>
+                                                </svg>
+                                            </a>
+                                        @endif
                                     @endif
                                     <a href="{{ route('operations.bookings.pdf', $fila->booking_id) }}" target="_blank"
                                        title="{{ __('PDF de confirmación') }}" class="booking-accion">
@@ -340,7 +436,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="{{ 9 + (int) $verBuque + (int) $verTipo }}" class="px-3 py-12 text-center text-ink-faint">{{ __('No hay embarques con estos filtros.') }}</td>
+                            <td colspan="{{ 12 + 2 * (int) $verBuque + (int) $verTipo }}" class="px-3 py-12 text-center text-ink-faint">{{ __('No hay embarques con estos filtros.') }}</td>
                         </tr>
                     @endforelse
                 </tbody>

@@ -46,7 +46,11 @@ class BookingTimeline
         'custom_brocker_id' => 'Agente aduanal', 'final_destination' => 'Destino final (texto)',
         'final_destination_id' => 'Destino final', 'booking_type' => 'Tipo de booking',
         'email_notification' => 'Correos de notificación', 'is_draft' => 'Borrador', 'locked' => 'Cerrado',
-        'mode' => 'Modo', 'arrival' => 'Arribo', 'remarks' => 'Notas',
+        'mode' => 'Modo', 'remarks' => 'Notas',
+        // La lista de verificación del booking (`Booking::LISTA_DE_VERIFICACION`).
+        'arrival' => 'Arribo', 'realeased_from_shiping' => 'Liberado por la naviera',
+        'customs_cleared' => 'Despachado en aduana', 'truck_service_request' => 'Transporte solicitado',
+        'delivered_consigned' => 'Entregado al consignatario',
         'shipper_is' => 'Shipper (es)', 'shipper_should' => 'Shipper (debe ser)',
         'consignee_is' => 'Consignee (es)', 'consignee_should' => 'Consignee (debe ser)',
         'notify_party_is' => 'Notify party (es)', 'notify_party_should' => 'Notify party (debe ser)',
@@ -139,9 +143,9 @@ class BookingTimeline
                 $antes = $anterior?->{$columna};
 
                 if (filled($valor) && blank($antes)) {
-                    $marcas[] = ['campo' => $this->label($casilla), 'antes' => null, 'despues' => 'marcada'];
+                    $marcas[] = ['campo' => self::etiqueta($casilla), 'antes' => null, 'despues' => 'marcada'];
                 } elseif (blank($valor) && filled($antes)) {
-                    $marcas[] = ['campo' => $this->label($casilla), 'antes' => 'marcada', 'despues' => null];
+                    $marcas[] = ['campo' => self::etiqueta($casilla), 'antes' => 'marcada', 'despues' => null];
                 }
             }
 
@@ -183,7 +187,7 @@ class BookingTimeline
                 }
 
                 $cambios[] = [
-                    'campo' => $this->label($columna),
+                    'campo' => self::etiqueta($columna),
                     'antes' => $anterior === null ? null : $this->display($columna, $antes),
                     'despues' => $this->display($columna, $valor),
                 ];
@@ -211,7 +215,8 @@ class BookingTimeline
         ];
     }
 
-    private function label(string $columna): string
+    /** Nombre visible de una columna, para quien la enseñe fuera del historial. */
+    public static function etiqueta(string $columna): string
     {
         return self::ETIQUETAS[$columna] ?? $columna;
     }

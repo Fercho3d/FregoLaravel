@@ -113,6 +113,21 @@ class BookingConfirmationTest extends TestCase
         $this->assertStringContainsString('$ 1,005.00', $html);
     }
 
+    /** Una fecha capturada sin hora salía como «12:00:00 AM»; con hora, se imprime como el original. */
+    public function test_las_fechas_llevan_hora_solo_cuando_la_tienen(): void
+    {
+        $booking = $this->booking();
+        DB::table('booking_continuity')->insert([
+            'cont_id' => 1, 'booking' => 1, 'pickup_date' => '2026-08-25 00:00:00', 'SI_date' => '2026-08-28 14:30:00',
+        ]);
+
+        $html = app(BookingConfirmation::class)->html($booking);
+
+        $this->assertStringContainsString('<td>25/08/2026</td>', $html);
+        $this->assertStringContainsString('<td>28/08/2026 02:30:00 PM</td>', $html);
+        $this->assertStringNotContainsString('12:00:00 AM', $html);
+    }
+
     public function test_el_pdf_se_sirve_en_linea(): void
     {
         $this->booking();
@@ -223,6 +238,32 @@ class BookingConfirmationTest extends TestCase
             ->call('sendConfirmation');
 
         Mail::assertSent(BookingConfirmationMail::class);
+    }
+
+    /** «Enviarme una copia»: la misma confirmación, al correo de quien la pide y a nadie más. */
+    public function test_enviarme_una_copia_va_a_mi_correo_y_no_al_cliente(): void
+    {
+        $this->booking();
+        $usuario = $this->usuario(User::ROLE_USER);
+        $usuario->forceFill(['email' => 'ana@frego.mx'])->save();
+
+        Livewire::actingAs($usuario)
+            ->test(BookingDetail::class, ['booking' => 1])
+            ->call('sendConfirmationToMe');
+
+        Mail::assertSent(BookingConfirmationMail::class, fn ($correo) => $correo->hasTo('ana@frego.mx')
+            && ! $correo->hasTo('trafico@frialsa.mx'));
+    }
+
+    public function test_sin_correo_en_el_usuario_no_hay_copia_que_mandar(): void
+    {
+        $this->booking();
+
+        Livewire::actingAs($this->usuario())
+            ->test(BookingDetail::class, ['booking' => 1])
+            ->call('sendConfirmationToMe');
+
+        Mail::assertNothingSent();
     }
 
     public function test_solo_un_administrador_lo_vuelve_a_mandar(): void

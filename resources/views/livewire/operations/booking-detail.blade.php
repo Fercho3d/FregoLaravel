@@ -7,8 +7,10 @@
     // el porcentaje heredado por un lado y la lista por otro, la pantalla se
     // contradecía a sí misma.
     $esCotizacion = (int) ($booking->mode ?? 10) === \App\Models\Core\Booking::MODE_QUOTATION;
-    $marcadas = collect($hitos)->where('marcada', true)->count();
-    $avance = $hitos === [] ? 0.0 : round($marcadas / count($hitos) * 100, 0);
+    // Las verificaciones de datos del booking, donde aplican, cuentan igual.
+    $marcadas = collect($hitos)->where('marcada', true)->count() + collect($datosDelBooking)->whereNotNull('cumplida')->count();
+    $totalPasos = count($hitos) + count($datosDelBooking);
+    $avance = $totalPasos === 0 ? 0.0 : round($marcadas / $totalPasos * 100, 0);
 @endphp
 
 <div class="mx-auto max-w-6xl space-y-4">
@@ -58,6 +60,9 @@
                        class="btn-ghost px-3 py-1.5 text-xs">
                         {{ __('Generar facturación') }}
                     </a>
+                @endif
+                {{-- Cerrar y reabrir: solo el super administrador, como en el original. --}}
+                @if (auth()->user()?->isSuperAdmin() && ! $booking->locked)
                     <button type="button" wire:click="lock"
                             wire:confirm="{{ __('Al cerrarlo ya no se podrán tocar sus contenedores ni sus documentos. ¿Continuar?') }}"
                             class="btn-ghost px-3 py-1.5 text-xs">{{ __('Cerrar booking') }}</button>
@@ -85,6 +90,16 @@
                         {{ __('Enviar al cliente') }}
                     </button>
                 @endif
+                {{-- Para revisarla antes de mandarla de verdad: la misma confirmación,
+                     al correo de quien la pide. Cualquier usuario interno, como el
+                     «mail» del original. --}}
+                <button type="button" wire:click="sendConfirmationToMe"
+                        title="{{ __('Te manda a ti la confirmación en PDF, sin avisar al cliente') }}"
+                        wire:loading.attr="disabled" wire:target="sendConfirmationToMe"
+                        class="btn-ghost px-3 py-1.5 text-xs">
+                    <x-spinner wire:loading wire:target="sendConfirmationToMe" class="h-3.5 w-3.5" />
+                    {{ __('Enviarme una copia') }}
+                </button>
                 <a href="{{ route('transactions.booking', $booking->booking_id) }}" wire:navigate class="btn-ghost px-3 py-1.5 text-xs">
                     {{ __('Transacciones') }}
                 </a>
@@ -119,7 +134,7 @@
                 <span class="text-ink-muted">{{ __('Avance de la lista de verificación') }}</span>
                 <span class="font-semibold tabular-nums text-ink">
                     {{ number_format($avance, 0) }}%
-                    <span class="font-normal text-ink-faint">({{ __(':marcadas de :total', ['marcadas' => $marcadas, 'total' => count($hitos)]) }})</span>
+                    <span class="font-normal text-ink-faint">({{ __(':marcadas de :total', ['marcadas' => $marcadas, 'total' => $totalPasos]) }})</span>
                 </span>
             </div>
             <div class="mt-2 h-2 overflow-hidden rounded-full bg-raised">
@@ -532,9 +547,11 @@
                             <ul class="flex flex-wrap gap-2">
                                 @foreach ($campo->files as $archivo)
                                     <li class="inline-flex items-center gap-2 rounded-lg border border-line px-3 py-1.5 text-xs">
-                                        <a href="{{ route('operations.bookings.file', [$booking->booking_id, urlencode($archivo), 'ver' => 1]) }}"
-                                           target="_blank" rel="noopener"
-                                           class="max-w-[16rem] truncate text-brand hover:underline" title="{{ __('Ver') }}: {{ $archivo }}">
+                                        {{-- PDF e imágenes se abren en el navegador; lo demás se descarga. --}}
+                                        @php $enLinea = \App\Support\BookingFiles::seAbreEnLinea($archivo); @endphp
+                                        <a href="{{ route('operations.bookings.file', [$booking->booking_id, urlencode($archivo), 'ver' => $enLinea ? 1 : null]) }}"
+                                           @if ($enLinea) target="_blank" rel="noopener" @endif
+                                           class="max-w-[16rem] truncate text-brand hover:underline" title="{{ $enLinea ? __('Ver') : __('Descargar') }}: {{ $archivo }}">
                                             {{ $archivo }}
                                         </a>
                                         <a href="{{ route('operations.bookings.file', [$booking->booking_id, urlencode($archivo)]) }}"
@@ -559,31 +576,87 @@
     @endif
 
     {{-- Hitos del expediente --}}
-    @if ($hitos !== [])
+    @if ($hitos !== [] || $datosDelBooking !== [])
         @php
-            $esAdmin = auth()->user()?->isAdmin() ?? false;
-            // Marcar el cumplimiento es de cualquier usuario interno; la fecha
-            // planeada y los hitos sin casilla siguen siendo de administradores.
+            // Marcar el cumplimiento y capturar la fecha planeada son de
+            // cualquier usuario interno, como en el original; desmarcar, de
+            // administradores (lo revisa el componente).
             $puedeMarcar = ! $booking->locked;
-            $puedeFechar = $esAdmin && ! $booking->locked;
+            $puedeFechar = ! $booking->locked;
             $fechaHora = fn ($v) => \Illuminate\Support\Carbon::parse($v)->format('d/m/Y H:i');
+            // La planeada lleva hora solo si se capturó una: a medianoche es «el día».
+            $fechaPlan = function ($v) use ($fecha, $fechaHora) {
+                return \Illuminate\Support\Carbon::parse($v)->format('H:i:s') === '00:00:00' ? $fecha($v) : $fechaHora($v);
+            };
         @endphp
 
-        <section class="card p-5 sm:p-6">
+        <section id="lista-de-verificacion" class="card scroll-mt-4 p-5 sm:p-6">
             <div class="flex flex-wrap items-baseline justify-between gap-2">
                 <h3 class="text-sm font-semibold text-ink">{{ __('Lista de verificación') }}</h3>
                 @if ($puedeMarcar)
                     <p class="text-xs text-ink-faint">
-                        {{ $puedeFechar
-                            ? __('Toca un paso para marcarlo cumplido ahora; toca la fecha planeada para cambiarla.')
-                            : __('Toca un paso para marcarlo cumplido ahora, en orden.') }}
+                        {{ __('Toca un paso para marcarlo cumplido ahora; toca la fecha planeada para cambiarla.') }}
                     </p>
                 @endif
             </div>
 
-            <ul class="mt-4 grid gap-x-6 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
+            {{-- La modalidad (CY/CY, SD/SD…) es del embarque marítimo y vive en
+                 la continuidad; se guarda en cuanto se elige. --}}
+            @if ($modalidades !== [])
+                <label class="mt-4 flex flex-wrap items-center gap-2 text-sm">
+                    <span class="field-label text-xs">{{ __('Modalidad') }}</span>
+                    <select wire:model.live="modality" @disabled($booking->locked) class="field-input !w-auto py-1 text-xs">
+                        <option value="">{{ __('Sin especificar') }}</option>
+                        @foreach ($modalidades as $id => $nombre)
+                            <option value="{{ $id }}" @selected((string) $id === $modality)>{{ $nombre }}</option>
+                        @endforeach
+                    </select>
+                    @error('modality') <span class="text-xs text-brand">{{ $message }}</span> @enderror
+                </label>
+            @endif
+
+            {{-- Las verificaciones de datos del booking: abren la lista en el
+                 original y cuentan en el avance heredado. Misma regla que los
+                 hitos: en orden para quien no es administrador. --}}
+            @if ($datosDelBooking !== [])
+                <p class="mt-4 text-xs font-semibold uppercase tracking-wide text-ink-faint">{{ __('Datos del booking') }}</p>
+                <ul class="mt-2 grid gap-x-6 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
+                    @foreach ($datosDelBooking as $dato)
+                        <li class="group rounded-md border-b border-line/60 px-2 py-1.5 text-sm transition
+                                   {{ $puedeMarcar ? 'hover:border-transparent hover:bg-raised' : '' }}">
+                            <div class="flex items-center justify-between gap-3">
+                                <button type="button"
+                                        @if ($puedeMarcar) wire:click="marcaDato('{{ $dato['casilla'] }}')" @else disabled @endif
+                                        title="{{ $puedeMarcar ? ($dato['cumplida'] ? __('Clic para desmarcar') : __('Clic para marcar verificado')) : '' }}"
+                                        class="flex min-w-0 items-center gap-2 text-left {{ $puedeMarcar ? 'cursor-pointer transition hover:text-brand' : 'cursor-default' }}">
+                                    @if ($dato['cumplida'])
+                                        <svg class="h-4 w-4 shrink-0 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                                        </svg>
+                                    @else
+                                        <svg class="h-4 w-4 shrink-0 text-ink-faint transition {{ $puedeMarcar ? 'group-hover:text-brand' : '' }}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                            <circle cx="12" cy="12" r="8"/>
+                                        </svg>
+                                    @endif
+                                    <span class="truncate {{ $dato['cumplida'] ? 'text-ink' : 'text-ink-faint' }}">{{ $dato['etiqueta'] }}</span>
+                                </button>
+                                <span class="max-w-[10rem] shrink-0 truncate text-xs text-ink-faint" title="{{ $dato['valor'] }}">{{ $dato['valor'] ?: '—' }}</span>
+                            </div>
+                            @if ($dato['cumplida'])
+                                <p class="mt-0.5 pl-6 text-xs text-ink-faint">
+                                    {{ $fechaHora($dato['cumplida']) }}
+                                    @if ($dato['por']) · {{ $dato['por'] }} @endif
+                                </p>
+                            @endif
+                        </li>
+                    @endforeach
+                </ul>
+                <p class="mt-4 text-xs font-semibold uppercase tracking-wide text-ink-faint">{{ __('Continuidad') }}</p>
+            @endif
+
+            <ul class="mt-2 grid gap-x-6 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
                 @foreach ($hitos as $hito)
-                    @php $marcable = $puedeMarcar && ($hito['casilla'] || $esAdmin); @endphp
+                    @php $marcable = $puedeMarcar; @endphp
                     <li class="group rounded-md border-b border-line/60 px-2 py-1.5 text-sm transition
                                {{ $marcable ? 'hover:border-transparent hover:bg-raised' : '' }}">
                         <div class="flex items-center justify-between gap-3">
@@ -607,9 +680,9 @@
                                  para no confundirla con la de cumplimiento. --}}
                             @if ($hitoEditando === $hito['clave'])
                                 <span class="flex shrink-0 items-center gap-1">
-                                    <input type="date" wire:model="hitoFecha" value="{{ $hitoFecha }}"
+                                    <input type="datetime-local" wire:model="hitoFecha" value="{{ $hitoFecha }}"
                                            wire:keydown.enter="guardaHito" wire:keydown.escape="cancelaHito"
-                                           class="field-input !w-36 !py-1 text-xs">
+                                           class="field-input !w-48 !py-1 text-xs">
                                     <button type="button" wire:click="guardaHito" class="text-xs text-brand hover:underline">{{ __('Guardar') }}</button>
                                     <button type="button" wire:click="cancelaHito" class="text-xs text-ink-faint hover:underline">{{ __('Cancelar') }}</button>
                                 </span>
@@ -621,7 +694,7 @@
                                     @if ($hito['casilla'] && ($hito['fecha'] || $puedeFechar))
                                         <span class="text-ink-faint/70">{{ __('Plan') }}</span>
                                     @endif
-                                    {{ $hito['fecha'] ? $fecha($hito['fecha']) : ($puedeFechar ? '—' : '') }}
+                                    {{ $hito['fecha'] ? $fechaPlan($hito['fecha']) : ($puedeFechar ? '—' : '') }}
                                 </button>
                             @endif
                         </div>
@@ -648,4 +721,62 @@
             @enderror
         </section>
     @endif
+
+    {{-- Lista de verificación del booking: las cinco fechas con hora de la
+         tabla `booking`, del formulario original. Las marca el administrador. --}}
+    @php $puedeMarcarBooking = (auth()->user()?->isAdmin() ?? false) && ! $booking->locked; @endphp
+    <section class="card p-5 sm:p-6">
+        <div class="flex flex-wrap items-baseline justify-between gap-2">
+            <h3 class="text-sm font-semibold text-ink">{{ __('Lista de verificación del booking') }}</h3>
+            @if ($puedeMarcarBooking)
+                <p class="text-xs text-ink-faint">{{ __('Toca un paso para marcarlo ahora; toca la fecha para ponerle otra.') }}</p>
+            @endif
+        </div>
+
+        <ul class="mt-4 grid gap-x-6 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
+            @foreach ($listaDelBooking as $paso)
+                <li class="group rounded-md border-b border-line/60 px-2 py-1.5 text-sm transition
+                           {{ $puedeMarcarBooking ? 'hover:border-transparent hover:bg-raised' : '' }}">
+                    <div class="flex items-center justify-between gap-3">
+                        <button type="button"
+                                @if ($puedeMarcarBooking) wire:click="marcaDelBooking('{{ $paso['campo'] }}')" @else disabled @endif
+                                title="{{ $puedeMarcarBooking ? ($paso['fecha'] ? __('Clic para desmarcar') : __('Clic para marcar cumplido ahora')) : '' }}"
+                                class="flex min-w-0 items-center gap-2 text-left {{ $puedeMarcarBooking ? 'cursor-pointer transition hover:text-brand' : 'cursor-default' }}">
+                            @if ($paso['fecha'])
+                                <svg class="h-4 w-4 shrink-0 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                                </svg>
+                            @else
+                                <svg class="h-4 w-4 shrink-0 text-ink-faint transition {{ $puedeMarcarBooking ? 'group-hover:text-brand' : '' }}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                    <circle cx="12" cy="12" r="8"/>
+                                </svg>
+                            @endif
+                            <span class="truncate {{ $paso['fecha'] ? 'text-ink' : 'text-ink-faint' }}">{{ $paso['etiqueta'] }}</span>
+                        </button>
+
+                        @if ($bookingCheckEditando === $paso['campo'])
+                            <span class="flex shrink-0 items-center gap-1">
+                                <input type="datetime-local" wire:model="bookingCheckFecha" value="{{ $bookingCheckFecha }}"
+                                       wire:keydown.enter="guardaFechaDelBooking" wire:keydown.escape="cancelaFechaDelBooking"
+                                       class="field-input !w-48 !py-1 text-xs">
+                                <button type="button" wire:click="guardaFechaDelBooking" class="text-xs text-brand hover:underline">{{ __('Guardar') }}</button>
+                                <button type="button" wire:click="cancelaFechaDelBooking" class="text-xs text-ink-faint hover:underline">{{ __('Cancelar') }}</button>
+                            </span>
+                        @else
+                            <button type="button"
+                                    @if ($puedeMarcarBooking) wire:click="editaFechaDelBooking('{{ $paso['campo'] }}')" @else disabled @endif
+                                    title="{{ $puedeMarcarBooking ? __('Clic para elegir fecha y hora') : '' }}"
+                                    class="shrink-0 whitespace-nowrap text-xs text-ink-faint {{ $puedeMarcarBooking ? 'cursor-pointer transition hover:text-brand' : 'cursor-default' }}">
+                                {{ $paso['fecha'] ? \Illuminate\Support\Carbon::parse($paso['fecha'])->format('d/m/Y H:i') : ($puedeMarcarBooking ? '—' : '') }}
+                            </button>
+                        @endif
+                    </div>
+                </li>
+            @endforeach
+        </ul>
+
+        @error('bookingCheckFecha')
+            <p class="mt-2 text-xs text-brand">{{ $message }}</p>
+        @enderror
+    </section>
 </div>

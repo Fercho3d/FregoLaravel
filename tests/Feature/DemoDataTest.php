@@ -64,11 +64,17 @@ class DemoDataTest extends DemoDatabaseTestCase
         $respuesta = $this->actingAs($this->admin())->get('/operacion/continuidad');
 
         $respuesta->assertOk();
-        $respuesta->assertSee('Zarpe');
+        // El rótulo sale en el idioma que eligió demo.admin (su preferencia
+        // vive en la base sembrada): se acepta en los dos.
+        $this->assertMatchesRegularExpression('/Zarpe|Departure/', (string) $respuesta->getContent());
 
-        // Al menos un renglón con fecha capturada, no solo el punto de «vacío».
+        // Al menos una celda con fecha capturada, no solo el punto de «vacío».
+        // La rejilla pinta «dd/mm» (o «dd/mm/aa» fuera del año en curso) como
+        // contenido de la celda; el marcador de posición del filtro trae una
+        // fecha completa dentro de un atributo y por eso se exige que vaya
+        // entre etiquetas.
         $this->assertMatchesRegularExpression(
-            '/\d{2}\/\d{2}\/\d{4}/',
+            '~>\s*\d{2}/\d{2}(/\d{2})?\s*<~',
             (string) $respuesta->getContent(),
             'La rejilla de continuidad salió sin una sola fecha.',
         );

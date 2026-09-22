@@ -203,11 +203,19 @@ class BookingContainersTest extends TestCase
 
     // ------------------------------------------------------------ Cierre
 
+    /** Cerrar es del super administrador, como `lock` en el original. */
     public function test_cerrar_un_booking(): void
     {
-        $this->detalle()->call('lock');
+        $this->detalle(User::ROLE_SUPER_ADMIN)->call('lock');
 
         $this->assertSame(1, (int) DB::table('booking')->where('booking_id', 1)->value('locked'));
+    }
+
+    public function test_un_administrador_no_cierra(): void
+    {
+        $this->detalle()->assertDontSee('Cerrar booking')->call('lock')->assertForbidden();
+
+        $this->assertSame(0, (int) DB::table('booking')->where('booking_id', 1)->value('locked'));
     }
 
     /** Reabrir permite tocar importes ya conciliados: es del super administrador. */

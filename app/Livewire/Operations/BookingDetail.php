@@ -9,13 +9,16 @@ use App\Queries\BookingQuery;
 use App\Queries\TransactionFilters;
 use App\Queries\TransactionQuery;
 use App\Support\BookingFiles;
+use App\Support\Expediente;
 use App\Support\Fleet\TripExpenses;
+use App\Support\History\BookingTimeline;
 use App\Support\Milestones\BookingMilestones;
 use App\Support\Milestones\Checklist;
 use App\Support\Milestones\MilestoneCatalog;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -72,6 +75,14 @@ class BookingDetail extends Component
 
     public string $containerPickup = '';
 
+    // --- Modalidad (booking_continuity.modality) ---
+    public string $modality = '';
+
+    // --- Lista de verificación del booking (cinco fechas en `booking`) ---
+    public ?string $bookingCheckEditando = null;
+
+    public string $bookingCheckFecha = '';
+
     // --- Instrucciones de embarque ---
     /** @var array<string, string|null> */
     public array $instructions = [];
@@ -83,6 +94,13 @@ class BookingDetail extends Component
     public ?int $uploadField = null;
 
     public $upload = null;
+
+    /**
+     * El encabezado, recordado durante la petición: una acción lo consulta
+     * varias veces (permisos, candado, unidad del viaje) y no tiene por qué ir
+     * a la base en cada una. `render()` lo olvida para pintar lo recién escrito.
+     */
+    private ?object $headerCache = null;
 
     /**
      * Los ocho campos de las instrucciones de embarque: cómo viene cada parte en
@@ -99,6 +117,7 @@ class BookingDetail extends Component
     {
         $this->bookingId = $booking;
         $this->loadInstructions();
+        $this->modality = (string) DB::table('booking_continuity')->where('booking', $booking)->value('modality');
     }
 
     // ------------------------------------------- Instrucciones de embarque
@@ -169,6 +188,10 @@ class BookingDetail extends Component
     /** El encabezado sale del mismo motor que el listado, para que el avance cuadre. */
     private function header(): object
     {
+        if ($this->headerCache !== null) {
+            return $this->headerCache;
+        }
+
         foreach ([10, 9] as $modo) {
             $filtros = BookingFilters::make([]);
             $filtros->mode = $modo;
@@ -181,7 +204,7 @@ class BookingDetail extends Component
                 ->first();
 
             if ($fila !== null) {
-                return $fila;
+                return $this->headerCache = $fila;
             }
         }
 
@@ -281,7 +304,8 @@ class BookingDetail extends Component
      *
      * Un hito sin casilla (los que añade un negocio distinto) no tiene segunda
      * capa donde guardar el cumplimiento, así que su fecha hace de ambas y se
-     * marca con la de hoy, como hasta ahora.
+     * marca con la de hoy, como hasta ahora; quitarla sigue siendo de
+     * administradores, como desmarcar.
      */
     public function marcaHito(string $clave): void
     {
@@ -294,49 +318,217 @@ class BookingDetail extends Component
         $this->resetErrorBag('hito');
 
         if (Checklist::casilla($hito) === null) {
-            $this->assertAdmin();
-
             $tenia = BookingMilestones::de($this->bookingId)[$clave] ?? null;
+
+            if ($tenia !== null) {
+                $this->assertAdmin();
+            }
+
             BookingMilestones::guarda($this->bookingId, $clave, $tenia === null ? now()->toDateString() : null, auth()->id());
 
             return;
         }
 
-        $esAdmin = auth()->user()?->isAdmin() ?? false;
-        $cumplidas = Checklist::de($this->bookingId);
+        $this->alternaCasilla(Checklist::casilla($hito));
+    }
 
-        if (isset($cumplidas[$clave])) {
+    /**
+     * Marca o desmarca una verificación de datos del booking (número, cliente,
+     * buque…): las casillas que abren la lista en el original.
+     */
+    public function marcaDato(string $casilla): void
+    {
+        $this->assertAbierto();
+        abort_unless(Checklist::conDatosDelBooking() && isset(Checklist::DATOS_DEL_BOOKING[$casilla]), 404);
+
+        $this->resetErrorBag('hito');
+        $this->alternaCasilla($casilla);
+    }
+
+    /**
+     * La regla de marcado, común a hitos y datos: quien no es administrador va
+     * en orden y no desmarca.
+     */
+    private function alternaCasilla(string $casilla): void
+    {
+        $esAdmin = auth()->user()?->isAdmin() ?? false;
+        $marcadas = Checklist::casillasDe($this->bookingId);
+
+        if (isset($marcadas[$casilla])) {
             abort_unless($esAdmin, 403, __('Solo un administrador puede desmarcar una tarea.'));
-            Checklist::desmarca($this->bookingId, $clave, (int) auth()->id());
+            Checklist::desmarcaCasilla($this->bookingId, $casilla, (int) auth()->id());
 
             return;
         }
 
-        $anterior = Checklist::anterior($clave);
+        $anterior = Checklist::anterior($casilla);
 
-        if (! $esAdmin && $anterior !== null && ! isset($cumplidas[$anterior->clave])) {
+        if (! $esAdmin && $anterior !== null && ! isset($marcadas[$anterior->casilla])) {
             $this->addError('hito', __('Primero hay que marcar «:hito».', ['hito' => $anterior->etiqueta]));
 
             return;
         }
 
-        Checklist::marca($this->bookingId, $clave, (int) auth()->id());
+        Checklist::marcaCasilla($this->bookingId, $casilla, (int) auth()->id());
     }
 
+    /**
+     * Las verificaciones de datos del booking, con el valor que se verifica y
+     * su marca. Vacío donde no aplican (ver `Checklist::DATOS_DEL_BOOKING`).
+     *
+     * @return list<array{casilla: string, etiqueta: string, valor: ?string, cumplida: ?string, por: ?string}>
+     */
+    private function datosDelBooking(): array
+    {
+        if (! Checklist::conDatosDelBooking()) {
+            return [];
+        }
+
+        $booking = $this->header();
+        $extra = DB::table('booking as b')
+            ->leftJoin('container_types as ct', 'ct.contType_id', '=', 'b.container_type')
+            ->leftJoin('booking_continuity as bc', 'bc.booking', '=', 'b.booking_id')
+            ->leftJoin('modality as m', 'm.modality_id', '=', 'bc.modality')
+            ->where('b.booking_id', $this->bookingId)
+            ->first(['ct.container_name', 'm.modality_name']);
+        $fecha = fn ($v) => $v ? Carbon::parse($v)->format('d/m/Y') : null;
+
+        $valores = [
+            'booking_number' => $booking->booking_number,
+            'client' => $booking->client_name,
+            'vessel' => $booking->vessel_name,
+            'loading_port' => $booking->port_name,
+            'loading_EDT' => $fecha($booking->loading_EDT),
+            'dicharge_port' => $booking->discharge_name,
+            'dicharge_ETA' => $fecha($booking->dicharge_ETA),
+            'container_type' => $extra?->container_name,
+            'commodity' => $booking->commodity,
+            'set_point' => $booking->set_point,
+            'pick_up_place' => $booking->pickup_name,
+            'modality' => $extra?->modality_name,
+        ];
+
+        $marcadas = Checklist::casillasDe($this->bookingId);
+        $autores = $this->nombresDeUsuario(array_filter(array_column($marcadas, 'por')));
+        $salida = [];
+
+        foreach (Checklist::DATOS_DEL_BOOKING as $casilla => $etiqueta) {
+            $salida[] = [
+                'casilla' => $casilla,
+                'etiqueta' => __($etiqueta),
+                'valor' => $valores[$casilla] === null ? null : trim((string) $valores[$casilla]),
+                'cumplida' => $marcadas[$casilla]['fecha'] ?? null,
+                'por' => $autores[$marcadas[$casilla]['por'] ?? 0] ?? null,
+            ];
+        }
+
+        return $salida;
+    }
+
+    // ------------------------------------------------------- Modalidad
+
+    /**
+     * La modalidad (CY/CY, SD/SD…) vive en `booking_continuity`, como en el
+     * original, y se guarda en cuanto se elige. Cualquier usuario interno.
+     */
+    public function updatedModality(): void
+    {
+        $this->assertAbierto();
+
+        $this->validate(['modality' => ['nullable', Rule::exists('modality', 'modality_id')]], attributes: ['modality' => __('modalidad')]);
+
+        $valores = ['modality' => $this->modality === '' ? null : (int) $this->modality, 'modified_by' => auth()->id(), 'modified_at' => now()];
+        $existente = DB::table('booking_continuity')->where('booking', $this->bookingId)->first();
+
+        $existente === null
+            ? DB::table('booking_continuity')->insert($valores + ['booking' => $this->bookingId])
+            : DB::table('booking_continuity')->where('cont_id', $existente->cont_id)->update($valores);
+    }
+
+    // ------------------------------- Lista de verificación del booking
+
+    /**
+     * Las cinco fechas de la tabla `booking` (arribo, liberación de la
+     * naviera, despacho, solicitud de transporte y entrega al consignatario):
+     * el `_checklist.php` del formulario original. Son de administradores,
+     * como el formulario donde vivían, y llevan fecha y hora.
+     *
+     * @return list<array{campo: string, etiqueta: string, fecha: ?string}>
+     */
+    private function listaDelBooking(): array
+    {
+        $fila = DB::table('booking')->where('booking_id', $this->bookingId)->first(Booking::LISTA_DE_VERIFICACION);
+
+        return array_map(fn (string $campo) => [
+            'campo' => $campo,
+            'etiqueta' => __(BookingTimeline::etiqueta($campo)),
+            'fecha' => $fila?->{$campo},
+        ], Booking::LISTA_DE_VERIFICACION);
+    }
+
+    /** Un clic marca con la fecha y hora de ahora; otro clic la quita. */
+    public function marcaDelBooking(string $campo): void
+    {
+        $this->assertEditable();
+        abort_unless(in_array($campo, Booking::LISTA_DE_VERIFICACION, true), 404);
+
+        $tenia = DB::table('booking')->where('booking_id', $this->bookingId)->value($campo);
+
+        $this->escribeFechaDelBooking($campo, $tenia === null ? now()->format('Y-m-d H:i:s') : null);
+    }
+
+    public function editaFechaDelBooking(string $campo): void
+    {
+        $this->assertEditable();
+        abort_unless(in_array($campo, Booking::LISTA_DE_VERIFICACION, true), 404);
+
+        $this->bookingCheckEditando = $campo;
+        $this->bookingCheckFecha = BookingMilestones::paraCaptura(DB::table('booking')->where('booking_id', $this->bookingId)->value($campo));
+        $this->resetErrorBag();
+    }
+
+    public function guardaFechaDelBooking(): void
+    {
+        $this->assertEditable();
+
+        $campo = (string) $this->bookingCheckEditando;
+        abort_unless(in_array($campo, Booking::LISTA_DE_VERIFICACION, true), 404);
+
+        $this->validate(
+            ['bookingCheckFecha' => ['nullable', 'date']],
+            attributes: ['bookingCheckFecha' => mb_strtolower(__(BookingTimeline::etiqueta($campo)))],
+        );
+
+        $this->escribeFechaDelBooking($campo, blank($this->bookingCheckFecha) ? null : Carbon::parse($this->bookingCheckFecha)->format('Y-m-d H:i:s'));
+        $this->bookingCheckEditando = null;
+    }
+
+    public function cancelaFechaDelBooking(): void
+    {
+        $this->bookingCheckEditando = null;
+    }
+
+    private function escribeFechaDelBooking(string $campo, ?string $fecha): void
+    {
+        Booking::whereKey($this->bookingId)->update([$campo => $fecha, 'modified_by' => auth()->id()]);
+    }
+
+    /**
+     * La fecha planeada la captura cualquier usuario interno, como el `setdate`
+     * del original; con hora, como allá, y 00:00 si no se sabe.
+     */
     public function editaHito(string $clave): void
     {
-        $this->assertAdmin();
         $this->assertAbierto();
         abort_unless(MilestoneCatalog::porClave($clave)?->activo ?? false, 404);
 
         $this->hitoEditando = $clave;
-        $this->hitoFecha = substr((string) (BookingMilestones::de($this->bookingId)[$clave] ?? now()->toDateString()), 0, 10);
+        $this->hitoFecha = BookingMilestones::paraCaptura(BookingMilestones::de($this->bookingId)[$clave] ?? null);
         $this->resetErrorBag();
     }
 
     public function guardaHito(): void
     {
-        $this->assertAdmin();
         $this->assertAbierto();
 
         $clave = (string) $this->hitoEditando;
@@ -656,6 +848,31 @@ class BookingDetail extends Component
     }
 
     /**
+     * Manda la misma confirmación al correo de quien la pide, sin tocar al
+     * cliente: para revisarla antes de mandarla de verdad.
+     *
+     * El `mail` del original hacía esto mandándola a una dirección fija escrita
+     * en el código; aquí va a la de cada quien, y como allá, la pide cualquier
+     * usuario interno.
+     */
+    public function sendConfirmationToMe(SendBookingConfirmation $enviar): void
+    {
+        $correo = trim((string) auth()->user()?->email);
+
+        if ($correo === '') {
+            session()->flash('error', __('Tu usuario no tiene correo: no hay a dónde mandarte la copia.'));
+
+            return;
+        }
+
+        $avisados = $enviar->handle(Booking::findOrFail($this->bookingId), [$correo]);
+
+        session()->flash('status', $avisados === []
+            ? __('No se pudo mandar la copia. Revisa el registro del sistema.')
+            : __('Copia enviada a ').$correo.'.');
+    }
+
+    /**
      * Borra el booking.
      *
      * El original lo borra sin preguntar nada; aquí se niega si tiene
@@ -693,25 +910,26 @@ class BookingDetail extends Component
         $this->redirectRoute('operations.bookings', navigate: true);
     }
 
+    /**
+     * Cerrar y reabrir son del super administrador, como `lock` y `unlock` en
+     * el original: el cierre fija la facturación y no es una decisión de
+     * operación.
+     */
     public function lock(): void
     {
-        abort_unless(auth()->user()?->isAdmin() ?? false, 403);
+        abort_unless(auth()->user()?->isSuperAdmin() ?? false, 403);
 
         Booking::whereKey($this->bookingId)->update(['locked' => 1, 'modified_by' => auth()->id()]);
 
-        $this->headerCache = null;
         session()->flash('status', __('Booking cerrado.'));
     }
 
     public function unlock(): void
     {
-        // Reabrir permite volver a tocar importes ya conciliados, así que es
-        // exclusivo del super administrador.
         abort_unless(auth()->user()?->isSuperAdmin() ?? false, 403);
 
         Booking::whereKey($this->bookingId)->update(['locked' => 0, 'modified_by' => auth()->id()]);
 
-        $this->headerCache = null;
         session()->flash('status', __('Booking reabierto.'));
     }
 
@@ -735,8 +953,12 @@ class BookingDetail extends Component
             return;
         }
 
+        // Las extensiones del original: lo que operación adjunta son PDF,
+        // fotos, comprimidos, XML de factura y hojas de Office. Se mira la
+        // extensión y no el contenido, como allá, porque un XML o un ZIP se
+        // adivinan mal por contenido y el rechazo sería inexplicable.
         $this->validate(
-            ['upload' => ['required', 'file', 'max:20480']],
+            ['upload' => ['required', 'file', 'max:20480', 'extensions:'.implode(',', BookingFiles::EXTENSIONES)]],
             attributes: ['upload' => 'archivo'],
         );
 
@@ -755,6 +977,7 @@ class BookingDetail extends Component
 
     public function render()
     {
+        $this->headerCache = null;
         $fila = $this->header();
 
         return view('livewire.operations.booking-detail', [
@@ -762,6 +985,11 @@ class BookingDetail extends Component
             'contenedores' => $this->containers(),
             'transacciones' => $this->transactions(),
             'hitos' => $this->hitos(),
+            'datosDelBooking' => $this->datosDelBooking(),
+            'listaDelBooking' => $this->listaDelBooking(),
+            'modalidades' => Expediente::usa('maritimo') && Schema::hasTable('modality')
+                ? DB::table('modality')->orderBy('modality_id')->pluck('modality_name', 'modality_id')->all()
+                : [],
             'tiposContenedor' => DB::table('container_types')->orderBy('container_name')->pluck('container_name', 'contType_id')->all(),
             'documentos' => app(BookingFiles::class)->fieldsFor(
                 $this->bookingId,

@@ -101,12 +101,24 @@ class BookingFormTest extends TestCase
         $this->assertSame(0, Booking::count());
     }
 
-    /** Un arribo anterior a la carga es un error de dedo, no un embarque. */
-    public function test_el_arribo_no_puede_ser_anterior_a_la_carga(): void
+    /** Como el original: acepta un arribo anterior a la carga, y hay bookings históricos así. */
+    public function test_el_arribo_puede_ser_anterior_a_la_carga(): void
     {
         $this->formulario(['arrivalDate' => '2026-01-01'])
             ->call('save')
-            ->assertHasErrors('arrivalDate');
+            ->assertHasNoErrors();
+
+        $this->assertSame('2026-01-01', Booking::first()->dicharge_ETA->toDateString());
+    }
+
+    /** El arribo por omisión es la misma fecha de carga, no tres semanas después. */
+    public function test_el_arribo_por_omision_es_igual_a_la_carga(): void
+    {
+        $this->actingAs($this->usuario());
+
+        Livewire::test(BookingForm::class)
+            ->assertSet('loadingDate', now()->toDateString())
+            ->assertSet('arrivalDate', now()->toDateString());
     }
 
     /** Los buques cambian de nombre seguido; capturar uno nuevo no debe frenar el alta. */

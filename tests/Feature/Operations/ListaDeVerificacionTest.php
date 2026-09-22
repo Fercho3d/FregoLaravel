@@ -98,9 +98,9 @@ class ListaDeVerificacionTest extends TestCase
     /** Marcar es de cualquier usuario interno, como el `check` del original. */
     public function test_quien_no_es_administrador_marca_la_primera_tarea(): void
     {
-        $this->detalle(User::ROLE_USER)->call('marcaHito', 'pickup_date')->assertHasNoErrors();
+        $this->detalle(User::ROLE_USER)->call('marcaHito', 'vacuum_maneuver')->assertHasNoErrors();
 
-        $this->assertNotNull($this->casilla('pickup_date')?->fecha);
+        $this->assertNotNull($this->casilla('vacuum_maneuver')?->fecha);
     }
 
     /** Regla del original: sin la tarea anterior marcada, el usuario no marca la siguiente. */
@@ -113,6 +113,7 @@ class ListaDeVerificacionTest extends TestCase
 
     public function test_con_la_anterior_marcada_el_usuario_sigue(): void
     {
+        Checklist::marca(1, 'vacuum_maneuver', 1);
         Checklist::marca(1, 'pickup_date', 1);
 
         $this->detalle(User::ROLE_USER)->call('marcaHito', 'doc_cut_of')->assertHasNoErrors();
@@ -168,7 +169,106 @@ class ListaDeVerificacionTest extends TestCase
     {
         BookingMilestones::guarda(1, 'pickup_date', '2026-03-01', 1);
 
-        $this->detalle()->assertSee('0 de 14');
+        $this->detalle()->assertSee('0 de 15');
+    }
+
+    // ------------------------------------------- Datos del booking
+
+    /**
+     * Las once verificaciones de datos más la modalidad abren la lista en el
+     * original y cuentan en el avance heredado: solo salen con ese avance.
+     */
+    public function test_los_datos_del_booking_se_verifican_solo_con_el_avance_heredado(): void
+    {
+        $this->detalle()->assertDontSee('Datos del booking');
+
+        config(['marca.avance' => 'verificacion']);
+
+        $this->detalle()
+            ->assertSeeInOrder(['Datos del booking', 'Número de booking', 'BK-1', 'Cliente', 'Cliente Uno', 'Modalidad', 'Continuidad'])
+            ->assertSee('0 de 27');
+    }
+
+    public function test_marcar_un_dato_escribe_su_casilla(): void
+    {
+        config(['marca.avance' => 'verificacion']);
+
+        $this->detalle()->call('marcaDato', 'client')->assertHasNoErrors();
+
+        $this->assertNotNull($this->casilla('client')?->fecha);
+    }
+
+    /** La cadena es una sola, como en el original: los datos van antes que los hitos. */
+    public function test_quien_no_es_administrador_verifica_los_datos_antes_que_los_hitos(): void
+    {
+        config(['marca.avance' => 'verificacion']);
+
+        $this->detalle(User::ROLE_USER)->call('marcaDato', 'client')->assertHasErrors('hito');
+        $this->detalle(User::ROLE_USER)->call('marcaHito', 'vacuum_maneuver')->assertHasErrors('hito');
+        $this->detalle(User::ROLE_USER)->call('marcaDato', 'booking_number')->assertHasNoErrors();
+
+        $this->assertSame([true, false], [$this->casilla('booking_number')?->fecha !== null, $this->casilla('client')?->fecha !== null]);
+    }
+
+    public function test_sin_el_avance_heredado_no_se_marca_un_dato(): void
+    {
+        $this->detalle()->call('marcaDato', 'client')->assertNotFound();
+    }
+
+    // ------------------------------------------------------ Modalidad
+
+    public function test_la_modalidad_se_elige_y_se_guarda_en_la_continuidad(): void
+    {
+        DB::table('modality')->insert([['modality_id' => 3, 'modality_name' => 'SD/SD']]);
+
+        $this->detalle(User::ROLE_USER)->assertSee('SD/SD')->set('modality', '3')->assertHasNoErrors();
+
+        $this->assertSame(3, (int) DB::table('booking_continuity')->where('booking', 1)->value('modality'));
+    }
+
+    public function test_una_modalidad_inventada_no_pasa(): void
+    {
+        $this->detalle()->set('modality', '99')->assertHasErrors('modality');
+    }
+
+    // ------------------------------ Lista de verificación del booking
+
+    public function test_marcar_un_paso_del_booking_escribe_la_fecha_y_hora_en_la_tabla_booking(): void
+    {
+        $this->detalle()->call('marcaDelBooking', 'customs_cleared');
+
+        $this->assertSame(now()->format('Y-m-d H:i'), substr((string) DB::table('booking')->where('booking_id', 1)->value('customs_cleared'), 0, 16));
+    }
+
+    public function test_otro_clic_quita_el_paso_del_booking(): void
+    {
+        DB::table('booking')->where('booking_id', 1)->update(['arrival' => '2026-03-01 10:00:00']);
+
+        $this->detalle()->assertSee('01/03/2026 10:00')->call('marcaDelBooking', 'arrival');
+
+        $this->assertNull(DB::table('booking')->where('booking_id', 1)->value('arrival'));
+    }
+
+    public function test_al_paso_del_booking_se_le_pone_otra_fecha_y_hora(): void
+    {
+        $this->detalle()
+            ->call('editaFechaDelBooking', 'delivered_consigned')
+            ->set('bookingCheckFecha', '2026-03-05T16:45')
+            ->call('guardaFechaDelBooking')
+            ->assertHasNoErrors();
+
+        $this->assertSame('2026-03-05 16:45:00', DB::table('booking')->where('booking_id', 1)->value('delivered_consigned'));
+    }
+
+    /** Como el formulario del original donde vivían: de administradores. */
+    public function test_la_lista_del_booking_es_de_administradores(): void
+    {
+        $this->detalle(User::ROLE_USER)->assertSee('Entregado al consignatario')->call('marcaDelBooking', 'arrival')->assertForbidden();
+    }
+
+    public function test_un_paso_del_booking_inventado_no_pasa(): void
+    {
+        $this->detalle()->call('marcaDelBooking', 'locked')->assertNotFound();
     }
 
     // ---------------------------------------------------- Delivery time

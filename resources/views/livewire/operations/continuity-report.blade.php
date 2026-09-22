@@ -3,8 +3,9 @@
 @php
     $hitos = ContinuityReport::hitos();
     $fecha = fn ($v) => $v ? \Illuminate\Support\Carbon::parse($v)->format('d/m') : null;
-    // Viendo cumplidas la rejilla es de solo lectura: se marcan en el detalle.
-    $esAdmin = (auth()->user()?->isAdmin() ?? false) && ! $verCumplidas;
+    // Captura cualquier usuario interno, como en el original. Viendo cumplidas
+    // la rejilla es de solo lectura: se marcan en el detalle.
+    $puedeCapturar = ! $verCumplidas;
 @endphp
 
 <div class="space-y-4">
@@ -85,13 +86,13 @@
                                 <td class="whitespace-nowrap px-2 py-1 text-center">
                                     @if ($editing === $clave)
                                         <span class="inline-flex items-center gap-1">
-                                            <input type="date" wire:model="value" value="{{ $value }}"
+                                            <input type="datetime-local" wire:model="value" value="{{ $value }}"
                                                    wire:keydown.enter="saveMilestone" wire:keydown.escape="cancel"
-                                                   class="field-input !w-32 py-0.5 text-xs">
+                                                   class="field-input !w-44 py-0.5 text-xs">
                                             <button type="button" wire:click="saveMilestone" class="text-brand" aria-label="{{ __('Guardar') }}">✓</button>
                                             <button type="button" wire:click="cancel" class="text-ink-faint" aria-label="{{ __('Cancelar') }}">×</button>
                                         </span>
-                                    @elseif ($esAdmin)
+                                    @elseif ($puedeCapturar)
                                         <button type="button"
                                                 wire:click="editMilestone({{ $fila->booking_id }}, '{{ $hito }}', @js($fechas[$fila->booking_id][$hito] ?? null))"
                                                 class="rounded px-2 py-1 transition hover:bg-line

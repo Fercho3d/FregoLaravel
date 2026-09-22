@@ -4,6 +4,7 @@ namespace App\Livewire\Operations;
 
 use App\Queries\BookingFilters;
 use App\Queries\BookingQuery;
+use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -39,6 +40,29 @@ class BookingList extends Component
     #[Url(as: 'carga', except: '')]
     public string $loadingDates = '';
 
+    /** Rango de arribo estimado (`dicharge_ETA`). */
+    #[Url(as: 'eta', except: '')]
+    public string $arrivalDates = '';
+
+    /** Rango del corte de instrucciones (`booking_continuity.SI_date`). */
+    #[Url(as: 'si', except: '')]
+    public string $siDates = '';
+
+    /** Puerto de descarga (POD), por id. */
+    #[Url(as: 'pod', except: '')]
+    public string $dischargePort = '';
+
+    /** Lugar de recolección, por id. */
+    #[Url(as: 'lugar', except: '')]
+    public string $pickupPlace = '';
+
+    /**
+     * Por omisión el listado se acota al año en curso (ver `filters()`); con
+     * esto en 1 se ven todos los años.
+     */
+    #[Url(as: 'todos', except: '0')]
+    public string $allYears = '0';
+
     #[Url(as: 'cerrados', except: '0')]
     public string $onlyLocked = '0';
 
@@ -69,12 +93,29 @@ class BookingList extends Component
         }
     }
 
+    /** Deja la pantalla sin un solo filtro, tampoco el del año en curso. */
     public function clearFilters(): void
     {
-        $this->reset(['bookingNumber', 'clientName', 'vesselName', 'commodity', 'dates', 'loadingDates', 'bookingType']);
+        $this->reset([
+            'bookingNumber', 'clientName', 'vesselName', 'commodity', 'dates', 'loadingDates',
+            'arrivalDates', 'siDates', 'dischargePort', 'pickupPlace', 'bookingType',
+        ]);
         $this->onlyLocked = '0';
         $this->drafts = '0';
+        $this->allYears = '1';
         $this->resetPage();
+    }
+
+    /** ¿Alguno de los rangos de fecha trae algo? Entonces el año en curso no aplica. */
+    private function conRangoPropio(): bool
+    {
+        return $this->dates !== '' || $this->loadingDates !== '' || $this->arrivalDates !== '' || $this->siDates !== '';
+    }
+
+    /** ¿Se está acotando al año en curso? */
+    public function soloEsteAnio(): bool
+    {
+        return $this->allYears !== '1' && ! $this->conRangoPropio();
     }
 
     public function paginationView(): string
@@ -91,12 +132,17 @@ class BookingList extends Component
             'commodity' => $this->commodity ?: null,
             'dates' => $this->dates ?: null,
             'loading_EDT' => $this->loadingDates ?: null,
+            'dicharge_ETA' => $this->arrivalDates ?: null,
+            'si_filter' => $this->siDates ?: null,
+            'dicharge_port_id' => (int) $this->dischargePort ?: null,
+            'pick_up_place_id' => (int) $this->pickupPlace ?: null,
             'booking_type' => $this->bookingType ?: null,
             // Por omisión el listado se acota al año en curso por fecha de
             // creación del booking (que SIEMPRE existe; el pickup no, y filtrar
-            // por él escondía bookings recientes). Se aplica solo si el usuario
-            // no puso su propio rango de recolección o de carga.
-            'created' => $this->dates === '' && $this->loadingDates === ''
+            // por él escondía bookings recientes): son miles de renglones y
+            // casi siempre se busca lo de ahora. Se quita con «Ver todos los
+            // años» o poniendo un rango de fechas propio.
+            'created' => $this->soloEsteAnio()
                 ? now()->startOfYear()->format('d/m/Y').' - '.now()->format('d/m/Y')
                 : null,
         ]);
@@ -116,6 +162,8 @@ class BookingList extends Component
 
         return view('livewire.operations.booking-list', [
             'filas' => $filas,
+            'puertosDescarga' => DB::table('dicharge_port')->where('deleted', 0)->orderBy('name')->pluck('name', 'dicharge_port_id')->all(),
+            'lugares' => DB::table('pickup_place')->orderBy('name')->pluck('name', 'pick_id')->all(),
         ])->layout('components.app-layout', [
             'title' => $this->mode === '9' ? 'Cotizaciones' : 'Bookings',
         ]);

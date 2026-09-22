@@ -227,8 +227,9 @@ La lista de verificación del expediente sale del **catálogo de hitos**, no de
 ningún rótulo escrito en la plantilla: se ajusta desde **Catálogos → Hitos** y se
 marca desde el propio expediente, con un clic por paso.
 
-Cada vertical trae los suyos: la marítima, los catorce del sistema de origen
-(recolección, corte documental, VGM, zarpe, BL…); la terrestre, los nueve de un
+Cada vertical trae los suyos: la marítima, los quince del sistema de origen
+(maniobra de vacío, recolección, corte documental, VGM, zarpe, BL…); la
+terrestre, los nueve de un
 viaje por carretera (asignación, llegada a carga, cargado, salida, llegada,
 descargado, evidencia de entrega, facturado, liquidado al operador).
 
@@ -252,7 +253,17 @@ MARCA_AVANCE=hitos
 De ahí sale también el **porcentaje de avance**. El valor `verificacion` recupera
 el cálculo heredado —27 casillas `_chk_date` divididas entre 26, con su 103.85 %
 cuando están todas— y va **solo en la instalación original**, donde el cliente
-lleva años viendo ese número.
+lleva años viendo ese número. Con ese valor el detalle enseña además las
+**verificaciones de datos del booking** (número, cliente, buque, POL, ETD, POD,
+ETA, tipo de contenedor, mercancía, set point, lugar de recolección y
+modalidad: `Checklist::DATOS_DEL_BOOKING`), que abren la lista en el sistema de
+origen y forman una sola cadena con los hitos; con `hitos` no salen, porque no
+cuentan para nada.
+
+Aparte de eso, y en cualquier instalación, el detalle trae la **lista de
+verificación del booking**: cinco fechas con hora en la propia tabla `booking`
+(arribo, liberación de la naviera, despacho, solicitud de transporte y entrega
+al consignatario, `Booking::LISTA_DE_VERIFICACION`), que marca el administrador.
 
 #### Planeado y cumplido son dos capas
 
@@ -265,14 +276,17 @@ palomita; debajo salen la fecha real, quién la marcó y el «delivery time»
 (`App\Support\Milestones\Checklist::retraso()`). Marcar **no toca** la fecha
 planeada: antes la pisaba con la de hoy y se perdía contra qué comparar.
 
-Reglas, heredadas del original: marcar es de cualquier usuario interno, pero
-quien no es administrador tiene que ir **en el orden del catálogo** (la anterior
-marcada) y no puede tocar una ya marcada; **desmarcar es de administradores**.
-`check_list_history` la escribe un disparador de la base, así que cada escritura
-firma `modified_by`. En el reporte de continuidad, «Ver cumplidas» enseña estas
-fechas en vez de las planeadas, de solo lectura.
+Reglas, heredadas del original: marcar y capturar la fecha planeada (en el
+detalle o en el reporte de continuidad, con hora; 00:00 si no se sabe) es de
+cualquier usuario interno, pero quien no es administrador tiene que ir **en el
+orden del catálogo** (la anterior marcada) y no puede tocar una ya marcada;
+**desmarcar es de administradores**. **Cerrar y reabrir** un expediente es del
+super administrador, como `lock` y `unlock` allá. `check_list_history` la
+escribe un disparador de la base, así que cada escritura firma `modified_by`. En
+el reporte de continuidad, «Ver cumplidas» enseña estas fechas en vez de las
+planeadas, de solo lectura.
 
-La casilla de cada hito es su `columna_legado`: los catorce de origen la tienen.
+La casilla de cada hito es su `columna_legado`: los quince de origen la tienen.
 Un hito **sin** columna heredada (los de la vertical terrestre, o uno añadido
 desde el catálogo) no tiene dónde guardar una segunda fecha, así que su fecha hace
 de planeada y de cumplida a la vez y se marca con la de hoy, como siempre.

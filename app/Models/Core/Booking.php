@@ -17,6 +17,15 @@ class Booking extends CoreModel
 
     public const TYPE_EXPORT = 2;
 
+    /**
+     * La lista de verificación del booking: cinco fechas con hora en esta misma
+     * tabla, heredadas del `_checklist.php` del formulario original. Sus
+     * etiquetas están en `BookingTimeline::ETIQUETAS`.
+     */
+    public const LISTA_DE_VERIFICACION = [
+        'arrival', 'realeased_from_shiping', 'customs_cleared', 'truck_service_request', 'delivered_consigned',
+    ];
+
     protected $table = 'booking';
 
     protected $primaryKey = 'booking_id';

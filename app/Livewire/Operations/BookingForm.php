@@ -108,8 +108,10 @@ class BookingForm extends Component
             return;
         }
 
+        // El arribo arranca igual a la carga, como en el original: el operador
+        // lo ajusta si lo sabe, y si no, no se inventa una fecha.
         $this->loadingDate = now()->toDateString();
-        $this->arrivalDate = now()->addWeeks(3)->toDateString();
+        $this->arrivalDate = $this->loadingDate;
 
         // «Copiar» del detalle: el formulario llega lleno con los datos de otro
         // booking salvo número, buque y candado, como el `copy_id` del original.
@@ -198,7 +200,9 @@ class BookingForm extends Component
             'loadingPort' => ['required', Rule::exists('loading_ports', 'port_id')],
             'loadingDate' => ['required', 'date'],
             'dischargePort' => ['required', Rule::exists('dicharge_port', 'dicharge_port_id')],
-            'arrivalDate' => ['required', 'date', 'after_or_equal:loadingDate'],
+            // Sin `after_or_equal:loadingDate` a propósito: el original acepta un
+            // arribo anterior a la carga y hay bookings históricos así.
+            'arrivalDate' => ['required', 'date'],
             'pickupPlace' => ['required', Rule::exists('pickup_place', 'pick_id')],
             'finalDestination' => ['nullable', Rule::exists('final_destination', 'final_destination_id')],
             'containerType' => ['nullable', Rule::exists('container_types', 'contType_id')],

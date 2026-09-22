@@ -128,7 +128,7 @@ abstract class PerfilDemo
      *
      * Son los que se marcan en el detalle del expediente y los que se capturan
      * en la rejilla de continuidad. Van por perfil porque un barco y un camión
-     * no pasan por lo mismo: aquí están los catorce del sistema de origen.
+     * no pasan por lo mismo: aquí están los quince del sistema de origen.
      *
      * · `columna` es la de `booking_continuity` que este hito refleja, para
      *   seguir alimentando el PDF de confirmación, los filtros del listado y el
@@ -142,6 +142,7 @@ abstract class PerfilDemo
     public function hitos(): array
     {
         return [
+            ['clave' => 'vacuum_maneuver', 'etiqueta' => 'Maniobra de vacío', 'columna' => 'vacuum_maneuver', 'dias' => -5],
             ['clave' => 'pickup_date', 'etiqueta' => 'Recolección', 'columna' => 'pickup_date', 'dias' => -4],
             ['clave' => 'insurance', 'etiqueta' => 'Seguro', 'columna' => 'insurance', 'dias' => -5],
             ['clave' => 'doc_cut_of', 'etiqueta' => 'Corte documental', 'columna' => 'doc_cut_of', 'dias' => -3],

@@ -100,6 +100,54 @@ class BookingFilesTest extends TestCase
         $this->assertSame('dos.pdf', DB::table('files_by_booking')->value('value'));
     }
 
+    /** Como el `delete-file` del original: se quita el renglón, el archivo se queda. */
+    public function test_quitar_un_documento_no_lo_borra_del_disco(): void
+    {
+        DB::table('files_by_booking')->insert([
+            'booking_file_id' => 1, 'booking_id' => 1, 'field_id' => 1, 'value' => 'uno.pdf',
+        ]);
+        Storage::disk('documentos')->put('bookings/1/docs/uno.pdf', 'contenido');
+
+        $this->detalle()->call('removeFile', 1, 'uno.pdf');
+
+        Storage::disk('documentos')->assertExists('bookings/1/docs/uno.pdf');
+    }
+
+    /** Solo las extensiones que aceptaba el original. */
+    public function test_solo_se_adjuntan_las_extensiones_del_original(): void
+    {
+        $this->detalle()
+            ->call('chooseField', 1)
+            ->set('upload', UploadedFile::fake()->create('virus.exe', 10))
+            ->assertHasErrors('upload');
+
+        $this->assertSame(0, DB::table('files_by_booking')->count());
+    }
+
+    public function test_una_hoja_de_calculo_se_adjunta(): void
+    {
+        $this->detalle()
+            ->call('chooseField', 1)
+            ->set('upload', UploadedFile::fake()->create('costos.xlsx', 10))
+            ->assertHasNoErrors();
+
+        $this->assertSame('costos.xlsx', DB::table('files_by_booking')->value('value'));
+    }
+
+    /** Lo que no es PDF ni imagen se descarga aunque se pida verlo. */
+    public function test_lo_que_no_es_pdf_ni_imagen_siempre_se_descarga(): void
+    {
+        DB::table('files_by_booking')->insert([
+            'booking_file_id' => 1, 'booking_id' => 1, 'field_id' => 1, 'value' => 'costos.xlsx',
+        ]);
+        Storage::disk('documentos')->put('bookings/1/docs/costos.xlsx', 'contenido');
+
+        $this->actingAs($this->usuario());
+
+        $this->get(route('operations.bookings.file', [1, 'costos.xlsx', 'ver' => 1]))
+            ->assertOk()->assertHeader('content-disposition', 'attachment; filename=costos.xlsx');
+    }
+
     public function test_la_descarga_verifica_que_el_archivo_sea_de_ese_booking(): void
     {
         DB::table('files_by_booking')->insert([
