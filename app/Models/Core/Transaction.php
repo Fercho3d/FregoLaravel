@@ -124,6 +124,41 @@ class Transaction extends CoreModel
         return static::typeText($this->invoice_type, $this->tran_type);
     }
 
+    /**
+     * El tipo, para enseñarlo: es `typeText` traducido. Sin esta columna una
+     * nota de crédito de proveedor solo se distinguía de un costo por el signo.
+     */
+    public static function typeLabel(?int $invoiceType, ?int $tranType): string
+    {
+        return match (true) {
+            $tranType === self::TYPE_BILL => __('Costo'),
+            $tranType === self::TYPE_CREDIT_BILL => __('Nota de crédito prov.'),
+            $invoiceType === self::INVOICE_TYPE_HISTORY => __('Histórica'),
+            $invoiceType === self::INVOICE_TYPE_CREDIT => __('Nota de crédito cliente'),
+            default => __('Factura'),
+        };
+    }
+
+    /**
+     * Por qué esta factura no se puede timbrar a nombre de su compañía, o null
+     * si sí. Es `getEmisorError()` del original: sin compañía, o con una a la
+     * que le faltan datos fiscales, el PAC timbraría a nombre equivocado.
+     */
+    public function emisorError(): ?string
+    {
+        if (blank($this->company_id)) {
+            return __('Esta transacción no tiene compañía emisora, así que no se sabe con qué RFC timbrar. Asígnale una antes de timbrar.');
+        }
+
+        $compania = $this->company;
+
+        if ($compania === null) {
+            return __('La compañía emisora de esta transacción ya no existe. Asígnale una válida antes de timbrar.');
+        }
+
+        return $compania->fiscalWarning();
+    }
+
     public function getFolioAttribute(): string
     {
         return str_pad((string) $this->invoice, 4, '0', STR_PAD_LEFT);

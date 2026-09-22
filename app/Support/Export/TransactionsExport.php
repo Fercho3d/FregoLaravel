@@ -2,6 +2,7 @@
 
 namespace App\Support\Export;
 
+use App\Models\Core\Transaction;
 use App\Queries\TransactionFilters;
 use App\Queries\TransactionQuery;
 use App\Support\PaymentStatus;
@@ -31,6 +32,7 @@ class TransactionsExport
         'Booking' => 'booking_number',
         'Fecha' => 'tran_date',
         'Número' => 'tran_number',
+        'Tipo' => 'tipo',
         'Aplicado a' => 'appliedTo',
         'Compañía' => 'companyName',
         'Ccy' => 'currency',
@@ -84,6 +86,7 @@ class TransactionsExport
         foreach (self::COLUMNAS as $propiedad) {
             $valores[] = match ($propiedad) {
                 'tran_date' => $fila->tran_date ? substr((string) $fila->tran_date, 0, 10) : '',
+                'tipo' => Transaction::typeLabel($fila->invoice_type, $fila->tran_type),
                 'appliedTo' => (string) ($fila->customerName ?: $fila->vendorName),
                 'estado' => PaymentStatus::for($fila)->label(),
                 'seal' => (string) $fila->seal,

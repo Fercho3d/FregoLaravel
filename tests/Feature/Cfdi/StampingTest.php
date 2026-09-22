@@ -152,6 +152,56 @@ class StampingTest extends TestCase
         $this->assertNull(Transaction::find(1)->seal);
     }
 
+    // ---------------------------------------------------- Compañía emisora
+
+    /**
+     * Sin compañía el layout caía al RFC de la CUENTA del PAC y se timbraba a
+     * nombre equivocado. El original abortaba con `getEmisorError()`; aquí igual,
+     * y sin llegar al PAC.
+     */
+    public function test_sin_compania_emisora_no_se_timbra(): void
+    {
+        DB::table('transaction')->where('transc_id', 1)->update(['company_id' => null]);
+
+        $this->detalle()->call('stamp')->assertHasErrors('cfdi');
+
+        $this->assertNull(Transaction::find(1)->seal);
+        $this->assertNull($this->pac->layoutRecibido, 'No debió llegar al PAC.');
+    }
+
+    public function test_con_datos_fiscales_incompletos_no_se_timbra(): void
+    {
+        DB::table('company')->where('company_id', 1)->update(['postal_code' => null, 'regimen_fiscal' => '']);
+
+        $errores = $this->detalle()->call('stamp')->assertHasErrors('cfdi')->errors();
+
+        $this->assertStringContainsString('Régimen fiscal', $errores->first('cfdi'));
+        $this->assertStringContainsString('C.P.', $errores->first('cfdi'));
+        $this->assertNull($this->pac->layoutRecibido, 'No debió llegar al PAC.');
+    }
+
+    public function test_una_compania_inexistente_tampoco_timbra(): void
+    {
+        DB::table('transaction')->where('transc_id', 1)->update(['company_id' => 99]);
+
+        $this->detalle()->call('stamp')->assertHasErrors('cfdi');
+
+        $this->assertNull($this->pac->layoutRecibido);
+    }
+
+    /** El aviso se ve ANTES de pulsar Timbrar, como el `fiscalWarning` del original. */
+    public function test_el_detalle_avisa_antes_de_timbrar_si_falta_la_compania(): void
+    {
+        DB::table('transaction')->where('transc_id', 1)->update(['company_id' => null]);
+
+        $this->detalle()->assertSee('no tiene compañía emisora');
+    }
+
+    public function test_el_detalle_no_avisa_cuando_la_compania_esta_completa(): void
+    {
+        $this->detalle()->assertDontSee('datos fiscales');
+    }
+
     // ---------------------------------------------------------- Cancelación
 
     public function test_cancelar_usa_el_rfc_con_el_que_se_timbro(): void
@@ -186,6 +236,37 @@ class StampingTest extends TestCase
     public function test_una_factura_sin_timbrar_no_se_cancela(): void
     {
         $this->detalle()->call('startCancel')->assertForbidden();
+    }
+
+    public function test_con_el_motivo_01_viaja_el_folio_que_sustituye(): void
+    {
+        $this->detalle()->call('stamp')->assertHasNoErrors();
+
+        $this->detalle()
+            ->call('startCancel')
+            ->set('cancelReason', '01')
+            ->set('replacementUuid', 'UUID-NUEVO')
+            ->call('cancelStamp')
+            ->assertHasNoErrors();
+
+        $this->assertSame('UUID-NUEVO', $this->pac->cancelaciones[0]['sustituye']);
+        $this->assertSame('UUID-NUEVO', Transaction::find(1)->new_seal);
+    }
+
+    /** El SAT solo admite folio de sustitución con el 01; con otro motivo se descarta aunque esté capturado. */
+    public function test_el_folio_de_sustitucion_no_viaja_con_otros_motivos(): void
+    {
+        $this->detalle()->call('stamp')->assertHasNoErrors();
+
+        $this->detalle()
+            ->call('startCancel')
+            ->set('cancelReason', '02')
+            ->set('replacementUuid', 'UUID-QUE-SOBRA')
+            ->call('cancelStamp')
+            ->assertHasNoErrors();
+
+        $this->assertNull($this->pac->cancelaciones[0]['sustituye']);
+        $this->assertNull(Transaction::find(1)->new_seal);
     }
 
     /**

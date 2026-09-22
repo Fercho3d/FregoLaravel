@@ -127,6 +127,9 @@ class ProfitByBooking
         $filtros = TransactionFilters::make([]);
         $filtros->type = $tipos;
         $filtros->booking_in = $bookings;
+        // Los importes son del booking completo, sin el filtro de la pantalla,
+        // pero el modo sí se hereda: una cotización (modo 9) no sale si no.
+        $filtros->showQuatation = $this->filters->showQuatation;
 
         $inner = TransactionQuery::make($filtros)->aggregateQuery()->reorder();
 

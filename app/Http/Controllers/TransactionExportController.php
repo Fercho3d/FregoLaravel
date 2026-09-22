@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Core\Booking;
 use App\Queries\TransactionFilters;
 use App\Support\Export\TransactionsExport;
 use Illuminate\Http\Request;
@@ -36,14 +37,20 @@ class TransactionExportController extends Controller
             'direction' => (string) $request->query('dir', 'desc'),
         ]);
 
-        // El filtro base de cada pantalla, igual que en el listado.
+        // El filtro base de cada pantalla, igual que en el listado. Un booking
+        // que es cotización (modo 9) se pide como tal o la descarga sale vacía.
         match ($screen) {
             'invoice' => $filtros->type = [0],
             'bill' => [$filtros->type = [1, 2], $filtros->paymentMode = true],
-            'booking' => $filtros->booking = (int) $request->query('booking'),
+            'booking' => [
+                $filtros->booking = (int) $request->query('booking'),
+                $filtros->showQuatation = Booking::find((int) $request->query('booking'))?->isQuotation() ?? false,
+            ],
             'report' => $filtros->groupBy = 'booking',
             default => null,
         };
+
+        $filtros->applyDocumentType($request->query('tipo'));
 
         $nombre = 'transacciones-'.$screen.'-'.now()->format('Ymd-His').'.csv';
 

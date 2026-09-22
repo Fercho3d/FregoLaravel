@@ -41,6 +41,12 @@ class CancelStamp
             throw new CfdiException('El motivo 01 exige el folio fiscal del comprobante que lo sustituye.');
         }
 
+        // El SAT solo admite folio de sustitución con el motivo 01; con los demás
+        // se descarta aunque venga capturado, para no mandárselo al PAC.
+        if ($motivo !== '01') {
+            $sustituye = null;
+        }
+
         $this->pac->cancel($transaccion->seal, $this->emisorRfc($transaccion), $motivo, $sustituye);
 
         $transaccion->forceFill([

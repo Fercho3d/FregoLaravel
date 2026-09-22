@@ -110,7 +110,13 @@ class TransactionForm extends Component
         }
 
         $this->bookingId = $booking;
-        $this->tranType = $tipo === 'costo' ? Transaction::TYPE_BILL : Transaction::TYPE_INVOICE;
+        // Los tres botones de la pantalla del booking en el original: Invoice,
+        // Bill y Credit Bill (nota de crédito de proveedor, que resta al costo).
+        $this->tranType = match ($tipo) {
+            'costo' => Transaction::TYPE_BILL,
+            'nota-credito' => Transaction::TYPE_CREDIT_BILL,
+            default => Transaction::TYPE_INVOICE,
+        };
         $this->tranDate = now()->toDateString();
         $this->invoiceType = (string) Transaction::INVOICE_TYPE_NORMAL;
     }
@@ -159,6 +165,11 @@ class TransactionForm extends Component
     public function isInvoice(): bool
     {
         return $this->tranType === Transaction::TYPE_INVOICE;
+    }
+
+    public function isCreditBill(): bool
+    {
+        return $this->tranType === Transaction::TYPE_CREDIT_BILL;
     }
 
     public function isLocked(): bool
@@ -347,10 +358,12 @@ class TransactionForm extends Component
     {
         // Se escribe entero y no armando la cadena por partes: «factura» es
         // femenino y «costo» masculino, y así no sale «Nueva costo».
-        return match (true) {
-            $this->transactionId !== null => $this->isInvoice() ? __('Editar factura') : __('Editar costo'),
-            $this->isInvoice() => __('Nueva factura'),
-            default => __('Nuevo costo'),
+        $editar = $this->transactionId !== null;
+
+        return match ($this->tranType) {
+            Transaction::TYPE_INVOICE => $editar ? __('Editar factura') : __('Nueva factura'),
+            Transaction::TYPE_CREDIT_BILL => $editar ? __('Editar nota de crédito de proveedor') : __('Nueva nota de crédito de proveedor'),
+            default => $editar ? __('Editar costo') : __('Nuevo costo'),
         };
     }
 }

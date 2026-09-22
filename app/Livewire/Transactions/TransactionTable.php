@@ -60,6 +60,10 @@ class TransactionTable extends Component
     #[Url(as: 'canc', except: '0')]
     public string $showCancelled = '0';
 
+    /** Tipo de documento (clave de `TransactionFilters::documentTypes()`); '' = todos. */
+    #[Url(as: 'tipo', except: '')]
+    public string $docType = '';
+
     #[Url(as: 'ord', except: 'transc_id')]
     public string $sort = 'transc_id';
 
@@ -107,6 +111,8 @@ class TransactionTable extends Component
     /** Milisegundos que tardó la consulta de la última pintada. */
     public float $queryMs = 0;
 
+    private ?Booking $bookingCache = null;
+
     /** Propiedades que cambian el conjunto de renglones (ver `updated()`). */
     private const FILTERS = [
         'tranNumber',
@@ -117,6 +123,7 @@ class TransactionTable extends Component
         'accountId',
         'paid',
         'showCancelled',
+        'docType',
         'perPage',
     ];
 
@@ -211,7 +218,7 @@ class TransactionTable extends Component
 
     public function clearFilters(): void
     {
-        $this->reset(['tranNumber', 'bookingNumber', 'appliedTo', 'dates', 'companyId', 'accountId', 'paid']);
+        $this->reset(['tranNumber', 'bookingNumber', 'appliedTo', 'dates', 'companyId', 'accountId', 'paid', 'docType']);
         // Limpiar vuelve al default (año en curso), no a «toda la historia».
         if ($this->screen !== 'booking') {
             $this->dates = $this->defaultDates();
@@ -375,6 +382,7 @@ class TransactionTable extends Component
             'ccy' => $this->accountId,
             'pago' => $this->paid,
             'canc' => $this->showCancelled,
+            'tipo' => $this->docType,
             'ord' => $this->sort,
             'dir' => $this->direction,
         ], fn ($valor) => $valor !== null && $valor !== '');
@@ -421,6 +429,49 @@ class TransactionTable extends Component
     public function allowsSelection(): bool
     {
         return in_array($this->screen, ['invoice', 'bill'], true);
+    }
+
+    /**
+     * Por qué este renglón no se puede marcar para una solicitud de pago, o
+     * null si sí. El original deshabilitaba la casilla de los documentos ya
+     * saldados (con importe y sin saldo); aquí también la de los cancelados,
+     * que no tienen nada que cobrar ni pagar.
+     */
+    public function unselectableReason(object $row): ?string
+    {
+        if ($row->cancelled) {
+            return __('Cancelada: no entra en una solicitud de pago.');
+        }
+
+        $saldada = round((float) $row->amount_original, 2) !== 0.0
+            && round((float) $row->left_to_pay, 2) === 0.0;
+
+        return $saldada ? __('Ya está saldada: no queda nada por cobrar ni pagar.') : null;
+    }
+
+    /**
+     * Tipos de documento que se ofrecen en el filtro «Tipo» de esta pantalla:
+     * solo los que caben en su filtro base (en Facturas no se ofrece «Costo»).
+     *
+     * @return array<string, string> clave => etiqueta
+     */
+    public function typeOptions(): array
+    {
+        $delaPantalla = match ($this->screen) {
+            'invoice' => [Transaction::TYPE_INVOICE],
+            'bill' => [Transaction::TYPE_BILL, Transaction::TYPE_CREDIT_BILL],
+            default => [],
+        };
+
+        return collect(TransactionFilters::documentTypes())
+            ->filter(fn (array $definicion) => $delaPantalla === [] || in_array($definicion['type'], $delaPantalla, true))
+            ->map(fn (array $definicion) => Transaction::typeLabel($definicion['invoice_type'], $definicion['type']))
+            ->all();
+    }
+
+    private function booking(): ?Booking
+    {
+        return $this->bookingCache ??= ($this->bookingId ? Booking::find($this->bookingId) : null);
     }
 
     /** Utilidad por booking: facturas menos costos, a TC del documento y del pago. */
@@ -484,12 +535,20 @@ class TransactionTable extends Component
 
         // Cada pantalla es el mismo motor con otro filtro base, igual que las
         // acciones actionInvoice / actionBill / actionAll / actionIndex de Yii2.
+        // El motor filtra por `booking.mode`, así que la pantalla de un booking
+        // tiene que decirle si es cotización (modo 9): si no, salía vacía.
         match ($this->screen) {
             'invoice' => $filters->type = [0],
             'bill' => [$filters->type = [1, 2], $filters->paymentMode = true],
-            'booking' => $filters->booking = $this->bookingId,
+            'booking' => [
+                $filters->booking = $this->bookingId,
+                $filters->showQuatation = $this->booking()?->isQuotation() ?? false,
+            ],
             default => null,
         };
+
+        // Va después del filtro base porque solo lo estrecha.
+        $filters->applyDocumentType($this->docType ?: null);
 
         return $filters;
     }
@@ -517,7 +576,7 @@ class TransactionTable extends Component
             'rows' => $rows,
             'companies' => Company::options(),
             'currencies' => Account::options(),
-            'booking' => $this->bookingId ? Booking::find($this->bookingId) : null,
+            'booking' => $this->booking(),
             // En la pantalla de un booking la utilidad va siempre, como en el
             // original: es una sola consulta chica.
             'bookingProfit' => $this->screen === 'booking'

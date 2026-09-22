@@ -20,12 +20,12 @@ class FacturacionModernaClient implements PacClient
 
     public function stamp(string $layout): StampedInvoice
     {
-        $respuesta = $this->call('requestTimbrarCFDI', [
+        $respuesta = $this->soap('requestTimbrarCFDI', [
             'text2CFDI' => base64_encode($layout),
             'generarCBB' => false,
             'generarPDF' => true,
             'generarTXT' => false,
-        ]);
+        ] + $this->credentials(), $this->endpoint());
 
         $xml = isset($respuesta->xml) ? base64_decode($respuesta->xml) : null;
 
@@ -40,14 +40,33 @@ class FacturacionModernaClient implements PacClient
         );
     }
 
+    /**
+     * La petición es la MISMA que arma `FacturacionModerna::cancelar()` de Yii2,
+     * que es la que hoy funciona en producción: método `requestCancelarCFDI`
+     * contra el endpoint de timbrado, claves `Motivo`, `FolioSustitucion` (solo
+     * con el motivo 01: con otros el PAC la rechaza) y `uuid` en minúsculas, más
+     * las credenciales de la cuenta.
+     *
+     * En producción `emisorRFC` es el RFC con el que se timbró; en pruebas el
+     * original manda el de la cuenta demo, y aquí igual.
+     */
     public function cancel(string $uuid, string $rfcEmisor, string $motivo, ?string $sustituye = null): void
     {
-        $this->call('cancelarCFDI', array_filter([
-            'UUID' => $uuid,
-            'emisorRFC' => $rfcEmisor,
-            'motivo' => $motivo,
-            'folioSustitucion' => $sustituye,
-        ], fn ($valor) => $valor !== null), $rfcEmisor, $this->cancellationEndpoint());
+        $peticion = ['Motivo' => $motivo];
+
+        if ($motivo === '01') {
+            $peticion['FolioSustitucion'] = (string) $sustituye;
+        }
+
+        $peticion['uuid'] = $uuid;
+
+        $credenciales = $this->credentials();
+
+        if (config('timbrado.produccion')) {
+            $credenciales['emisorRFC'] = $rfcEmisor;
+        }
+
+        $this->soap('requestCancelarCFDI', $peticion + $credenciales, $this->cancellationEndpoint());
     }
 
     /**
@@ -71,19 +90,17 @@ class FacturacionModernaClient implements PacClient
         return (string) $timbre[0]['UUID'];
     }
 
-    /** @param  array<string, mixed>  $argumentos */
-    private function call(string $metodo, array $argumentos, ?string $rfcCuenta = null, ?string $endpoint = null): object
+    /**
+     * La llamada SOAP en sí. Es lo único que sale a la red, y por eso va aparte
+     * y es sobrescribible: las pruebas la sustituyen para ver qué petición se
+     * armó sin hablar con el PAC.
+     *
+     * @param  array<string, mixed>  $peticion  Ya con las credenciales.
+     */
+    protected function soap(string $metodo, array $peticion, string $endpoint): object
     {
-        $credenciales = $this->credentials();
-
-        $peticion = array_merge($argumentos, [
-            'emisorRFC' => $rfcCuenta ?? $credenciales['rfc_cuenta'],
-            'UserID' => $credenciales['usuario'],
-            'UserPass' => $credenciales['password'],
-        ]);
-
         try {
-            $cliente = new SoapClient($endpoint ?? $this->endpoint(), [
+            $cliente = new SoapClient($endpoint, [
                 'exceptions' => true,
                 'trace' => 1,
                 'cache_wsdl' => WSDL_CACHE_NONE,
@@ -117,11 +134,18 @@ class FacturacionModernaClient implements PacClient
         }
     }
 
-    /** @return array{rfc_cuenta: string, usuario: string, password: string} */
+    /**
+     * Credenciales de la cuenta del PAC, con los nombres de clave que espera su
+     * servicio web.
+     *
+     * @return array{emisorRFC: string, UserID: string, UserPass: string}
+     */
     private function credentials(): array
     {
         if (! config('timbrado.produccion')) {
-            return config('timbrado.demo');
+            $demo = config('timbrado.demo');
+
+            return ['emisorRFC' => $demo['rfc_cuenta'], 'UserID' => $demo['usuario'], 'UserPass' => $demo['password']];
         }
 
         foreach (['rfc_cuenta', 'usuario', 'password'] as $clave) {
@@ -133,9 +157,9 @@ class FacturacionModernaClient implements PacClient
         }
 
         return [
-            'rfc_cuenta' => config('timbrado.rfc_cuenta'),
-            'usuario' => config('timbrado.usuario'),
-            'password' => config('timbrado.password'),
+            'emisorRFC' => config('timbrado.rfc_cuenta'),
+            'UserID' => config('timbrado.usuario'),
+            'UserPass' => config('timbrado.password'),
         ];
     }
 
@@ -146,7 +170,11 @@ class FacturacionModernaClient implements PacClient
             : config('timbrado.endpoints.pruebas');
     }
 
-    /** Un CFDI se cancela ante el MISMO PAC que lo timbró. */
+    /**
+     * Un CFDI se cancela ante el MISMO PAC que lo timbró: por omisión es el
+     * endpoint de timbrado, como en el original, que también admitía
+     * sobrescribirlo (`urlCancelacion`).
+     */
     private function cancellationEndpoint(): string
     {
         return config('timbrado.endpoints.cancelacion') ?: $this->endpoint();

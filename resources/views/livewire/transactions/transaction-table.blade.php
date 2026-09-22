@@ -1,17 +1,19 @@
 @use('App\Support\PaymentStatus')
+@use('App\Models\Core\Transaction')
 
 @php
     $money = fn ($v) => $v === null ? '—' : number_format((float) $v, 2);
 
     // Cuántos filtros trae puestos: se muestra en el botón cuando el panel está
     // plegado, para que no se pierda de vista que la lista viene acotada.
-    $activos = collect([$tranNumber, $bookingNumber, $appliedTo, $dates, $companyId, $accountId, $paid])
+    $activos = collect([$tranNumber, $bookingNumber, $appliedTo, $dates, $companyId, $accountId, $paid, $docType])
         ->filter(fn ($v) => filled($v))
         ->count() + ($showCancelled !== '0' ? 1 : 0);
     $columns = [
         ['booking', 'Booking', 'text-left'],
         ['tran_date', __('Fecha'), 'text-left'],
         ['tran_number', __('Número'), 'text-left'],
+        ['tran_type', __('Tipo'), 'text-left'],
         ['applied_to', __('Aplicado a'), 'text-left'],
         ['company', __('Compañía'), 'text-left'],
         ['currency', 'Ccy', 'text-left'],
@@ -51,7 +53,7 @@
 
             {{-- El alta necesita saber a qué booking pertenece; por eso solo se
                  ofrece desde esta pantalla. --}}
-            @foreach ([['factura', __('Nueva factura')], ['costo', __('Nuevo costo')]] as [$tipo, $etiqueta])
+            @foreach ([['factura', __('Nueva factura')], ['costo', __('Nuevo costo')], ['nota-credito', __('Nueva nota de crédito')]] as [$tipo, $etiqueta])
                 <a href="{{ route('transactions.create', ['booking' => $booking->booking_id, 'tipo' => $tipo]) }}"
                    wire:navigate class="btn-ghost px-3 py-1.5 text-xs">{{ $etiqueta }}</a>
             @endforeach
@@ -142,6 +144,20 @@
                     @endforeach
                 </select>
             </label>
+
+            @if ($screen !== 'booking')
+                {{-- Tipo de documento: la única forma de distinguir una nota de
+                     crédito de proveedor de un costo sin mirar el signo. --}}
+                <label class="block">
+                    <span class="field-label text-xs">{{ __('Tipo') }}</span>
+                    <select wire:model="docType" class="field-input mt-1 py-1.5 text-sm">
+                        <option value="">{{ __('Todos') }}</option>
+                        @foreach ($this->typeOptions() as $valor => $etiqueta)
+                            <option value="{{ $valor }}" @selected($valor === $docType)>{{ $etiqueta }}</option>
+                        @endforeach
+                    </select>
+                </label>
+            @endif
 
             <label class="block">
                 <span class="field-label text-xs">{{ __('Canceladas') }}</span>
@@ -431,7 +447,10 @@
                         <span class="{{ $status->classes() }} shrink-0">{{ $status->label() }}</span>
                     </div>
 
-                    <p class="truncate text-sm text-ink-muted">{{ $row->customerName ?: ($row->vendorName ?: '—') }}</p>
+                    <p class="truncate text-sm text-ink-muted">
+                        <span class="text-xs text-ink-faint">{{ Transaction::typeLabel($row->invoice_type, $row->tran_type) }} ·</span>
+                        {{ $row->customerName ?: ($row->vendorName ?: '—') }}
+                    </p>
 
                     <dl class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
                         <div class="flex justify-between gap-2">
@@ -501,10 +520,14 @@
                         @endphp
                         <tr class="transition {{ $marcada ? 'row-picked' : 'hover:bg-raised' }} {{ $row->cancelled ? 'opacity-50' : '' }}">
                             @if ($this->allowsSelection())
+                                @php $noSeleccionable = $this->unselectableReason($row); @endphp
                                 <td class="px-3 py-2">
+                                    {{-- Saldadas y canceladas no se marcan: no hay nada que
+                                         pagar, y el original también apagaba la casilla. --}}
                                     <input type="checkbox" wire:model.live="selected" value="{{ $row->transc_id }}"
                                            aria-label="Seleccionar transacción {{ $row->tran_number }}"
-                                           class="h-4 w-4 rounded border-line bg-panel text-accent-500 focus:ring-accent-500">
+                                           @disabled($noSeleccionable !== null) title="{{ $noSeleccionable }}"
+                                           class="h-4 w-4 rounded border-line bg-panel text-accent-500 focus:ring-accent-500 disabled:cursor-not-allowed disabled:opacity-40">
                                 </td>
                             @endif
                             {{-- Hay bookings que encadenan diez referencias («MXO…-TRJPT42/21-…»)
@@ -521,6 +544,9 @@
                                 <a href="{{ route('transactions.show', $row->transc_id) }}" wire:navigate
                                    title="{{ __('Abrir').' '.($row->tran_number ?: __('la transacción')) }}"
                                    class="font-medium text-brand hover:underline">{{ $row->tran_number ?: __('Abrir') }}</a>
+                            </td>
+                            <td class="whitespace-nowrap px-3 py-2 text-xs text-ink-muted">
+                                {{ Transaction::typeLabel($row->invoice_type, $row->tran_type) }}
                             </td>
                             <td class="max-w-[16rem] truncate px-3 py-2 text-ink-muted" title="{{ $row->customerName ?: $row->vendorName }}">
                                 {{ $row->customerName ?: ($row->vendorName ?: '—') }}
@@ -564,7 +590,7 @@
                 @if ($totals)
                     <tfoot class="border-t border-line bg-panel text-sm font-semibold">
                         <tr>
-                            <td colspan="{{ 6 + ($this->allowsSelection() ? 1 : 0) }}" class="px-3 py-2.5 text-ink-muted">{{ __('Total del filtro completo') }}</td>
+                            <td colspan="{{ 7 + ($this->allowsSelection() ? 1 : 0) }}" class="px-3 py-2.5 text-ink-muted">{{ __('Total del filtro completo') }}</td>
                             <td class="px-3 py-2.5 text-right tabular-nums text-ink">{{ $money($totals['amount_original']) }}</td>
                             <td></td>
                             <td class="px-3 py-2.5 text-right tabular-nums text-ink-soft">{{ $money($totals['sub_0_mxn']) }}</td>

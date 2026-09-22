@@ -4,6 +4,7 @@ namespace Tests\Feature\Transactions;
 
 use App\Livewire\Transactions\TransactionTable;
 use App\Models\User;
+use App\Models\UserPreference;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\Group;
@@ -23,19 +24,29 @@ class TransactionTableTest extends LegacyDatabaseTestCase
         $this->actingAs($this->userWithRole([User::ROLE_ADMIN, User::ROLE_SUPER_ADMIN]));
     }
 
-    /** @param  int[]  $roles */
+    /**
+     * Un usuario INTERNO y ACTIVO con (o sin) el rol: a los dados de baja el
+     * sistema los saca con una redirección antes de llegar a la pantalla, y a
+     * los del portal los manda a su portal. Se le fija el idioma en español
+     * porque lo que se afirma son textos, y el primer administrador de la base
+     * local tiene guardado el inglés.
+     *
+     * @param  int[]  $roles
+     */
     private function userWithRole(array $roles, bool $matching = true): User
     {
         $user = User::query()
             ->when($matching, fn ($q) => $q->whereIn('role', $roles), fn ($q) => $q->whereNotIn('role', $roles))
+            ->where(fn ($q) => $q->whereNull('status')->orWhere('status', 1))
+            ->where(fn ($q) => $q->whereNull('access')->orWhere('access', User::ACCESS_INTERNAL))
             ->orderBy('usr_id')
             ->first();
 
         if (! $user) {
-            $this->markTestSkipped('La base local no tiene un usuario con el rol necesario.');
+            $this->markTestSkipped('La base local no tiene un usuario activo con el rol necesario.');
         }
 
-        return $user;
+        return $user->setRelation('preference', (new UserPreference)->forceFill(['locale' => 'es']));
     }
 
     public function test_la_facturacion_es_solo_para_administradores(): void
@@ -185,11 +196,12 @@ class TransactionTableTest extends LegacyDatabaseTestCase
             ->assertSee('x-on:click="abierto = !abierto"', false)
             ->assertSee(__('Filtros'));
 
-        // Sin filtros no hay contador; con dos, aparece el 2.
-        $componente->assertDontSeeHtml('text-accent-400">1<')
+        // El listado arranca acotado al año en curso, así que ya hay un filtro
+        // puesto; con dos más, el contador dice 3.
+        $componente->assertSeeHtml('text-brand">1</span>')
             ->set('tranNumber', 'F-1')
             ->set('paid', '0')
-            ->assertSeeHtml('>2<');
+            ->assertSeeHtml('text-brand">3</span>');
     }
 
     public function test_la_pantalla_de_un_booking_solo_trae_ese_booking(): void

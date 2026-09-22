@@ -179,6 +179,49 @@ class TransactionFormTest extends TestCase
         $this->assertSame(0, Transaction::count());
     }
 
+    /** El «Credit Bill» del original: nota de crédito de proveedor, `tran_type` 2. */
+    public function test_una_nota_de_credito_de_proveedor_se_crea_con_su_tipo(): void
+    {
+        $this->actingAs($this->usuario());
+
+        $this->formulario(['booking' => 1, 'tipo' => 'nota-credito'], [
+            'tranDate' => '2026-01-15',
+            'accountId' => '1',
+            'vendorId' => '1',
+            'tranNumber' => 'NC-77',
+        ])->call('save')->assertHasNoErrors();
+
+        $creada = Transaction::first();
+
+        $this->assertSame(Transaction::TYPE_CREDIT_BILL, (int) $creada->tran_type);
+        $this->assertSame(1, (int) $creada->vendor);
+        $this->assertNull($creada->customer);
+        $this->assertSame('NC-77', $creada->tran_number, 'El número se captura a mano, como en los costos.');
+    }
+
+    public function test_una_nota_de_credito_de_proveedor_exige_proveedor(): void
+    {
+        $this->actingAs($this->usuario());
+
+        $this->formulario(['booking' => 1, 'tipo' => 'nota-credito'], [
+            'tranDate' => '2026-01-15',
+            'accountId' => '1',
+        ])->call('save')->assertHasErrors('vendorId');
+
+        $this->assertSame(0, Transaction::count());
+    }
+
+    public function test_la_pantalla_de_alta_de_la_nota_de_credito_se_presenta_como_tal(): void
+    {
+        $this->actingAs($this->usuario());
+
+        Livewire::withQueryParams(['booking' => 1, 'tipo' => 'nota-credito'])
+            ->test(TransactionForm::class)
+            ->assertSee(__('Nueva nota de crédito de proveedor'))
+            ->assertSee(__('Proveedor'))
+            ->assertSee('se capturan en positivo');
+    }
+
     public function test_un_proveedor_no_puede_repetirse_en_el_mismo_booking(): void
     {
         $this->actingAs($this->usuario());

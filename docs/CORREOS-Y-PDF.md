@@ -35,7 +35,7 @@ Rarezas que el documento conserva:
 
 | Correo | Cuándo sale | A quién |
 | --- | --- | --- |
-| Confirmación de booking | al dar de alta un booking en firme, y a mano desde el detalle | correos de notificación del cliente |
+| Confirmación de booking | al **confirmar** el borrador desde el detalle (nunca en cotizaciones), y a mano desde el detalle | correos de notificación del cliente |
 | Factura timbrada (PDF + XML) | al timbrar, y a mano con «Reenviar al cliente» | cliente, con copia oculta interna |
 | Tarea sin marcar | comando programado, dos niveles | soporte de operación |
 
@@ -81,6 +81,33 @@ original, así que ese hito manda dos correos iguales.
 Diferencia de forma: el original consultaba la continuidad y la lista de
 verificación una vez por booking —unas diez mil consultas por corrida— y aquí las
 tres tablas se traen de una vez. Los correos que salen son los mismos.
+
+## Timbrado y cancelación de CFDI
+
+El CFDI se timbra y se cancela ante Facturación Moderna con el cliente SOAP de
+`App\Support\Cfdi\FacturacionModernaClient`, traducción del componente
+`FacturacionModerna` de Yii2.
+
+**Antes de timbrar se exige la compañía emisora completa.** Si la transacción
+no tiene compañía, la compañía ya no existe o le falta RFC, razón social,
+régimen fiscal o código postal, el timbrado se detiene con el mismo aviso que
+daba el original (`getEmisorError()` / `fiscalWarning`) y el aviso se ve en el
+detalle de la factura antes del botón Timbrar. El layout ya no cae al RFC ni al
+nombre de la cuenta del PAC: antes de esto se podía timbrar a nombre
+equivocado.
+
+**La cancelación viaja igual que en el original**, que es lo que funciona hoy
+en producción: método `requestCancelarCFDI` contra el mismo endpoint del
+timbrado (se puede sobrescribir con `TIMBRADO_URL_CANCELACION`), con las
+claves `Motivo`, `FolioSustitucion` (solo con el motivo 01) y `uuid`, más
+`emisorRFC`, `UserID` y `UserPass`. En producción `emisorRFC` es el RFC con el
+que se timbró, leído del XML guardado; en pruebas es el de la cuenta demo,
+como hacía el original.
+
+**Pendiente: probar la cancelación en el sandbox del PAC** antes de cancelar
+una factura real desde esta aplicación. Las pruebas automáticas fijan la
+petición que se arma (`FacturacionModernaClientTest`), pero nunca hablan con
+el PAC; la única comprobación de punta a punta es la del sistema viejo.
 
 ## Dos cosas del original que no se pudieron dejar igual
 

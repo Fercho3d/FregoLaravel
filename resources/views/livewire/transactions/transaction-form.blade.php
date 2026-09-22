@@ -42,6 +42,12 @@
 
         @include('partials.validation-errors')
 
+        @if ($this->isCreditBill())
+            <p class="rounded-lg border border-line bg-raised px-3 py-2 text-xs text-ink-muted">
+                {{ __('Los conceptos de una nota de crédito de proveedor se capturan en positivo; el sistema los resta del costo del booking, igual que el original.') }}
+            </p>
+        @endif
+
         <div class="grid gap-4 sm:grid-cols-2">
             <label class="block">
                 <span class="field-label">{{ __('Fecha') }}</span>

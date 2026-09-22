@@ -295,6 +295,16 @@ class TransactionDetail extends Component
             && $this->charges()->isNotEmpty();
     }
 
+    /**
+     * Aviso de que la factura no se podrá timbrar a nombre de su compañía (sin
+     * compañía o con datos fiscales incompletos), para verlo ANTES de pulsar
+     * Timbrar. Es el `fiscalWarning` que el original pintaba en el formulario.
+     */
+    public function emisorWarning(): ?string
+    {
+        return $this->canStamp() ? $this->transaction()->emisorError() : null;
+    }
+
     public function canCancel(): bool
     {
         $transaccion = $this->transaction();

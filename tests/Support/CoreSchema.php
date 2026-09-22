@@ -127,7 +127,8 @@ class CoreSchema
             $table->string('customer_reference')->nullable();
             $table->string('commodity')->nullable();
             $table->string('set_point')->nullable();
-            $table->string('booking_type')->nullable();
+            // Entero como en producción: 1 = importación, 2 = exportación.
+            $table->integer('booking_type')->nullable();
             $table->date('dicharge_ETA')->nullable();
             $table->date('arrival')->nullable();
             $table->integer('vessel')->nullable();
@@ -510,9 +511,13 @@ class CoreSchema
             $table->decimal('longitud', 9, 6)->nullable();
         });
 
+        // Cumplimiento de la lista de verificación: por casilla, cuándo se marcó
+        // y quién. `modified_by` es el autor que lee el disparador de
+        // `check_list_history` en producción.
         Schema::create('check_list', function ($table) {
             $table->increments('check_id');
             $table->integer('booking')->nullable();
+            $table->integer('modified_by')->nullable();
 
             foreach ([
                 'booking_number', 'pickup_date', 'modality', 'doc_cut_of', 'SI_date', 'cleared',
@@ -522,6 +527,7 @@ class CoreSchema
                 'delivered', 'pick_up_place', 'insurance', 'corrected_draft', 'vgm',
             ] as $casilla) {
                 $table->dateTime($casilla.'_chk_date')->nullable();
+                $table->integer($casilla.'_chk_by')->nullable();
             }
         });
 
@@ -547,19 +553,24 @@ class CoreSchema
             $table->text('value')->nullable();
         });
 
+        // En producción `booking`, `container_type`, `quantity`, `comodity` y
+        // las cuatro columnas de auditoría son NOT NULL **sin default**: un NULL
+        // explícito falla allá y tiene que fallar aquí. El default de las de
+        // auditoría y de `comodity` no existe en producción; está solo para
+        // las pruebas que dan de alta contenedores sin capturarlas.
         Schema::create('containers', function ($table) {
             $table->increments('container_ID');
-            $table->integer('booking')->nullable();
-            $table->integer('container_type')->nullable();
-            $table->integer('quantity')->nullable();
-            $table->string('comodity')->nullable();
+            $table->integer('booking');
+            $table->integer('container_type');
+            $table->integer('quantity');
+            $table->string('comodity', 25)->default('');
             $table->string('number')->nullable();
             $table->string('seal')->nullable();
             $table->dateTime('pick_up_date')->nullable();
-            $table->integer('created_by')->nullable();
-            $table->integer('modified_by')->nullable();
-            $table->dateTime('created_at')->nullable();
-            $table->dateTime('modified_at')->nullable();
+            $table->integer('created_by')->default(0);
+            $table->integer('modified_by')->default(0);
+            $table->date('created_at')->default('1970-01-01');
+            $table->date('modified_at')->default('1970-01-01');
         });
 
         Schema::create('container_types', function ($table) {
@@ -567,28 +578,31 @@ class CoreSchema
             $table->string('container_name')->nullable();
         });
 
+        // Las longitudes son las de la base real (SQLite no las hace valer, pero
+        // documentan lo que la ficha tiene que validar). `phone` es `int(11)`.
         Schema::create('client', function ($table) {
             $table->integer('client_id')->primary();
-            $table->string('fullName');
+            $table->string('fullName', 100);
             // En producción es NOT NULL: los clientes sin correo lo tienen vacío.
             // El default es solo para no repetirlo en cada alta de prueba.
-            $table->string('email')->default('');
-            $table->string('email_notification')->nullable();
+            $table->string('email', 50)->default('');
+            $table->string('email_notification', 1000)->nullable();
             $table->text('notification_notes')->nullable();
-            $table->string('country')->nullable();
+            $table->string('country', 25)->nullable();
             $table->dateTime('created_at')->nullable();
             $table->dateTime('modified_at')->nullable();
             // Datos fiscales del receptor: los usa el layout CFDI.
-            $table->string('rfc')->nullable();
-            $table->string('pay_form')->nullable();
-            $table->string('pay_method')->nullable();
-            $table->string('invoice_use')->nullable();
-            $table->string('regimen_fiscal_id')->nullable();
-            $table->string('postal_code')->nullable();
-            $table->string('phone')->nullable();
-            $table->string('address')->nullable();
-            $table->string('city')->nullable();
-            $table->string('state')->nullable();
+            $table->string('rfc', 25)->nullable();
+            $table->string('pay_form', 5)->nullable();
+            $table->string('pay_method', 5)->nullable();
+            $table->string('invoice_use', 5)->nullable();
+            $table->string('regimen_fiscal_id', 3)->nullable();
+            $table->string('postal_code', 25)->nullable();
+            $table->integer('phone')->nullable();
+            $table->string('address', 255)->nullable();
+            $table->string('address2', 255)->nullable();
+            $table->string('city', 25)->nullable();
+            $table->string('state', 25)->nullable();
             $table->integer('account_id')->nullable();
             $table->integer('match_pickup_place')->default(0);
             $table->integer('created_by')->nullable();
@@ -597,22 +611,31 @@ class CoreSchema
 
         Schema::create('provider', function ($table) {
             $table->integer('provider_id')->primary();
-            $table->string('fullName')->nullable();
-            $table->string('email')->nullable();
+            $table->string('fullName', 100)->nullable();
+            $table->string('email', 50)->nullable();
             $table->dateTime('created_at')->nullable();
             $table->dateTime('modified_at')->nullable();
             // 1 naviera, 2 transportista, 3 agente aduanal.
             $table->integer('type_id')->nullable();
-            $table->string('rfc')->nullable();
-            $table->string('phone')->nullable();
-            $table->string('address')->nullable();
-            $table->string('city')->nullable();
-            $table->string('state')->nullable();
-            $table->string('postal_code')->nullable();
+            $table->string('rfc', 25)->nullable();
+            $table->integer('phone')->nullable();
+            $table->string('address', 255)->nullable();
+            $table->string('city', 25)->nullable();
+            $table->string('state', 25)->nullable();
+            $table->string('postal_code', 25)->nullable();
             $table->integer('account_id')->nullable();
             $table->integer('created_by')->nullable();
             $table->integer('modified_by')->nullable();
         });
+
+        // Catálogos del SAT para los datos fiscales del cliente. En la base real
+        // no tienen llave primaria; `code` es lo que se guarda en `client`.
+        foreach (['invoice_use', 'pay_method', 'pay_form'] as $catalogoSat) {
+            Schema::create($catalogoSat, function ($table) {
+                $table->string('code', 4)->nullable();
+                $table->string('name', 64)->nullable();
+            });
+        }
 
         Schema::create('charge_type', function ($table) {
             $table->integer('charge_type_id')->primary();
@@ -652,6 +675,8 @@ class CoreSchema
             $table->date('end_date')->nullable();
             $table->decimal('min', 16, 4)->nullable();
             $table->decimal('max', 16, 4)->nullable();
+            // Nombre del contrato en PDF (`uploads/services/{id}/pdf/`).
+            $table->string('contract', 255)->nullable();
         });
 
         Schema::create('exchange', function ($table) {

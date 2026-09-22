@@ -31,7 +31,7 @@
         <div class="flex flex-wrap items-start justify-between gap-3">
             <div class="min-w-0">
                 <p class="text-xs font-semibold uppercase tracking-wide text-ink-faint">
-                    {{ Transaction::typeText($fila->invoice_type, $fila->tran_type) }}
+                    {{ Transaction::typeLabel($fila->invoice_type, $fila->tran_type) }}
                 </p>
                 <h2 class="mt-0.5 truncate text-2xl font-semibold text-ink">
                     {{ $fila->tran_number ?: __('Sin número') }}
@@ -84,6 +84,10 @@
         @error('cfdi')
             <p class="alert-danger mt-4">{{ $message }}</p>
         @enderror
+
+        @if ($avisoEmisor = $this->emisorWarning())
+            <p class="alert-danger mt-4">{{ $avisoEmisor }}</p>
+        @endif
 
         @if ($cancelling)
             <form wire:submit="cancelStamp" class="mt-4 space-y-3 rounded-xl border border-line bg-raised/60 p-4">

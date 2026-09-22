@@ -27,6 +27,9 @@ class TransactionFilters
     /** `tran_type` exacto. En Yii2 podía llegar como arreglo desde las acciones. */
     public int|array|null $type = null;
 
+    /** `invoice_type` exacto (normal, histórica o nota de crédito al cliente). */
+    public ?int $invoice_type = null;
+
     // --- Búsquedas por texto (LIKE %valor%) ---
     public ?string $tran_number = null;
 
@@ -126,6 +129,46 @@ class TransactionFilters
         }
 
         return array_map('intval', (array) $this->type);
+    }
+
+    /**
+     * Los cinco tipos de documento que distingue el sistema, con clave legible
+     * para la dirección. Son las combinaciones de `tran_type` e `invoice_type`
+     * que existen en la base (los costos y sus notas de crédito siempre llevan
+     * `invoice_type` 1, así que ahí no se filtra por él).
+     *
+     * @return array<string, array{type: int, invoice_type: ?int}>
+     */
+    public static function documentTypes(): array
+    {
+        return [
+            'factura' => ['type' => 0, 'invoice_type' => 1],
+            'historica' => ['type' => 0, 'invoice_type' => 2],
+            'nota-credito-cliente' => ['type' => 0, 'invoice_type' => 3],
+            'costo' => ['type' => 1, 'invoice_type' => null],
+            'nota-credito' => ['type' => 2, 'invoice_type' => null],
+        ];
+    }
+
+    /**
+     * Acota el filtro a un tipo de documento. Solo estrecha: si la pantalla ya
+     * limita los `tran_type` (Facturas, Costos), un tipo que no cabe ahí se
+     * ignora en vez de abrir la pantalla a documentos que no le tocan.
+     */
+    public function applyDocumentType(?string $clave): void
+    {
+        $definicion = self::documentTypes()[$clave ?? ''] ?? null;
+
+        if ($definicion === null) {
+            return;
+        }
+
+        if ($this->types() !== [] && ! in_array($definicion['type'], $this->types(), true)) {
+            return;
+        }
+
+        $this->type = [$definicion['type']];
+        $this->invoice_type = $definicion['invoice_type'];
     }
 
     /**

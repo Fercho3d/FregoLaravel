@@ -389,6 +389,10 @@ class TransactionQuery
             $query->whereIn('t.tran_type', $f->type_in);
         }
 
+        if ($f->invoice_type !== null) {
+            $query->where('t.invoice_type', $f->invoice_type);
+        }
+
         if ($f->notIn !== null) {
             $query->whereNotIn('t.transc_id', function ($sub) use ($f) {
                 $sub->select('transc_id')->from('payments_by_transaction')->where('request_id', $f->notIn);
