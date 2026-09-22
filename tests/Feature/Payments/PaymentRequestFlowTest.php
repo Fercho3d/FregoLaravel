@@ -420,16 +420,16 @@ class PaymentRequestFlowTest extends TestCase
     }
 
     /**
-     * Una transacción YA SALDADA sigue admitiendo importe, hasta el total del
-     * documento.
+     * Una transacción YA SALDADA no entra a una solicitud nueva, ni con importe
+     * ni en cero.
      *
-     * Es la rama `modeOpen` de `validateAmountToPay()` en Yii2, y esta pantalla
-     * la enciende siempre (`_transactions.php` fija `'modeopen' => 1`): dentro de
-     * una solicitud, lo ya aplicado se puede volver a repartir. Sin esto el
-     * renglón quedaba trabado — el 0 lo rechazaba una regla y cualquier otra
-     * cifra la otra.
+     * En Yii2 ni siquiera tenía casilla en la rejilla (`_transactions.php` la
+     * apagaba con `left_to_pay == 0 && amount_original != 0`). Aquí llega por
+     * la dirección, así que se rechaza con su motivo en el renglón. Antes esta
+     * pantalla usaba el tope de la solicitud reabierta (el total del documento)
+     * y la dejaba pasar con hasta 1,000: eso sobre-aplicaba.
      */
-    public function test_una_transaccion_saldada_admite_hasta_el_total(): void
+    public function test_una_transaccion_saldada_no_entra_a_una_solicitud_nueva(): void
     {
         $this->conCostoSaldado();
 
@@ -437,40 +437,130 @@ class PaymentRequestFlowTest extends TestCase
             ->set('number', 'CHQ-100')->set('date', '2026-01-20')->set('bankId', '1')
             ->set('amounts.5', '1000')
             ->call('save')
-            ->assertHasNoErrors();
+            ->assertHasErrors('amounts.5');
 
-        $this->assertSame(1000.0, (float) PaymentRequest::where('request_id', '>', 90)->value('amount'));
+        $this->assertSame(0, PaymentRequest::where('request_id', '>', 90)->count());
     }
 
-    public function test_una_transaccion_saldada_no_admite_mas_del_total(): void
+    public function test_una_transaccion_saldada_se_rechaza_con_su_motivo(): void
     {
         $this->conCostoSaldado();
 
-        $this->formulario([5])
+        $componente = $this->formulario([5])
             ->set('number', 'CHQ-100')->set('date', '2026-01-20')->set('bankId', '1')
-            ->set('amounts.5', '1000.01')
             ->call('save')
             ->assertHasErrors('amounts.5');
+
+        $this->assertStringContainsString(__('La transacción ya está saldada: no se puede volver a pedir su pago.'), $componente->html());
+    }
+
+    public function test_una_transaccion_cancelada_no_entra_a_una_solicitud_nueva(): void
+    {
+        DB::table('transaction')->where('transc_id', 2)->update(['cancelled' => 1]);
+
+        $this->formulario([1, 2])
+            ->set('number', 'CHQ-100')->set('date', '2026-01-20')->set('bankId', '1')
+            ->call('save')
+            ->assertHasErrors('amounts.2');
+
+        $this->assertSame(0, PaymentRequest::count());
+    }
+
+    // ------------------------- Tope al crear: el saldo, no el total (A11)
+
+    /** El costo 1 (1,000) con 600 pagados por OTRA solicitud: quedan 400. */
+    private function conCostoParcial(): void
+    {
+        DB::table('payment_request')->insert([
+            'request_id' => 90, 'type' => 2, 'provider_id' => 1, 'currency_id' => 1, 'amount' => 600, 'paid' => 1,
+        ]);
+        DB::table('payments_by_transaction')->insert([
+            'request_id' => 90, 'transc_id' => 1, 'amount' => 600, 'paid' => 1,
+        ]);
+    }
+
+    public function test_el_alta_propone_el_saldo(): void
+    {
+        $this->conCostoParcial();
+
+        $this->formulario([1])->assertSet('amounts.1', '400');
     }
 
     /**
-     * El importe propuesto entra tal cual aunque sea 0: en Yii2 la validación
-     * corre al teclear en la casilla, así que el valor por omisión nunca se
-     * comprueba y una transacción saldada se manda con 0 sin protestar.
+     * Porta la columna «To pay» del alta en Yii2, que validaba SIN `modeopen` y
+     * por tanto contra el saldo: el viejo rechazaba más de 400 y el nuevo
+     * aceptaba hasta 1,000.
      */
-    public function test_el_importe_propuesto_pasa_aunque_sea_cero(): void
+    public function test_el_alta_no_aplica_mas_del_saldo(): void
     {
-        $this->conCostoSaldado();
+        $this->conCostoParcial();
 
-        $this->formulario([5])
+        $this->formulario([1])
+            ->set('number', 'CHQ-100')->set('date', '2026-01-20')->set('bankId', '1')
+            ->set('amounts.1', '400.01')
+            ->call('save')
+            ->assertHasErrors('amounts.1');
+
+        $this->assertSame(0, PaymentRequest::where('request_id', '<>', 90)->count());
+    }
+
+    public function test_el_alta_aplica_hasta_el_saldo(): void
+    {
+        $this->conCostoParcial();
+
+        $this->formulario([1])
+            ->set('number', 'CHQ-100')->set('date', '2026-01-20')->set('bankId', '1')
+            ->set('amounts.1', '400')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame(400.0, (float) PaymentRequest::where('request_id', '<>', 90)->value('amount'));
+    }
+
+    /**
+     * Reabierta: el tope es el saldo más lo aplicado en ESTA solicitud, no el
+     * total del documento. Con 600 pagados por otra y 400 aquí, se puede volver
+     * a repartir hasta 400, no hasta 1,000.
+     */
+    public function test_reabierta_no_aplica_lo_que_otra_solicitud_ya_pago(): void
+    {
+        $id = $this->solicitudSobreElCostoParcial();
+
+        Livewire::test(PaymentRequestDetail::class, ['request' => $id])
+            ->set('amounts.1', '400.01')
+            ->call('save')
+            ->assertHasErrors('amounts.1');
+    }
+
+    public function test_reabierta_vuelve_a_repartir_lo_aplicado_aqui(): void
+    {
+        $id = $this->solicitudSobreElCostoParcial();
+
+        Livewire::test(PaymentRequestDetail::class, ['request' => $id])
+            ->set('amounts.1', '300')
+            ->call('save')
+            ->assertHasNoErrors()
+            ->set('amounts.1', '400')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame(400.0, (float) PaymentRequest::find($id)->amount);
+    }
+
+    /** Una solicitud propia con los 400 que quedaban del costo 1. */
+    private function solicitudSobreElCostoParcial(): int
+    {
+        $this->conCostoParcial();
+
+        $this->formulario([1])
             ->set('number', 'CHQ-100')->set('date', '2026-01-20')->set('bankId', '1')
             ->call('save')
             ->assertHasNoErrors();
 
-        $this->assertSame(1, PaymentRequest::where('request_id', '>', 90)->count());
+        return (int) PaymentRequest::where('request_id', '<>', 90)->value('request_id');
     }
 
-    /** Un costo de 1,160 (1,000 + IVA) cobrado por completo por otra solicitud. */
+    /** Un costo de 1,000 cobrado por completo por otra solicitud. */
     private function conCostoSaldado(): void
     {
         DB::table('transaction')->insert([
@@ -512,6 +602,146 @@ class PaymentRequestFlowTest extends TestCase
             ->assertHasErrors('amounts.9');
 
         $this->assertSame(0, PaymentRequest::count());
+    }
+
+    // ------------------------------- Agregar a una solicitud reabierta (A12)
+
+    /**
+     * Solicitud con el costo 1 (proveedor 1, MXN). Quedan libres el 2 (mismo
+     * proveedor y divisa), el 3 (otro proveedor) y el 4 (dólares).
+     */
+    private function solicitudConUnCosto(): int
+    {
+        $this->formulario([1])
+            ->set('number', 'CHQ-100')->set('date', '2026-01-20')->set('bankId', '1')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        return (int) PaymentRequest::first()->request_id;
+    }
+
+    private function detalle(int $id, int $rol = User::ROLE_ADMIN): Testable
+    {
+        $this->actingAs($this->usuario($rol));
+
+        return Livewire::test(PaymentRequestDetail::class, ['request' => $id]);
+    }
+
+    /** Es el selector de «Add» en Yii2: mismo tipo, mismo tercero, misma divisa, con saldo. */
+    public function test_el_panel_solo_ofrece_las_del_mismo_proveedor_y_divisa(): void
+    {
+        $id = $this->solicitudConUnCosto();
+
+        $this->detalle($id)
+            ->call('toggleAdd')
+            ->assertViewHas('candidatas', fn ($c) => $c->pluck('transc_id')->map(fn ($v) => (int) $v)->all() === [2]);
+    }
+
+    public function test_el_panel_busca_por_numero_o_booking(): void
+    {
+        $id = $this->solicitudConUnCosto();
+
+        $this->detalle($id)
+            ->call('toggleAdd')
+            ->set('addSearch', 'c-2')
+            ->assertViewHas('candidatas', fn ($c) => $c->count() === 1)
+            ->set('addSearch', 'BK-1')
+            ->assertViewHas('candidatas', fn ($c) => $c->count() === 1)
+            ->set('addSearch', 'nada')
+            ->assertViewHas('candidatas', fn ($c) => $c->isEmpty());
+    }
+
+    public function test_agregar_mete_el_saldo_y_recalcula_el_total(): void
+    {
+        $id = $this->solicitudConUnCosto();
+
+        $this->detalle($id)->call('addTransaction', 2);
+
+        $this->assertSame([1500.0, 500.0, 500.0], [
+            (float) PaymentRequest::find($id)->amount,
+            (float) PaymentByTransaction::where('request_id', $id)->where('transc_id', 2)->value('amount'),
+            (float) DB::table('transaction')->where('transc_id', 2)->value('paid_amount'),
+        ]);
+    }
+
+    /** El importe por omisión es el saldo REAL: descuenta lo que otra solicitud ya pagó. */
+    public function test_agregar_respeta_lo_que_otra_solicitud_ya_pago(): void
+    {
+        $id = $this->solicitudConUnCosto();
+        DB::table('payment_request')->insert(['request_id' => 90, 'type' => 2, 'provider_id' => 1, 'currency_id' => 1, 'amount' => 200, 'paid' => 1]);
+        DB::table('payments_by_transaction')->insert(['request_id' => 90, 'transc_id' => 2, 'amount' => 200, 'paid' => 1]);
+
+        $this->detalle($id)->call('addTransaction', 2);
+
+        $this->assertSame(300.0, (float) PaymentByTransaction::where('request_id', $id)->where('transc_id', 2)->value('amount'));
+    }
+
+    public function test_no_se_agrega_una_de_otro_proveedor(): void
+    {
+        $id = $this->solicitudConUnCosto();
+
+        $this->detalle($id)->call('addTransaction', 3)->assertStatus(422);
+
+        $this->assertSame([1], PaymentByTransaction::where('request_id', $id)->pluck('transc_id')->all());
+    }
+
+    public function test_no_se_agrega_una_de_otra_divisa(): void
+    {
+        $id = $this->solicitudConUnCosto();
+
+        $this->detalle($id)->call('addTransaction', 4)->assertStatus(422);
+    }
+
+    public function test_no_se_agrega_una_factura_a_una_solicitud_de_costos(): void
+    {
+        $id = $this->solicitudConUnCosto();
+        DB::table('transaction')->insert([
+            'transc_id' => 6, 'booking' => 1, 'tran_type' => 0, 'vendor' => 1, 'customer' => 1,
+            'account' => 1, 'tran_number' => 'F-6', 'tran_date' => '2026-01-15',
+        ]);
+        DB::table('charge')->insert(['charge_id' => 6, 'transaction' => 6, 'type' => 1, 'quantity' => 1, 'price' => 100]);
+
+        $this->detalle($id)->call('addTransaction', 6)->assertStatus(422);
+    }
+
+    public function test_no_se_agrega_dos_veces_la_misma(): void
+    {
+        $id = $this->solicitudConUnCosto();
+
+        $this->detalle($id)->call('addTransaction', 1)->assertStatus(422);
+
+        $this->assertSame(1000.0, (float) PaymentRequest::find($id)->amount);
+    }
+
+    public function test_no_se_agrega_una_saldada(): void
+    {
+        $id = $this->solicitudConUnCosto();
+        $this->conCostoSaldado();
+
+        $this->detalle($id)->call('addTransaction', 5)->assertStatus(422);
+    }
+
+    public function test_no_se_agrega_una_cancelada(): void
+    {
+        $id = $this->solicitudConUnCosto();
+        DB::table('transaction')->where('transc_id', 2)->update(['cancelled' => 1]);
+
+        $this->detalle($id)->call('addTransaction', 2)->assertStatus(422);
+    }
+
+    public function test_a_una_pagada_no_se_le_agrega(): void
+    {
+        $id = $this->solicitudConUnCosto();
+        PaymentRequest::whereKey($id)->update(['paid' => 1, 'opened' => 0]);
+
+        $this->detalle($id)->call('addTransaction', 2)->assertStatus(422);
+    }
+
+    public function test_quien_no_es_administrador_no_agrega(): void
+    {
+        $id = $this->solicitudConUnCosto();
+
+        $this->detalle($id, User::ROLE_USER)->call('addTransaction', 2)->assertForbidden();
     }
 
     public function test_sin_seleccion_la_pantalla_responde_404(): void
@@ -697,7 +927,8 @@ class PaymentRequestFlowTest extends TestCase
         $html = Livewire::test(TransactionTable::class, ['screen' => 'bill'])->html();
 
         $this->assertStringContainsString('columnResizer(', $html);
-        $this->assertSame(16, substr_count($html, 'cursor-col-resize'), 'Cada columna necesita su tirador.');
+        // 17 columnas desde que el listado enseña «Tipo» (factura, costo o nota de crédito).
+        $this->assertSame(17, substr_count($html, 'cursor-col-resize'), 'Cada columna necesita su tirador.');
         $this->assertStringContainsString('truncate', $html);
     }
 

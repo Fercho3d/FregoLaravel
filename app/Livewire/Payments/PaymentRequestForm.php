@@ -76,8 +76,17 @@ class PaymentRequestForm extends Component
         $filtros->noExchange = true;
         $filtros->invoiceMode = true;
         $filtros->paymentMode = true;
+        // Las canceladas se traen para rechazarlas con su motivo en el renglón;
+        // si se filtraran aquí desaparecerían de la pantalla sin explicación.
+        $filtros->showCancelled = 1;
 
         return TransactionQuery::make($filtros)->get();
+    }
+
+    /** Al crear, el tope es el saldo: lo que todavía se debe del documento. */
+    protected function payableLimit(object $transaccion): float
+    {
+        return round((float) $transaccion->left_to_pay, 2);
     }
 
     /**
@@ -138,6 +147,18 @@ class PaymentRequestForm extends Component
         ]);
 
         $transacciones = $this->transactions();
+
+        // Saldadas y canceladas no entran a una solicitud nueva, diga lo que
+        // diga el importe; el motivo sale en el renglón.
+        foreach ($transacciones as $transaccion) {
+            if ($motivo = CreatePaymentRequest::rejectionReason($transaccion)) {
+                $this->addError('amounts.'.$transaccion->transc_id, $motivo);
+            }
+        }
+
+        if ($this->getErrorBag()->isNotEmpty()) {
+            return;
+        }
 
         $this->assertAmountsFit($transacciones, 'left_to_pay');
 

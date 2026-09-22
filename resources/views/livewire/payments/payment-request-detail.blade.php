@@ -2,7 +2,7 @@
     $money = fn ($v) => $v === null ? '—' : number_format((float) $v, 2);
     $esAdmin = auth()->user()?->isAdmin() ?? false;
     $esCobro = (int) $solicitud->type === 1;
-    $editable = $esAdmin && ! $solicitud->paid;
+    // $editable (admin y no pagada) llega del componente, que lo necesita para las candidatas.
 @endphp
 
 <div class="space-y-4">
@@ -110,8 +110,13 @@
 
     {{-- Transacciones que agrupa --}}
     <div class="rounded-xl border border-line bg-panel">
-        <div class="border-b border-line px-4 py-3">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3">
             <h3 class="text-sm font-semibold text-ink">{{ __('Transacciones que agrupa') }}</h3>
+            @if ($editable)
+                <button type="button" wire:click="toggleAdd" class="btn-ghost !px-3 !py-1.5 text-sm">
+                    {{ $showAdd ? __('Cerrar') : __('Agregar transacción') }}
+                </button>
+            @endif
         </div>
         <div class="overflow-x-auto">
             <table class="min-w-full text-sm">
@@ -169,4 +174,73 @@
             </table>
         </div>
     </div>
+
+    {{-- Agregar transacción: el «Add» del modal de Yii2, con su selector --}}
+    @if ($editable && $showAdd)
+        <div class="rounded-xl border border-line bg-panel" wire:key="panel-agregar">
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3">
+                <div>
+                    <h3 class="text-sm font-semibold text-ink">{{ __('Agregar transacción') }}</h3>
+                    <p class="text-xs text-ink-muted">
+                        {{ $esCobro
+                            ? __('Facturas del mismo cliente y divisa con saldo pendiente.')
+                            : __('Costos del mismo proveedor y divisa con saldo pendiente.') }}
+                    </p>
+                </div>
+                <input type="search" wire:model.live.debounce.300ms="addSearch"
+                       placeholder="{{ __('Buscar por número o booking…') }}"
+                       class="field-input !w-full py-1.5 text-sm sm:!w-72">
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-sm">
+                    <thead class="text-[11px] uppercase tracking-wide text-ink-faint">
+                        <tr>
+                            <th class="px-3 py-2 text-left font-semibold">{{ __('Transacción') }}</th>
+                            <th class="px-3 py-2 text-left font-semibold">{{ __('Booking') }}</th>
+                            <th class="px-3 py-2 text-left font-semibold">{{ __('Fecha') }}</th>
+                            <th class="px-3 py-2 text-right font-semibold">{{ __('Total') }}</th>
+                            <th class="px-3 py-2 text-right font-semibold">{{ __('Pagado') }}</th>
+                            <th class="px-3 py-2 text-right font-semibold">{{ __('Por pagar') }}</th>
+                            <th class="px-3 py-2"><span class="sr-only">{{ __('Acciones') }}</span></th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-line">
+                        @forelse ($candidatas as $t)
+                            <tr class="hover:bg-raised" wire:key="candidata-{{ $t->transc_id }}">
+                                <td class="whitespace-nowrap px-3 py-2">
+                                    <a href="{{ route('transactions.show', $t->transc_id) }}" wire:navigate
+                                       class="text-brand hover:underline">{{ $t->tran_number ?: $t->transc_id }}</a>
+                                </td>
+                                <td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ trim((string) $t->booking_number) ?: '—' }}</td>
+                                <td class="whitespace-nowrap px-3 py-2 text-ink-muted">
+                                    {{ $t->tran_date ? \Illuminate\Support\Carbon::parse($t->tran_date)->format('d/m/Y') : '—' }}
+                                </td>
+                                <td class="whitespace-nowrap px-3 py-2 text-right tabular-nums text-ink-soft">{{ $money($t->total_natural_amount) }}</td>
+                                <td class="whitespace-nowrap px-3 py-2 text-right tabular-nums text-ink-muted">{{ $money($t->tran_paid_amount) }}</td>
+                                <td class="whitespace-nowrap px-3 py-2 text-right tabular-nums text-ink">{{ $money($t->left_to_pay) }}</td>
+                                <td class="whitespace-nowrap px-3 py-2 text-right text-xs">
+                                    <button type="button" wire:click="addTransaction({{ $t->transc_id }})"
+                                            wire:loading.attr="disabled" wire:target="addTransaction({{ $t->transc_id }})"
+                                            class="text-brand transition hover:underline">{{ __('Agregar') }}</button>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="7" class="px-3 py-10 text-center text-ink-faint">
+                                    {{ trim($addSearch) !== ''
+                                        ? __('Ninguna transacción coincide con la búsqueda.')
+                                        : __('No hay transacciones pendientes que se puedan agregar.') }}
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+            @if ($candidatasTotal > $maxCandidatas)
+                <p class="border-t border-line px-4 py-2 text-xs text-ink-muted">
+                    {{ __('Se muestran las primeras :n de :total; afina la búsqueda.', ['n' => $maxCandidatas, 'total' => $candidatasTotal]) }}
+                </p>
+            @endif
+        </div>
+    @endif
 </div>

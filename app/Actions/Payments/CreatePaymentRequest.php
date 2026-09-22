@@ -34,6 +34,7 @@ class CreatePaymentRequest
 
         $this->assertSameCurrency($transacciones);
         $this->assertSameCounterparty($transacciones, $esCobro);
+        $this->assertPayable($transacciones);
 
         $fecha = Carbon::parse($datos['date']);
         $this->rates->ensureFor($fecha);
@@ -68,8 +69,43 @@ class CreatePaymentRequest
     }
 
     /**
+     * Por qué una transacción no puede entrar en una solicitud nueva, o null si
+     * sí puede.
+     *
+     * En Yii2 estos documentos ni siquiera tenían casilla en la rejilla
+     * (`_transactions.php` la apagaba con `left_to_pay == 0 && amount_original
+     * != 0`) y las canceladas no salían en el listado. Aquí llegan por la
+     * dirección (`?ids=`), así que se rechazan con un motivo claro. Lo usan el
+     * alta y `handle()`; la solicitud reabierta no lo aplica porque ahí un
+     * renglón saldado lo está por esa misma solicitud.
+     */
+    public static function rejectionReason(object $transaccion): ?string
+    {
+        if ((int) $transaccion->cancelled === 1) {
+            return __('La transacción está cancelada: no se puede pedir su pago.');
+        }
+
+        if (round((float) $transaccion->left_to_pay, 2) === 0.0 && round((float) $transaccion->amount_original, 2) !== 0.0) {
+            return __('La transacción ya está saldada: no se puede volver a pedir su pago.');
+        }
+
+        return null;
+    }
+
+    /** @param  Collection<int, object>  $transacciones */
+    private function assertPayable(Collection $transacciones): void
+    {
+        foreach ($transacciones as $transaccion) {
+            if ($motivo = self::rejectionReason($transaccion)) {
+                throw ValidationException::withMessages(['seleccion' => ($transaccion->tran_number ?: $transaccion->transc_id).': '.$motivo]);
+            }
+        }
+    }
+
+    /**
      * Aplica el pago a una transacción: deja el renglón que la liga con la
-     * solicitud y actualiza sus columnas de cobro.
+     * solicitud y actualiza sus columnas de cobro. También lo usa la solicitud
+     * reabierta al agregarle una transacción (`PaymentRequestDetail`).
      *
      * La fórmula de `paid` es la del original y **parece equivocada**
      * (`left_to_pay - paid_amount`, cuando lo natural sería comparar contra el
@@ -77,7 +113,7 @@ class CreatePaymentRequest
      * sigue leyendo. El estado que se enseña en pantalla no sale de ahí, sino de
      * los importes calculados, así que la rareza no se ve.
      */
-    private function applyTo(object $transaccion, int $requestId, float $importe): void
+    public function applyTo(object $transaccion, int $requestId, float $importe): void
     {
         PaymentByTransaction::create([
             'request_id' => $requestId,

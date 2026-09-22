@@ -49,7 +49,15 @@ ruta Veracruz–Rotterdam empata con **diez** precios de meses diferentes.
 
 **Al armar una solicitud de pago se podía aplicar más de lo que se debe.** La
 validación existía en el sistema viejo; era lo único de esa pantalla que no se
-había portado, y ya está.
+había portado. Se portó, pero al principio con un tope de más: el viejo usa dos
+según la pantalla (`modeopen` en `set-amount-to-pay`), y aquí se había tomado
+el de la solicitud reabierta (saldo más lo pagado, o sea el total del
+documento) también para el alta. Un costo de 1,000 con 600 pagados en otra
+solicitud admitía hasta 1,000. Ahora el alta topa en el saldo, como la columna
+«To pay» del viejo, y la reabierta en el saldo más lo aplicado en esa misma
+solicitud, que es más estricto que el viejo (él sumaba también lo pagado por
+otras solicitudes). Además el alta rechaza con motivo las saldadas y las
+canceladas, que en el viejo simplemente no tenían casilla.
 
 ## Apagado hace años
 
