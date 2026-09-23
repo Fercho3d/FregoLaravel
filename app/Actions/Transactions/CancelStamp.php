@@ -14,10 +14,10 @@ use App\Support\TransactionFiles;
  *
  * ⚠️ **Pedir la cancelación no es cancelar.** Salvo los comprobantes que el SAT
  * deja cancelar sin aceptación, lo que devuelve el PAC es un acuse y la factura
- * sigue vigente hasta que el receptor autorice o se le venza el plazo. Aquí solo
- * se marca `transaction.cancelled` cuando la cancelación está confirmada; lo
- * demás queda anotado en `cfdi_cancelacion` y lo confirma la consulta al SAT
- * (`RefreshCancellationStatus`).
+ * sigue vigente hasta que el receptor autorice o se le venza el plazo. La
+ * solicitud queda anotada en `cfdi_cancelacion` y `transaction.cancelled` solo
+ * lo marca la consulta al SAT (`RefreshCancellationStatus`), que se hace aquí
+ * mismo al terminar y a diario con `cfdi:revisar-cancelaciones`.
  *
  * ⚠️ El RFC que se le manda al PAC tiene que ser **aquel con el que se timbró**,
  * no el de la cuenta ni el de la compañía actual: el PAC busca el UUID dentro de
@@ -34,7 +34,7 @@ class CancelStamp
         '04' => '04 · Operación nominativa relacionada en una factura global',
     ];
 
-    public function __construct(private PacClient $pac) {}
+    public function __construct(private PacClient $pac, private RefreshCancellationStatus $consultarSat) {}
 
     public function handle(Transaction $transaccion, string $motivo, ?string $sustituye = null): CancelResult
     {
@@ -73,14 +73,10 @@ class CancelStamp
             'verificado_at' => null,
         ]);
 
-        // Solo una cancelación confirmada toca las columnas heredadas: son las
-        // que ve el sistema viejo y las que dicen «Cancelada» en la pantalla.
-        if ($resultado->esCancelacionConfirmada()) {
-            $transaccion->forceFill([
-                'cancelled' => 1,
-                'cancel_reason_id' => $motivo,
-                'new_seal' => $sustituye,
-            ])->save();
+        // Las que no piden aceptación el SAT las cancela al momento; las demás
+        // seguirán vigentes hasta que conteste el receptor.
+        if ($this->consultarSat->handle($transaccion)->estaCancelado()) {
+            return new CancelResult(CancelResult::CANCELADA, $resultado->codigo, 'El SAT canceló el comprobante.');
         }
 
         return $resultado;

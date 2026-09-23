@@ -78,11 +78,22 @@
                             class="btn-ghost px-3 py-1.5 text-xs text-brand">{{ __('Borrar') }}</button>
                 @endif
                 <span class="{{ $estado->classes() }}">{{ $estado->label() }}</span>
-                @if ($fila->cancelled)
-                    <span class="badge badge-danger">{{ __('Cancelada') }}</span>
-                @elseif ($cancelacion?->estaPendiente())
-                    {{-- Pedida pero no consumada: ante el SAT sigue vigente. --}}
-                    <span class="badge badge-warn">{{ __('Cancelación en proceso') }}</span>
+                {{-- La insignia dice lo que ve el SAT, no solo la marca local: hay
+                     facturas marcadas como canceladas que siguen vigentes allá. --}}
+                @php
+                    $vista = $satEstado === 'Vigente' && ! $cancelacion?->estaPendiente()
+                        ? \App\Models\CfdiCancelacion::VISTA_VIGENTE
+                        : ($cancelacion?->estadoVisible() ?? ($fila->cancelled ? \App\Models\CfdiCancelacion::VISTA_CANCELADA : null));
+                    [$claseVista, $textoVista] = match ($vista) {
+                        \App\Models\CfdiCancelacion::VISTA_CANCELADA => ['badge-danger', __('Cancelada')],
+                        \App\Models\CfdiCancelacion::VISTA_PROCESO => ['badge-warn', __('Cancelación en proceso')],
+                        \App\Models\CfdiCancelacion::VISTA_RECHAZADA => ['badge-warn', __('Cancelación rechazada')],
+                        \App\Models\CfdiCancelacion::VISTA_VIGENTE => ['badge-warn', __('Vigente ante el SAT')],
+                        default => [null, null],
+                    };
+                @endphp
+                @if ($claseVista && ($fila->cancelled || $cancelacion))
+                    <span class="badge {{ $claseVista }}">{{ $textoVista }}</span>
                 @endif
                 @if (filled($fila->seal))
                     <span class="badge badge-ok">{{ __('Timbrada') }}</span>
@@ -98,31 +109,39 @@
             <p class="alert-danger mt-4">{{ $avisoEmisor }}</p>
         @endif
 
-        {{-- Cancelación pedida y todavía sin consumar: la factura sigue vigente
-             ante el SAT, y hasta que él lo diga no se marca como cancelada. --}}
-        @if ($cancelacion && ! $fila->cancelled)
-            <div class="mt-4 space-y-2 rounded-xl border border-line bg-raised/60 p-4">
-                <p class="text-sm font-medium text-ink">{{ __('Cancelación solicitada') }}</p>
+        {{-- Estatus ante el SAT de toda factura timbrada. Si está marcada como
+             cancelada o hay una solicitud, se consulta solo al abrir: es justo
+             el caso en que la marca local y el SAT pueden no coincidir. --}}
+        @if (filled($fila->seal) || $cancelacion)
+            <div class="mt-4 space-y-2 rounded-xl border border-line bg-raised/60 p-4"
+                 @if ($satEstado === null && ($fila->cancelled || $cancelacion)) wire:init="refreshSatStatus" @endif>
+                <p class="text-sm font-medium text-ink">{{ $cancelacion ? __('Cancelación solicitada') : __('Estatus ante el SAT') }}</p>
+                @if ($cancelacion)
+                    <p class="text-sm text-ink-muted">
+                        {{ __($cancelacion->mensaje) }}
+                        @if (filled($cancelacion->codigo))
+                            <span class="text-xs text-ink-faint">({{ $cancelacion->codigo }})</span>
+                        @endif
+                    </p>
 
-                <p class="text-sm text-ink-muted">
-                    {{ __($cancelacion->mensaje) }}
-                    @if (filled($cancelacion->codigo))
-                        <span class="text-xs text-ink-faint">({{ $cancelacion->codigo }})</span>
-                    @endif
-                </p>
-
-                <p class="text-xs text-ink-faint">
-                    {{ __('Solicitada el :fecha', ['fecha' => $cancelacion->solicitado_at?->format('d/m/Y H:i') ?: '—']) }}
-                    @if ($cancelacion->verificado_at)
-                        · {{ __('Última consulta al SAT: :fecha', ['fecha' => $cancelacion->verificado_at->format('d/m/Y H:i')]) }}
-                        · {{ trim($cancelacion->sat_estado.' '.$cancelacion->sat_estatus) }}
-                    @else
-                        · {{ __('Todavía sin consultar al SAT.') }}
-                    @endif
-                </p>
+                    <p class="text-xs text-ink-faint">
+                        {{ __('Solicitada el :fecha', ['fecha' => $cancelacion->solicitado_at?->format('d/m/Y H:i') ?: '—']) }}
+                        @if ($cancelacion->verificado_at)
+                            · {{ __('Última consulta al SAT: :fecha', ['fecha' => $cancelacion->verificado_at->format('d/m/Y H:i')]) }}
+                            · {{ trim($cancelacion->sat_estado.' '.$cancelacion->sat_estatus) }}
+                        @else
+                            · {{ __('Todavía sin consultar al SAT.') }}
+                        @endif
+                    </p>
+                @endif
 
                 @if ($satNotice)
                     <p class="text-sm text-ink">{{ $satNotice }}</p>
+                @elseif (! $cancelacion)
+                    <p class="text-xs text-ink-faint">
+                        <x-spinner wire:loading wire:target="refreshSatStatus" class="h-3.5 w-3.5" />
+                        {{ __('Todavía sin consultar al SAT.') }}
+                    </p>
                 @endif
 
                 <button type="button" wire:click="refreshSatStatus" wire:loading.attr="disabled" wire:target="refreshSatStatus"

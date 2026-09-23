@@ -58,6 +58,26 @@ class CfdiCancelacion extends Model
 
     public const VISTA_VIGENTE = 'vigente';
 
+    /**
+     * ¿Se le puede pedir al SAT la cancelación de esta factura?
+     *
+     * Mientras el SAT no la dé por cancelada, sí: una solicitud que el receptor
+     * rechazó, o que se quedó en la cola del PAC, se vuelve a pedir. Antes
+     * bastaba con que estuviera marcada aquí para no dejar reintentar, y las
+     * once facturas que el SAT sigue viendo vigentes quedaban en un limbo del
+     * que no se podía salir desde el sistema.
+     */
+    public static function permiteSolicitar(bool $marcadaCancelada, ?self $cancelacion): bool
+    {
+        if ($cancelacion === null) {
+            // Sin bitácora solo queda la marca heredada: si dice cancelada, se
+            // respeta hasta que el comando diario confirme con el SAT.
+            return ! $marcadaCancelada;
+        }
+
+        return $cancelacion->estadoVisible() !== self::VISTA_CANCELADA;
+    }
+
     /** @return self::VISTA_* */
     public function estadoVisible(): string
     {

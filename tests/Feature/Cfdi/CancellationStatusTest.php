@@ -48,6 +48,7 @@ class CancellationStatusTest extends TestCase
 
         $this->pac = new FakePacClient;
         $this->app->instance(PacClient::class, $this->pac);
+        $this->app->instance(SatStatus::class, new FakeSatStatus);
 
         InvoiceFixture::seed();
     }
@@ -88,11 +89,11 @@ class CancellationStatusTest extends TestCase
 
     // ------------------------------------------- Lo que contesta el PAC
 
-    /** Cancelación consumada: ahí sí se marca, como siempre. */
-    public function test_una_cancelacion_confirmada_marca_la_factura(): void
+    /** El SAT la da por cancelada al consultarlo justo después: ahí sí se marca. */
+    public function test_una_cancelacion_confirmada_por_el_sat_marca_la_factura(): void
     {
         $this->timbrar();
-        $this->pac->responde(new CancelResult(CancelResult::CANCELADA, 'GT02', 'El SAT canceló el comprobante.'));
+        $this->sat(new FakeSatStatus(estado: 'Cancelado', estatusCancelacion: 'Cancelado sin aceptación'));
 
         $this->cancelar()->assertHasNoErrors();
 
@@ -102,7 +103,7 @@ class CancellationStatusTest extends TestCase
     public function test_una_cancelacion_confirmada_guarda_el_motivo_y_el_folio_que_sustituye(): void
     {
         $this->timbrar();
-        $this->pac->responde(new CancelResult(CancelResult::CANCELADA, 'GT02', 'El SAT canceló el comprobante.'));
+        $this->sat(new FakeSatStatus(estado: 'Cancelado', estatusCancelacion: 'Cancelado sin aceptación'));
 
         $this->detalle()
             ->call('startCancel')
@@ -160,12 +161,16 @@ class CancellationStatusTest extends TestCase
         $this->assertSame(0, CfdiCancelacion::count());
     }
 
-    public function test_con_una_solicitud_en_curso_no_se_vuelve_a_pedir_la_cancelacion(): void
+    /**
+     * Con una solicitud en curso sí se puede volver a pedir: el PAC contesta
+     * que el folio ya está en su cola, y eso se enseña tal cual en vez de
+     * dejar la pantalla sin salida.
+     */
+    public function test_con_una_solicitud_en_curso_se_puede_volver_a_pedir(): void
     {
-        $this->timbrar();
-        $this->cancelar()->assertHasNoErrors();
+        $this->detalle()->call('stamp')->call('cancelStamp');
 
-        $this->detalle()->call('startCancel')->assertForbidden();
+        $this->assertTrue($this->detalle()->instance()->canCancel());
     }
 
     // ------------------------------------------- Lo que contesta el SAT
@@ -228,8 +233,8 @@ class CancellationStatusTest extends TestCase
     public function test_si_el_sat_no_contesta_no_se_cambia_nada(): void
     {
         $this->timbrar();
-        $this->cancelar();
         $this->sat(new FakeSatStatus(caido: true));
+        $this->cancelar();
 
         $this->detalle()->call('refreshSatStatus')->assertHasNoErrors();
 
@@ -489,5 +494,130 @@ class CancellationStatusTest extends TestCase
         Livewire::test(TransactionTable::class, ['screen' => 'invoice'])
             ->call('stampRow', 1)
             ->assertForbidden();
+    }
+
+    /**
+     * Una factura con la cancelación en trámite se sigue viendo en «Solo
+     * vigentes»: para el SAT sigue viva, y esconderla era justo lo que impedía
+     * darle seguimiento. En producción había once así, invisibles.
+     */
+    public function test_la_cancelacion_en_tramite_no_esconde_la_factura(): void
+    {
+        DB::table('transaction')->where('transc_id', 1)->update([
+            'cancelled' => 1, 'seal' => '3ECE3E47-7242-44E9-B6DB-355091F891C2',
+        ]);
+        CfdiCancelacion::create([
+            'transc_id' => 1, 'uuid' => '3ECE3E47-7242-44E9-B6DB-355091F891C2', 'motivo' => '02',
+            'estado' => CancelResult::SOLICITADA, 'sat_estado' => 'Vigente', 'solicitado_at' => now(),
+        ]);
+
+        $this->actingAs($this->usuario());
+
+        $pantalla = Livewire::test(TransactionTable::class, ['screen' => 'invoice']);
+
+        $this->assertSame([1], collect($pantalla->viewData('rows')->items())->pluck('transc_id')->map(intval(...))->all());
+        $pantalla->assertSee(__('Cancelación en proceso'));
+    }
+
+    /** Una cancelada de verdad sigue fuera del listado de vigentes. */
+    public function test_una_cancelada_confirmada_no_sale_en_vigentes(): void
+    {
+        DB::table('transaction')->where('transc_id', 1)->update([
+            'cancelled' => 1, 'seal' => '3ECE3E47-7242-44E9-B6DB-355091F891C2',
+        ]);
+        CfdiCancelacion::create([
+            'transc_id' => 1, 'uuid' => '3ECE3E47-7242-44E9-B6DB-355091F891C2', 'motivo' => '02',
+            'estado' => CancelResult::CANCELADA, 'sat_estado' => 'Cancelado', 'solicitado_at' => now(),
+        ]);
+
+        $this->actingAs($this->usuario());
+
+        $pantalla = Livewire::test(TransactionTable::class, ['screen' => 'invoice']);
+
+        $this->assertSame([], collect($pantalla->viewData('rows')->items())->pluck('transc_id')->all());
+    }
+
+    /**
+     * Si el SAT la sigue viendo vigente, se puede volver a pedir la cancelación.
+     *
+     * Con el candado anterior, las facturas rechazadas por el receptor o
+     * atoradas en la cola del PAC quedaban en un limbo: marcadas como
+     * canceladas aquí, vivas para el SAT y sin forma de reintentar.
+     */
+    public function test_una_vigente_ante_el_sat_se_puede_volver_a_cancelar(): void
+    {
+        DB::table('transaction')->where('transc_id', 1)->update([
+            'cancelled' => 1, 'seal' => '3ECE3E47-7242-44E9-B6DB-355091F891C2',
+        ]);
+        CfdiCancelacion::create([
+            'transc_id' => 1, 'uuid' => '3ECE3E47-7242-44E9-B6DB-355091F891C2', 'motivo' => '02',
+            'estado' => CancelResult::RECHAZADA, 'sat_estado' => 'Vigente',
+            'sat_estatus' => 'Solicitud rechazada', 'solicitado_at' => now()->subDays(5),
+        ]);
+
+        $this->actingAs($this->usuario());
+
+        $this->assertTrue($this->detalle()->instance()->canCancel());
+
+        Livewire::test(TransactionTable::class, ['screen' => 'invoice'])
+            ->assertSee(__('Reintentar cancelación'));
+    }
+
+    /** Una cancelada de verdad ya no se vuelve a pedir. */
+    public function test_una_cancelada_confirmada_no_se_vuelve_a_pedir(): void
+    {
+        DB::table('transaction')->where('transc_id', 1)->update([
+            'cancelled' => 1, 'seal' => '3ECE3E47-7242-44E9-B6DB-355091F891C2',
+        ]);
+        CfdiCancelacion::create([
+            'transc_id' => 1, 'uuid' => '3ECE3E47-7242-44E9-B6DB-355091F891C2', 'motivo' => '02',
+            'estado' => CancelResult::CANCELADA, 'sat_estado' => 'Cancelado', 'solicitado_at' => now()->subDays(5),
+        ]);
+
+        $this->actingAs($this->usuario());
+
+        $this->assertFalse($this->detalle()->instance()->canCancel());
+    }
+
+    /**
+     * Marcada como cancelada sin solicitud registrada (como F-14857 en
+     * producción): al abrirla se le pregunta al SAT y, si sigue vigente, se
+     * dice así y se puede pedir la cancelación.
+     */
+    public function test_marcada_cancelada_sin_solicitud_y_vigente_en_el_sat_se_puede_cancelar(): void
+    {
+        $this->timbrar();
+        DB::table('transaction')->where('transc_id', 1)->update(['cancelled' => 1]);
+        $this->sat(new FakeSatStatus(estado: 'Vigente'));
+        $this->actingAs($this->usuario());
+
+        $this->detalle()->call('refreshSatStatus')
+            ->assertSee(__('Vigente ante el SAT'))
+            ->assertSee(__('Cancelar CFDI'));
+    }
+
+    /** Sin consultar al SAT, la marca heredada se respeta y no se ofrece cancelar. */
+    public function test_marcada_cancelada_sin_solicitud_no_ofrece_cancelar_sin_consultar(): void
+    {
+        DB::table('transaction')->where('transc_id', 1)->update([
+            'cancelled' => 1, 'seal' => '3ECE3E47-7242-44E9-B6DB-355091F891C2',
+        ]);
+        $this->actingAs($this->usuario());
+
+        $this->assertFalse($this->detalle()->instance()->canCancel());
+    }
+
+    /**
+     * Un acuse del PAC que habla de «cancelado» no marca nada si el SAT la
+     * sigue viendo vigente. Así quedó mal marcada F-14857 en producción.
+     */
+    public function test_un_acuse_del_pac_no_marca_cancelada_si_el_sat_la_ve_vigente(): void
+    {
+        $this->timbrar();
+        $this->pac->responde(new CancelResult(CancelResult::SOLICITADA, 'XX', 'El CFDI no puede ser cancelado.'));
+
+        $this->cancelar()->assertHasNoErrors();
+
+        $this->assertSame(0, (int) Transaction::find(1)->cancelled);
     }
 }

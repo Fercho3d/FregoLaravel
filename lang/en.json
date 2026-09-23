@@ -1272,5 +1272,7 @@
     "Cancelada: no se timbra, no se envía y no entra en una solicitud de pago.": "Cancelled: it cannot be stamped, sent or added to a payment request.",
     "Solicitar la cancelación": "Request the cancellation",
     "Si la factura pasa de mil pesos, el receptor tiene 72 horas para autorizarla.": "If the invoice is over one thousand pesos, the recipient has 72 hours to authorise it.",
-    "Se timbrará esta factura ante el SAT. ¿Continuar?": "This invoice will be stamped at the SAT. Continue?"
+    "Se timbrará esta factura ante el SAT. ¿Continuar?": "This invoice will be stamped at the SAT. Continue?",
+    "Reintentar cancelación": "Retry cancellation",
+    "Estatus ante el SAT": "Status at the SAT"
 }

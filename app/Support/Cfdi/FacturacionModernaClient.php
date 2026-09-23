@@ -97,8 +97,12 @@ class FacturacionModernaClient implements PacClient
      * Lee el acuse de cancelación del PAC.
      *
      * Observado en producción: `GT11` con «Solicitud de cancelación recibida. El
-     * receptor debe autorizar la cancelación.». Con motivos que el SAT deja
-     * cancelar sin aceptación el acuse habla de cancelación consumada.
+     * receptor debe autorizar la cancelación.».
+     *
+     * El acuse nunca da la factura por cancelada: eso solo lo sabe el SAT y lo
+     * confirma `RefreshCancellationStatus` justo después. Antes bastaba con que
+     * el texto dijera «cancelad…», y un rechazo como «no puede ser cancelado»
+     * dejaba marcadas facturas que el SAT seguía viendo vigentes (F-14857).
      */
     private function cancellationResult(object $respuesta): CancelResult
     {
@@ -114,16 +118,7 @@ class FacturacionModernaClient implements PacClient
             );
         }
 
-        // Sin aceptación: el acuse habla de un comprobante ya cancelado.
-        if (preg_match('/cancelad/i', $codigo.' '.$mensaje) === 1) {
-            return new CancelResult(CancelResult::CANCELADA, $codigo, 'El SAT canceló el comprobante.');
-        }
-
-        /*
-         * Acuse desconocido: no se inventa un estado ni se da por cancelada. Se
-         * deja como solicitada, con el código y el texto del PAC tal cual, y el
-         * comando `cfdi:revisar-cancelaciones` le preguntará al SAT.
-         */
+        // Cualquier otro acuse se guarda tal cual, con el código y el texto del PAC.
         return new CancelResult(
             CancelResult::SOLICITADA,
             $codigo,

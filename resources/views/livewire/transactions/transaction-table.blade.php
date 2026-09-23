@@ -772,17 +772,19 @@
                                 {{-- Timbrar y cancelar desde el propio renglón, como los
                                      botones de la rejilla del sistema original. Para una
                                      factura suelta, marcarla y usar el lote sobra. --}}
-                                @if (auth()->user()?->isAdmin() && ! $row->cancelled && (int) $row->tran_type === Transaction::TYPE_INVOICE)
-                                    @if (blank($row->seal) && $this->allowsStamping())
+                                @if (auth()->user()?->isAdmin() && (int) $row->tran_type === Transaction::TYPE_INVOICE)
+                                    @if (blank($row->seal) && ! $row->cancelled && $this->allowsStamping())
                                         <button type="button" wire:click="stampRow({{ $row->transc_id }})"
                                                 wire:confirm="{{ __('Se timbrará esta factura ante el SAT. ¿Continuar?') }}"
                                                 wire:loading.attr="disabled" wire:target="stampRow({{ $row->transc_id }})"
                                                 class="ml-1 text-[11px] font-semibold text-brand hover:underline">
                                             {{ __('Timbrar') }}
                                         </button>
-                                    @elseif (filled($row->seal) && ! $cancelacion)
+                                    @elseif (filled($row->seal) && \App\Models\CfdiCancelacion::permiteSolicitar((bool) $row->cancelled, $cancelacion))
                                         <button type="button" wire:click="startCancel({{ $row->transc_id }})"
-                                                class="ml-1 text-[11px] text-brand hover:underline">{{ __('Cancelar') }}</button>
+                                                class="ml-1 text-[11px] text-brand hover:underline">
+                                            {{ $cancelacion ? __('Reintentar cancelación') : __('Cancelar') }}
+                                        </button>
                                     @endif
                                 @endif
                             </td>

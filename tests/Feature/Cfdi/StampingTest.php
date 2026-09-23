@@ -8,6 +8,7 @@ use App\Models\Core\Transaction;
 use App\Models\User;
 use App\Queries\TransactionFilters;
 use App\Support\Cfdi\PacClient;
+use App\Support\Cfdi\SatStatus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -15,6 +16,7 @@ use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 use Tests\Support\CoreSchema;
 use Tests\Support\FakePacClient;
+use Tests\Support\FakeSatStatus;
 use Tests\Support\InvoiceFixture;
 use Tests\TestCase;
 
@@ -39,6 +41,7 @@ class StampingTest extends TestCase
 
         $this->pac = new FakePacClient;
         $this->app->instance(PacClient::class, $this->pac);
+        $this->app->instance(SatStatus::class, new FakeSatStatus);
 
         InvoiceFixture::seed();
     }

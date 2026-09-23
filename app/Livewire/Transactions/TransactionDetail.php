@@ -60,6 +60,9 @@ class TransactionDetail extends Component
     /** Lo último que contestó el SAT en esta pantalla, al pulsar Consultar. */
     public ?string $satNotice = null;
 
+    /** Estado que dio el SAT en la última consulta de esta pantalla (Vigente, Cancelado…). */
+    public ?string $satEstado = null;
+
     private ?object $headerCache = null;
 
     private ?CfdiCancelacion $cancelacionCache = null;
@@ -354,12 +357,13 @@ class TransactionDetail extends Component
         // una instalación que dejó de facturar al SAT todavía puede tener que
         // cancelar lo que timbró antes.
         //
-        // Con una solicitud en curso no se vuelve a pedir: el PAC contestaría
-        // «el UUID se encuentra en cola» y quien factura creería que algo falló.
+        // Con una solicitud en curso sí se puede volver a pedir: el PAC contesta
+        // «el UUID se encuentra en cola» y eso ahora se enseña tal cual, que es
+        // información útil y no un error.
         return (auth()->user()?->isAdmin() ?? false)
             && filled($transaccion->seal)
-            && ! $transaccion->cancelled
-            && ! ($this->cancelacion()?->estaPendiente() ?? false);
+            && ($this->satEstado === 'Vigente'
+                || CfdiCancelacion::permiteSolicitar((bool) $transaccion->cancelled, $this->cancelacion()));
     }
 
     /** La solicitud de cancelación de esta factura, si alguna vez se pidió. */
@@ -380,6 +384,7 @@ class TransactionDetail extends Component
 
         $consulta = $consultar->handle($this->transaction());
 
+        $this->satEstado = $consulta->estado;
         $this->satNotice = $consulta->seConsulto()
             ? trim(__('El SAT dice: ').$consulta->estado.' '.$consulta->estatusCancelacion)
             : (string) $consulta->motivo;

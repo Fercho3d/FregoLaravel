@@ -447,7 +447,11 @@ class TransactionQuery
         // están marcadas como canceladas y si no, el filtro no devolvería nada.
         if ($f->cfdiEstado === null) {
             match ($f->showCancelled) {
-                0 => $query->where('t.cancelled', 0),
+                // «Solo vigentes» es vigente ANTE EL SAT. Una factura marcada
+                // aquí cuya cancelación sigue en trámite, o que el receptor
+                // rechazó, sigue viva para el SAT: esconderla es justo lo que
+                // hacía que no se encontrara para darle seguimiento.
+                0 => $query->where(fn ($q) => $q->where('t.cancelled', 0)->orWhereIn('t.transc_id', $this->pendingCancellationIds())),
                 1 => $query->whereIn('t.cancelled', [0, 1]),
                 2 => $query->where('t.cancelled', 1),
                 default => null,
@@ -455,6 +459,32 @@ class TransactionQuery
         }
 
         $this->applyCfdiStatus($query, $f);
+    }
+
+    /**
+     * Facturas marcadas como canceladas que el SAT sigue viendo vigentes.
+     *
+     * Son las que tienen la cancelación en trámite o rechazada. Entran en el
+     * listado de vigentes porque fiscalmente lo están, y su insignia dice en
+     * qué punto va el trámite.
+     *
+     * @return int[]
+     */
+    private function pendingCancellationIds(): array
+    {
+        if (! Schema::hasTable('cfdi_cancelacion')) {
+            return [];
+        }
+
+        return DB::table('cfdi_cancelacion')
+            ->whereIn('estado', [...CancelResult::PENDIENTES, CancelResult::RECHAZADA])
+            // Solo las que el SAT ya confirmó vigentes. Mientras no se le haya
+            // preguntado, se respeta la marca heredada y la factura sigue fuera
+            // del listado de vigentes, como en el sistema original.
+            ->where('sat_estado', 'Vigente')
+            ->pluck('transc_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
     }
 
     /**

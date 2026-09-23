@@ -135,14 +135,15 @@ class FacturacionModernaClientTest extends TestCase
         );
     }
 
-    public function test_un_acuse_de_cancelacion_consumada_si_confirma(): void
+    /** Ni un acuse que dice «cancelado» confirma: eso lo dice el SAT. */
+    public function test_el_acuse_nunca_confirma_la_cancelacion(): void
     {
         $resultado = $this->clienteQueContesta((object) [
-            'Code' => 'GT02',
-            'Message' => 'El comprobante ha sido cancelado.',
+            'Code' => 'XX',
+            'Message' => 'El CFDI no puede ser cancelado.',
         ])->cancel('UUID-1', 'FTM1507038V6', '02');
 
-        $this->assertTrue($resultado->esCancelacionConfirmada());
+        $this->assertFalse($resultado->esCancelacionConfirmada());
     }
 
     /** Un acuse que no se reconoce no se da por cancelado: se conserva tal cual. */
