@@ -1061,7 +1061,7 @@ class DemoSeeder extends Seeder
                     'booking' => $booking,
                     'vendor' => $proveedor,
                     'tran_type' => 1,
-                    'invoice_type' => null,
+                    'invoice_type' => 1,
                     'open' => 1,
                     'active' => 1,
                     'paid' => $pagado ? 1 : 0,

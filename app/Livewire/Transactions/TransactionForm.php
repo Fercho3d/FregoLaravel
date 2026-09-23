@@ -349,7 +349,7 @@ class TransactionForm extends Component
             'company_id' => $entero($this->companyId),
             'customer' => $this->isInvoice() ? $entero($this->customerId) : null,
             'vendor' => $this->isInvoice() ? null : $entero($this->vendorId),
-            'invoice_type' => $this->isInvoice() ? $entero($this->invoiceType) : null,
+            'invoice_type' => $this->isInvoice() ? $entero($this->invoiceType) : Transaction::INVOICE_TYPE_NORMAL,
             'seal' => $this->seal,
             'new_seal' => $this->newSeal,
         ];

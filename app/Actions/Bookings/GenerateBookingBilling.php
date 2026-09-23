@@ -75,7 +75,7 @@ class GenerateBookingBilling
             'account' => $documento->accountId,
             'customer' => $documento->customerId,
             'vendor' => $documento->vendorId,
-            'invoice_type' => $esFactura ? Transaction::INVOICE_TYPE_NORMAL : null,
+            'invoice_type' => Transaction::INVOICE_TYPE_NORMAL,
         ], $usuario);
 
         foreach ($documento->lines as $renglon) {

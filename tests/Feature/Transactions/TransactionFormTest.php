@@ -192,6 +192,24 @@ class TransactionFormTest extends TestCase
         $this->assertSame(0, Transaction::count());
     }
 
+    /**
+     * Con `invoice_type` NULL la condición de signo del motor da NULL y el costo
+     * sale en negativo en Costos y en la solicitud de pago (Yii2 siempre guarda 1).
+     */
+    public function test_un_costo_se_guarda_con_tipo_de_factura_normal(): void
+    {
+        $this->actingAs($this->usuario());
+
+        $this->formulario(['booking' => 1, 'tipo' => 'costo'], [
+            'tranDate' => '2026-01-15',
+            'accountId' => '1',
+            'vendorId' => '1',
+            'tranNumber' => 'FMZ 1',
+        ])->call('save')->assertHasNoErrors();
+
+        $this->assertSame(Transaction::INVOICE_TYPE_NORMAL, (int) Transaction::first()->invoice_type);
+    }
+
     /** El «Credit Bill» del original: nota de crédito de proveedor, `tran_type` 2. */
     public function test_una_nota_de_credito_de_proveedor_se_crea_con_su_tipo(): void
     {
