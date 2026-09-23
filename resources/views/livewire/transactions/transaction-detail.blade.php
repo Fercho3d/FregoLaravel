@@ -155,23 +155,31 @@
                             .'4. '.__('Seleccionar el folio y elegir Aceptar.')."\n"
                             .__('Si no contestan en 72 horas, el SAT la cancela automáticamente.');
                     @endphp
-                    <div x-data="{ copiado: false }" class="space-y-2 rounded-lg border border-line bg-panel p-3">
-                        <p class="text-sm font-medium text-ink">{{ __('Cómo acepta la cancelación :cliente', ['cliente' => $contraparte]) }}</p>
-                        @php $vence = $cancelacion->solicitado_at?->copy()->addHours(\App\Models\CfdiCancelacion::PLAZO_HORAS); @endphp
-                        @if ($vence?->isFuture())
-                            <p class="text-xs text-ink">
-                                {{ __('Espere 72 horas: si el receptor no contesta, el SAT la cancela solo alrededor del :fecha (faltan :horas horas).', ['fecha' => $vence->format('d/m/Y H:i'), 'horas' => (int) ceil(now()->diffInHours($vence))]) }}
-                            </p>
-                        @endif
-                        @if ($cancelacion->sat_estado === 'Vigente' && blank($cancelacion->sat_estatus))
-                            <p class="text-xs text-brand">{{ __('Ojo: el SAT todavía no registra la solicitud, así que el receptor aún no la verá. Si no aparece, cancélela desde el portal del SAT con la e.firma del emisor.') }}</p>
-                        @endif
-                        <pre x-ref="texto" class="whitespace-pre-wrap font-sans text-xs text-ink-muted">{{ $instrucciones }}</pre>
-                        <button type="button" class="btn-ghost px-3 py-1.5 text-xs"
-                                x-on:click="navigator.clipboard.writeText($refs.texto.innerText); copiado = true; setTimeout(() => copiado = false, 2000)">
-                            <span x-text="copiado ? @js(__('Copiado')) : @js(__('Copiar instrucciones para el cliente'))">{{ __('Copiar instrucciones para el cliente') }}</span>
-                        </button>
-                    </div>
+                    @php $vence = $cancelacion->solicitado_at?->copy()->addHours(\App\Models\CfdiCancelacion::PLAZO_HORAS); @endphp
+                    @if ($vence?->isFuture())
+                        <p class="text-xs text-ink">
+                            {{ __('Espere 72 horas: si el receptor no contesta, el SAT la cancela solo alrededor del :fecha (faltan :horas horas).', ['fecha' => $vence->format('d/m/Y H:i'), 'horas' => (int) ceil(now()->diffInHours($vence))]) }}
+                        </p>
+                    @endif
+                    @if ($cancelacion->sat_estado === 'Vigente' && blank($cancelacion->sat_estatus))
+                        <p class="text-xs text-brand">{{ __('Ojo: el SAT todavía no registra la solicitud, así que el receptor aún no la verá. Si no aparece, cancélela desde el portal del SAT con la e.firma del emisor.') }}</p>
+                    @endif
+
+                    {{-- Plegado por omisión; `wire:ignore.self` para que al volver a
+                         consultar al SAT no se cierre solo. --}}
+                    <details wire:ignore.self x-data="{ copiado: false }" class="group rounded-lg border border-line bg-panel">
+                        <summary class="flex cursor-pointer list-none items-center gap-2 px-3 py-2 text-sm font-medium text-ink">
+                            <svg class="h-4 w-4 shrink-0 text-ink-faint transition group-open:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                            {{ __('Cómo acepta la cancelación :cliente', ['cliente' => $contraparte]) }}
+                        </summary>
+                        <div class="space-y-2 border-t border-line p-3">
+                            <pre x-ref="texto" class="whitespace-pre-wrap font-sans text-xs text-ink-muted">{{ $instrucciones }}</pre>
+                            <button type="button" class="btn-ghost px-3 py-1.5 text-xs"
+                                    x-on:click="navigator.clipboard.writeText($refs.texto.innerText); copiado = true; setTimeout(() => copiado = false, 2000)">
+                                <span x-text="copiado ? @js(__('Copiado')) : @js(__('Copiar instrucciones para el cliente'))">{{ __('Copiar instrucciones para el cliente') }}</span>
+                            </button>
+                        </div>
+                    </details>
                 @endif
 
                 <button type="button" wire:click="refreshSatStatus" wire:loading.attr="disabled" wire:target="refreshSatStatus"
