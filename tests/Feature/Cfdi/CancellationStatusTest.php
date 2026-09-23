@@ -625,6 +625,7 @@ class CancellationStatusTest extends TestCase
     public function test_en_proceso_muestra_las_instrucciones_para_el_receptor(): void
     {
         $this->timbrar();
+        $this->sat(new FakeSatStatus(estado: 'Vigente', estatusCancelacion: 'En proceso'));
         $this->cancelar()->assertHasNoErrors();
 
         $this->detalle()
@@ -641,5 +642,21 @@ class CancellationStatusTest extends TestCase
         $this->cancelar()->assertHasNoErrors();
 
         $this->detalle()->assertDontSee(__('Copiar instrucciones para el cliente'));
+    }
+
+    /**
+     * Si el SAT todavía no tiene la solicitud, el receptor no puede aceptarla
+     * ni corre el plazo: ni instrucciones ni «espere 72 horas».
+     */
+    public function test_sin_solicitud_en_el_sat_no_pide_esperar_ni_da_instrucciones(): void
+    {
+        $this->timbrar();
+        $this->sat(new FakeSatStatus(estado: 'Vigente'));
+        $this->cancelar()->assertHasNoErrors();
+
+        $this->detalle()
+            ->assertSee('sigue en el PAC')
+            ->assertDontSee('Espere 72 horas')
+            ->assertDontSee(__('Copiar instrucciones para el cliente'));
     }
 }
