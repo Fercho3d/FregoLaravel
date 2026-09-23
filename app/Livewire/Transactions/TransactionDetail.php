@@ -63,6 +63,9 @@ class TransactionDetail extends Component
     /** Estado que dio el SAT en la última consulta de esta pantalla (Vigente, Cancelado…). */
     public ?string $satEstado = null;
 
+    /** Estatus de la cancelación en esa misma consulta (En proceso, Solicitud rechazada…). */
+    public ?string $satEstatus = null;
+
     private ?object $headerCache = null;
 
     private ?CfdiCancelacion $cancelacionCache = null;
@@ -385,6 +388,7 @@ class TransactionDetail extends Component
         $consulta = $consultar->handle($this->transaction());
 
         $this->satEstado = $consulta->estado;
+        $this->satEstatus = $consulta->estatusCancelacion ?: null;
         $this->satNotice = $consulta->seConsulto()
             ? trim(__('El SAT dice: ').$consulta->estado.' '.$consulta->estatusCancelacion)
             : (string) $consulta->motivo;

@@ -128,14 +128,28 @@
                         {{ __('Solicitada el :fecha', ['fecha' => $cancelacion->solicitado_at?->format('d/m/Y H:i') ?: '—']) }}
                         @if ($cancelacion->verificado_at)
                             · {{ __('Última consulta al SAT: :fecha', ['fecha' => $cancelacion->verificado_at->format('d/m/Y H:i')]) }}
-                            · {{ trim($cancelacion->sat_estado.' '.$cancelacion->sat_estatus) }}
+                            @if (filled($cancelacion->sat_estado))
+                                · <x-sat-badge :estado="$cancelacion->sat_estado" />
+                            @endif
+                            @if (filled($cancelacion->sat_estatus))
+                                <x-sat-badge :estado="$cancelacion->sat_estatus" />
+                            @endif
                         @else
                             · {{ __('Todavía sin consultar al SAT.') }}
                         @endif
                     </p>
                 @endif
 
-                @if ($satNotice)
+                {{-- Con solicitud, la línea de la última consulta ya trae este resultado. --}}
+                @if ($satEstado !== null && ! $cancelacion)
+                    <p class="flex flex-wrap items-center gap-1.5 text-sm text-ink">
+                        {{ __('El SAT dice: ') }}
+                        <x-sat-badge :estado="$satEstado" />
+                        @if ($satEstatus)
+                            <x-sat-badge :estado="$satEstatus" />
+                        @endif
+                    </p>
+                @elseif ($satEstado === null && $satNotice)
                     <p class="text-sm text-ink">{{ $satNotice }}</p>
                 @elseif (! $cancelacion)
                     <p class="text-xs text-ink-faint">

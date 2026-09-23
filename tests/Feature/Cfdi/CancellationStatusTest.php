@@ -215,6 +215,38 @@ class CancellationStatusTest extends TestCase
         $this->assertSame(1, (int) Transaction::find(1)->cancelled);
     }
 
+    /** @return array<string, array{string, string, string}> */
+    public static function coloresDelSat(): array
+    {
+        return [
+            'vigente en verde' => ['Vigente', '', 'badge-ok'],
+            'cancelado en rojo' => ['Cancelado', 'Plazo vencido', 'badge-danger'],
+            'no encontrado en ámbar' => ['No Encontrado', '', 'badge-warn'],
+        ];
+    }
+
+    #[DataProvider('coloresDelSat')]
+    public function test_lo_que_dice_el_sat_sale_con_color(string $estado, string $estatus, string $clase): void
+    {
+        $this->timbrar();
+        $this->sat(new FakeSatStatus(estado: $estado, estatusCancelacion: $estatus));
+
+        $this->detalle()->call('refreshSatStatus')
+            ->assertSeeHtml("badge {$clase}\">{$estado}</span>");
+    }
+
+    /** Con solicitud de cancelación, la línea de la última consulta ya lo dice. */
+    public function test_con_solicitud_el_estado_del_sat_no_se_repite(): void
+    {
+        $this->timbrar();
+        $this->cancelar();
+        $this->sat(new FakeSatStatus(estado: 'Vigente'));
+
+        $html = $this->detalle()->call('refreshSatStatus')->html();
+
+        $this->assertSame(1, substr_count($html, 'badge-ok">Vigente</span>'));
+    }
+
     public function test_la_consulta_va_con_los_cuatro_datos_del_xml_timbrado(): void
     {
         $this->timbrar();
