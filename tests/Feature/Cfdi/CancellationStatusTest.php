@@ -620,4 +620,26 @@ class CancellationStatusTest extends TestCase
 
         $this->assertSame(0, (int) Transaction::find(1)->cancelled);
     }
+
+    /** Con la cancelación en proceso, el detalle trae el texto para el receptor. */
+    public function test_en_proceso_muestra_las_instrucciones_para_el_receptor(): void
+    {
+        $this->timbrar();
+        $this->cancelar()->assertHasNoErrors();
+
+        $this->detalle()
+            ->assertSee(__('Copiar instrucciones para el cliente'))
+            ->assertSee('Espere 72 horas', escape: false)
+            ->assertSee(CfdiCancelacion::where('transc_id', 1)->value('uuid'));
+    }
+
+    /** Una cancelada de verdad ya no pide nada al receptor. */
+    public function test_cancelada_no_muestra_instrucciones(): void
+    {
+        $this->timbrar();
+        $this->sat(new FakeSatStatus(estado: 'Cancelado', estatusCancelacion: 'Cancelado sin aceptación'));
+        $this->cancelar()->assertHasNoErrors();
+
+        $this->detalle()->assertDontSee(__('Copiar instrucciones para el cliente'));
+    }
 }

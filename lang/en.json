@@ -1274,5 +1274,16 @@
     "Si la factura pasa de mil pesos, el receptor tiene 72 horas para autorizarla.": "If the invoice is over one thousand pesos, the recipient has 72 hours to authorise it.",
     "Se timbrará esta factura ante el SAT. ¿Continuar?": "This invoice will be stamped at the SAT. Continue?",
     "Reintentar cancelación": "Retry cancellation",
-    "Estatus ante el SAT": "Status at the SAT"
+    "Estatus ante el SAT": "Status at the SAT",
+    "Les solicitamos la cancelación de la factura con folio fiscal :uuid. Para aceptarla:": "We have requested the cancellation of the invoice with tax folio :uuid. To accept it:",
+    "Entrar a sat.gob.mx, sección Factura electrónica, opción de cancelación de facturas («Consultar, cancelar y recuperar»).": "Go to sat.gob.mx, Factura electrónica section, invoice cancellation option («Consultar, cancelar y recuperar»).",
+    "Iniciar sesión con RFC y contraseña o con e.firma de su empresa.": "Sign in with your company's RFC and password or e.firma.",
+    "Buscar las solicitudes de cancelación pendientes (aceptación o rechazo, como receptor).": "Look for the pending cancellation requests (acceptance or rejection, as recipient).",
+    "Seleccionar el folio y elegir Aceptar.": "Select the folio and choose Accept.",
+    "Si no contestan en 72 horas, el SAT la cancela automáticamente.": "If there is no answer within 72 hours, the SAT cancels it automatically.",
+    "Cómo acepta la cancelación :cliente": "How :cliente accepts the cancellation",
+    "Ojo: el SAT todavía no registra la solicitud, así que el receptor aún no la verá. Si no aparece, cancélela desde el portal del SAT con la e.firma del emisor.": "Note: the SAT has not registered the request yet, so the recipient cannot see it. If it does not appear, cancel it from the SAT portal with the issuer's e.firma.",
+    "Copiar instrucciones para el cliente": "Copy instructions for the customer",
+    "Copiado": "Copied",
+    "Espere 72 horas: si el receptor no contesta, el SAT la cancela solo alrededor del :fecha (faltan :horas horas).": "Wait 72 hours: if the recipient does not answer, the SAT cancels it automatically around :fecha (:horas hours left)."
 }
