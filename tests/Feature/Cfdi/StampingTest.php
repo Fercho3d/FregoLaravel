@@ -322,6 +322,19 @@ class StampingTest extends TestCase
         $this->assertSame($marcables, $pantalla->get('selected'));
     }
 
+    /** Desde el navegador los renglones llegan como arreglos, no como objetos. */
+    public function test_marcar_todas_acepta_los_renglones_como_llegan_del_navegador(): void
+    {
+        $this->actingAs($this->usuario());
+
+        $pantalla = Livewire::test(TransactionTable::class, ['screen' => 'invoice']);
+        $filas = collect($pantalla->viewData('rows')->items())->map(fn ($fila) => (array) $fila)->all();
+
+        $pantalla->call('toggleAll', $filas)->assertHasNoErrors();
+
+        $this->assertNotSame([], $pantalla->get('selected'));
+    }
+
     public function test_volver_a_pulsarla_desmarca_todas(): void
     {
         $this->actingAs($this->usuario());

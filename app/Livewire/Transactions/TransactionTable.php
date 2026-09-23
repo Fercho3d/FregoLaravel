@@ -519,11 +519,13 @@ class TransactionTable extends Component
      * marcar. Timbrar cincuenta facturas no puede empezar por cincuenta clics:
      * la rejilla del sistema original traía esta casilla en la cabecera.
      *
-     * @param  iterable<object>  $rows
+     * @param  iterable<object|array>  $rows
      */
     public function toggleAll(iterable $rows): void
     {
+        // Desde el navegador los renglones llegan como arreglos.
         $marcables = collect($rows)
+            ->map(fn ($row) => (object) $row)
             ->filter(fn ($row) => $this->unselectableReason($row) === null)
             ->pluck('transc_id')
             ->map(intval(...))
@@ -626,11 +628,12 @@ class TransactionTable extends Component
      * que no tiene sentido es marcarlas para volver a timbrar, y de eso se
      * encarga este botón.
      *
-     * @param  iterable<object>  $rows
+     * @param  iterable<object|array>  $rows
      */
     public function selectUnstamped(iterable $rows): void
     {
         $this->selected = collect($rows)
+            ->map(fn ($row) => (object) $row)
             ->filter(fn ($row) => blank($row->seal ?? null)
                 && (int) ($row->tran_type ?? Transaction::TYPE_INVOICE) === Transaction::TYPE_INVOICE
                 && $this->unselectableReason($row) === null)
