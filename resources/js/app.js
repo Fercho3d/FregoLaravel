@@ -289,6 +289,29 @@ document.addEventListener('alpine:init', () => {
 });
 
 /**
+ * Versión nueva tras un despliegue: recarga sola.
+ *
+ * Con `wire:navigate` la app no recarga nunca y el JavaScript viejo se quedaba
+ * en memoria hasta que alguien hacía Ctrl+Shift+R. Vite cambia el NOMBRE del
+ * archivo en cada build (`app-AAA.js` → `app-BBB.js`), así que al navegar el
+ * `<head>` nuevo trae otro `app-*.js`: si no es el que está corriendo, hubo
+ * despliegue y se recarga la página completa.
+ *
+ * (El `data-navigate-track` de Livewire no sirve aquí: solo reacciona a un
+ * cambio de query string, no de nombre.)
+ */
+document.addEventListener('livewire:navigated', () => {
+    const propio = new URL(import.meta.url).pathname;
+    const otraVersion = [...document.querySelectorAll('script[src*="/build/assets/app-"]')].some(
+        (script) => new URL(script.src, location.href).pathname !== propio,
+    );
+
+    if (otraVersion) {
+        location.reload();
+    }
+});
+
+/**
  * Entrada de pantalla.
  *
  * `wire:navigate` cambia el contenido sin recargar, y el salto se sentía seco.
