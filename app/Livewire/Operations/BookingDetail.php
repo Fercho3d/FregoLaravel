@@ -24,6 +24,8 @@ use Livewire\Component;
 use Livewire\WithFileUploads;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
+use function Illuminate\Support\defer;
+
 /**
  * Detalle de un booking: la ruta, los contenedores, su facturación y el avance
  * de la lista de verificación.
@@ -182,7 +184,7 @@ class BookingDetail extends Component
             ->save();
 
         $this->editingInstructions = false;
-        session()->flash('status', __('Instrucciones de embarque guardadas.'));
+        session()->now('status', __('Instrucciones de embarque guardadas.'));
     }
 
     /** El encabezado sale del mismo motor que el listado, para que el avance cuadre. */
@@ -737,7 +739,7 @@ class BookingDetail extends Component
         }
 
         $this->resetGasto();
-        session()->flash('status', __('Gasto guardado.'));
+        session()->now('status', __('Gasto guardado.'));
     }
 
     public function deleteGasto(int $gasto): void
@@ -827,9 +829,16 @@ class BookingDetail extends Component
 
         $modelo->forceFill(['is_draft' => 0, 'modified_by' => auth()->id()])->save();
 
-        $avisados = $modelo->isQuotation() ? [] : $enviar->handle($modelo);
+        // El correo (PDF + Office 365) sale después de contestar: antes el botón
+        // se quedaba girando varios segundos y parecía trabado. Si falla, queda
+        // en el log y llega la alerta de error.
+        $avisados = $modelo->isQuotation() ? [] : $enviar->recipients($modelo);
 
-        session()->flash('status', match (true) {
+        if ($avisados !== []) {
+            defer(fn () => $enviar->handle($modelo, $avisados));
+        }
+
+        session()->now('status', match (true) {
             $modelo->isQuotation() => __('Cotización confirmada.'),
             $avisados === [] => __('Booking confirmado. No se mandó la confirmación: el cliente no tiene correos de notificación.'),
             default => __('Booking confirmado. Se mandó la confirmación a ').implode(', ', $avisados).'.',
@@ -842,7 +851,7 @@ class BookingDetail extends Component
 
         $avisados = $enviar->handle(Booking::findOrFail($this->bookingId));
 
-        session()->flash('status', $avisados === []
+        session()->now('status', $avisados === []
             ? __('No se mandó: el cliente no tiene correos de notificación.')
             : __('Confirmación enviada a ').implode(', ', $avisados).'.');
     }
@@ -860,14 +869,14 @@ class BookingDetail extends Component
         $correo = trim((string) auth()->user()?->email);
 
         if ($correo === '') {
-            session()->flash('error', __('Tu usuario no tiene correo: no hay a dónde mandarte la copia.'));
+            session()->now('error', __('Tu usuario no tiene correo: no hay a dónde mandarte la copia.'));
 
             return;
         }
 
         $avisados = $enviar->handle(Booking::findOrFail($this->bookingId), [$correo]);
 
-        session()->flash('status', $avisados === []
+        session()->now('status', $avisados === []
             ? __('No se pudo mandar la copia. Revisa el registro del sistema.')
             : __('Copia enviada a ').$correo.'.');
     }
@@ -896,7 +905,7 @@ class BookingDetail extends Component
             ->count();
 
         if ($facturacion > 0) {
-            session()->flash('error', trans_choice(
+            session()->now('error', trans_choice(
                 '{1}No se puede borrar: el booking tiene :count transacción sin cancelar.'
                 .'|[2,*]No se puede borrar: el booking tiene :count transacciones sin cancelar.',
                 $facturacion,
@@ -923,7 +932,7 @@ class BookingDetail extends Component
 
         Booking::whereKey($this->bookingId)->update(['locked' => 1, 'modified_by' => auth()->id()]);
 
-        session()->flash('status', __('Booking cerrado.'));
+        session()->now('status', __('Booking cerrado.'));
     }
 
     public function unlock(): void
@@ -932,7 +941,7 @@ class BookingDetail extends Component
 
         Booking::whereKey($this->bookingId)->update(['locked' => 0, 'modified_by' => auth()->id()]);
 
-        session()->flash('status', __('Booking reabierto.'));
+        session()->now('status', __('Booking reabierto.'));
     }
 
     // -------------------------------------------------------- Documentos
@@ -967,7 +976,7 @@ class BookingDetail extends Component
         app(BookingFiles::class)->store($this->bookingId, $this->uploadField, $this->upload);
 
         $this->reset(['upload', 'uploadField']);
-        session()->flash('status', __('Documento adjuntado.'));
+        session()->now('status', __('Documento adjuntado.'));
     }
 
     public function removeFile(int $fieldId, string $nombre): void

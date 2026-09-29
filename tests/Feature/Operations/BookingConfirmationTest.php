@@ -8,6 +8,7 @@ use App\Mail\BookingConfirmationMail;
 use App\Models\Core\Booking;
 use App\Models\User;
 use App\Support\Pdf\BookingConfirmation;
+use Illuminate\Support\Defer\DeferredCallbackCollection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Livewire\Livewire;
@@ -178,6 +179,7 @@ class BookingConfirmationTest extends TestCase
 
     public function test_confirmar_el_borrador_le_avisa_al_cliente(): void
     {
+        $this->withoutDefer();
         $this->booking(['is_draft' => 1]);
 
         Livewire::actingAs($this->usuario())
@@ -189,6 +191,26 @@ class BookingConfirmationTest extends TestCase
         Mail::assertSent(BookingConfirmationMail::class, fn ($correo) => $correo->hasTo('trafico@frialsa.mx')
             && $correo->hasTo('logistica@frialsa.mx')
             && $correo->envelope()->subject === 'Booking [FRE-2026-0184]');
+    }
+
+    /**
+     * El correo sale DESPUÉS de contestar (PDF + Office 365 dejaban el botón
+     * girando) y el aviso se ve en la misma pantalla, no en la siguiente.
+     */
+    public function test_confirmar_contesta_antes_de_mandar_el_correo(): void
+    {
+        $this->booking(['is_draft' => 1]);
+
+        Livewire::actingAs($this->usuario())
+            ->test(BookingDetail::class, ['booking' => 1])
+            ->call('confirm')
+            ->assertSee('Booking confirmado. Se mandó la confirmación a contacto@frialsa.mx, trafico@frialsa.mx');
+
+        Mail::assertNothingSent();
+
+        app(DeferredCallbackCollection::class)->invoke();
+
+        Mail::assertSent(BookingConfirmationMail::class);
     }
 
     public function test_confirmar_una_cotizacion_no_manda_correo(): void

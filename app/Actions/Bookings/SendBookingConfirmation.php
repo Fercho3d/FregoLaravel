@@ -31,7 +31,7 @@ class SendBookingConfirmation
      */
     public function handle(Booking $booking, ?array $destinatarios = null): array
     {
-        $destinatarios ??= Client::find($booking->client)?->notificationEmails() ?? [];
+        $destinatarios ??= $this->recipients($booking);
 
         if ($destinatarios === []) {
             return [];
@@ -40,7 +40,9 @@ class SendBookingConfirmation
         try {
             Mail::to($destinatarios)->send(new BookingConfirmationMail($booking));
         } catch (Throwable $e) {
-            Log::warning('No se pudo mandar la confirmación del booking', [
+            // `error` y no `warning`: puede salir después de contestar, cuando ya
+            // nadie ve la pantalla, así que tiene que llegar la alerta por correo.
+            Log::error('No se pudo mandar la confirmación del booking', [
                 'booking' => $booking->booking_id,
                 'error' => $e->getMessage(),
             ]);
@@ -49,5 +51,15 @@ class SendBookingConfirmation
         }
 
         return $destinatarios;
+    }
+
+    /**
+     * Los correos de notificación del cliente del booking.
+     *
+     * @return array<int, string>
+     */
+    public function recipients(Booking $booking): array
+    {
+        return Client::find($booking->client)?->notificationEmails() ?? [];
     }
 }

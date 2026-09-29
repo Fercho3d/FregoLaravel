@@ -21,6 +21,12 @@
         {{ __('Volver a bookings') }}
     </a>
 
+    {{-- Las acciones de esta pantalla no recargan la página, así que el aviso
+         se pinta aquí; en una carga normal ya lo pinta el layout. --}}
+    @if (\Livewire\Livewire::isLivewireRequest())
+        @include('partials.session-status')
+    @endif
+
     @if (session('error'))
         <div class="alert-danger">{{ session('error') }}</div>
     @endif
