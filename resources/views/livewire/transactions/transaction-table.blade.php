@@ -288,16 +288,14 @@
                         <button type="button" wire:click="stampSelected"
                                 wire:confirm="{{ __('Se timbrarán ante el SAT las facturas seleccionadas. No se puede deshacer sin cancelarlas. ¿Continuar?') }}"
                                 wire:loading.attr="disabled" wire:target="stampSelected"
-                                @disabled($selected === [])
-                                class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition
-                                       {{ $selected === []
+                                x-data :disabled="$wire.selected.length === 0"
+                                :class="$wire.selected.length === 0
                                             ? 'cursor-not-allowed border border-line text-ink-faint'
-                                            : 'bg-accent-500 text-white shadow-sm hover:bg-accent-600' }}">
+                                            : 'bg-accent-500 text-white shadow-sm hover:bg-accent-600'"
+                                class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition">
                             <x-spinner wire:loading wire:target="stampSelected" class="h-3.5 w-3.5" />
                             {{ __('Timbrar seleccionadas') }}
-                            @if ($selected !== [])
-                                <span class="rounded-full bg-white/25 px-1.5 py-0.5 tabular-nums">{{ count($selected) }}</span>
-                            @endif
+                            <span x-show="$wire.selected.length" x-text="$wire.selected.length" class="rounded-full bg-white/25 px-1.5 py-0.5 tabular-nums"></span>
                         </button>
                     @endif
 
@@ -306,11 +304,11 @@
                         <button type="button" wire:click="sendSelected"
                                 wire:confirm="{{ __('Se les mandará a los clientes el PDF y el XML de las facturas seleccionadas. ¿Continuar?') }}"
                                 wire:loading.attr="disabled" wire:target="sendSelected"
-                                @disabled($selected === [])
-                                class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition
-                                       {{ $selected === []
+                                x-data :disabled="$wire.selected.length === 0"
+                                :class="$wire.selected.length === 0
                                             ? 'cursor-not-allowed border-line text-ink-faint'
-                                            : 'border-line text-ink hover:bg-raised' }}">
+                                            : 'border-line text-ink hover:bg-raised'"
+                                class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition">
                             <x-spinner wire:loading wire:target="sendSelected" class="h-3.5 w-3.5" />
                             <svg wire:loading.remove wire:target="sendSelected" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M3 7l9 6 9-6M5 5h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/>
@@ -322,20 +320,18 @@
                     {{-- Pagar: lleva a la pantalla de pago con las seleccionadas. --}}
                     <button type="button" wire:click="createPaymentRequest"
                             title="{{ __('Agrupa las seleccionadas en una solicitud de pago') }}"
-                            @disabled($selected === [])
-                            class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition
-                                   {{ $selected === []
+                            x-data :disabled="$wire.selected.length === 0"
+                            :class="$wire.selected.length === 0
                                         ? 'cursor-not-allowed border-line text-ink-faint'
-                                        : 'border-line text-ink hover:bg-raised' }}">
+                                        : 'border-line text-ink hover:bg-raised'"
+                            class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition">
                         <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
                              stroke-width="1.8" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M5 7h14a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z"/>
                             <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18"/>
                         </svg>
                         {{ __('Pagar') }}
-                        @if ($selected !== [])
-                            <span class="rounded-full bg-ink/10 px-1.5 py-0.5 tabular-nums">{{ count($selected) }}</span>
-                        @endif
+                        <span x-show="$wire.selected.length" x-text="$wire.selected.length" class="rounded-full bg-ink/10 px-1.5 py-0.5 tabular-nums"></span>
                     </button>
                 @endif
                 <a href="{{ $this->exportUrl() }}"
@@ -649,15 +645,19 @@
                     @forelse ($rows as $row)
                         @php
                             $status = PaymentStatus::for($row);
-                            $marcada = $this->allowsSelection() && in_array((string) $row->transc_id, $selected);
                         @endphp
-                        <tr class="transition {{ $marcada ? 'row-picked' : 'hover:bg-raised' }} {{ $row->cancelled ? 'opacity-50' : '' }}">
+                        <tr class="transition {{ $this->allowsSelection() ? '' : 'hover:bg-raised' }} {{ $row->cancelled ? 'opacity-50' : '' }}"
+                            @if ($this->allowsSelection()) :class="$wire.selected.some((id) => id == {{ $row->transc_id }}) ? 'row-picked' : 'hover:bg-raised'" @endif>
                             @if ($this->allowsSelection())
                                 @php $noSeleccionable = $this->unselectableReason($row); @endphp
                                 <td class="px-3 py-2">
                                     {{-- Saldadas y canceladas no se marcan: no hay nada que
-                                         pagar, y el original también apagaba la casilla. --}}
-                                    <input type="checkbox" wire:model.live="selected" value="{{ $row->transc_id }}"
+                                         pagar, y el original también apagaba la casilla.
+                                         Sin `.live`: marcar no viaja al servidor (repintar la
+                                         página entera trababa la tabla con «Actualizando…»);
+                                         la selección se manda con Pagar/Timbrar/Enviar. El
+                                         contador y el renglón marcado los pinta Alpine. --}}
+                                    <input type="checkbox" wire:model="selected" value="{{ $row->transc_id }}"
                                            aria-label="Seleccionar transacción {{ $row->tran_number }}"
                                            @disabled($noSeleccionable !== null) title="{{ $noSeleccionable }}"
                                            class="h-4 w-4 rounded border-line bg-panel text-accent-500 focus:ring-accent-500 disabled:cursor-not-allowed disabled:opacity-40">

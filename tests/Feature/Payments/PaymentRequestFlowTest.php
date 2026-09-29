@@ -1238,16 +1238,20 @@ class PaymentRequestFlowTest extends TestCase
         }
     }
 
-    /** El renglón marcado se distingue a simple vista, no solo por la casilla. */
+    /**
+     * El renglón marcado se distingue a simple vista, no solo por la casilla, y
+     * lo pinta el navegador: marcar no viaja al servidor. Con `wire:model.live`
+     * cada casilla repintaba la página entera y la tabla se trababa en
+     * «Actualizando…».
+     */
     public function test_el_renglon_marcado_se_pinta(): void
     {
         $this->actingAs($this->usuario());
 
-        $html = Livewire::test(TransactionTable::class, ['screen' => 'bill'])
-            ->set('selected', [1])
-            ->html();
+        $html = Livewire::test(TransactionTable::class, ['screen' => 'bill'])->html();
 
-        $this->assertSame(1, substr_count($html, 'row-picked'), 'Solo el renglón marcado debería ir resaltado.');
+        $this->assertStringContainsString('wire:model="selected"', $html);
+        $this->assertStringContainsString(':class="$wire.selected.some((id) => id == 1) ? \'row-picked\'', $html);
     }
 
     /**
