@@ -604,8 +604,9 @@
         {{-- Tabla (desde md) --}}
         {{-- El <style> lo escribe `columnResizer` con los anchos guardados en
              este navegador; va con `wire:ignore` para que el morph no lo borre
-             al repintar la tabla. --}}
-        <div id="tabla-transacciones" x-data="columnResizer('anchos.transacciones.{{ $this->screen }}')"
+             al repintar la tabla. También fija la casilla, Booking, Fecha y
+             Número al recorrer la tabla a lo ancho. --}}
+        <div id="tabla-transacciones" x-data="columnResizer('anchos.transacciones.{{ $this->screen }}', {{ 3 + ($this->allowsSelection() ? 1 : 0) }})"
              class="hidden overflow-x-auto md:block">
             <style x-ref="reglas" wire:ignore></style>
             <table class="min-w-full text-sm">

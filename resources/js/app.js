@@ -180,9 +180,15 @@ document.addEventListener('alpine:init', () => {
  *
  * Arrastrar el borde derecho de la cabecera cambia el ancho; doble clic lo
  * devuelve a como estaba.
+ *
+ * `fijas` deja las primeras columnas quietas al recorrer la tabla a lo ancho
+ * (casilla, booking, fecha y número). Su `left` depende del ancho real de las
+ * anteriores, que cambia con el contenido y con el arrastre, así que se mide.
+ * Solo cabecera y cuerpo: la primera celda del pie abarca varias columnas y,
+ * fija, taparía los totales.
  */
 document.addEventListener('alpine:init', () => {
-    window.Alpine.data('columnResizer', (llave) => ({
+    window.Alpine.data('columnResizer', (llave, fijas = 0) => ({
         anchos: {},
         minimo: 56,
 
@@ -194,18 +200,47 @@ document.addEventListener('alpine:init', () => {
             }
 
             this.pintar();
+
+            if (fijas) {
+                // Filtrar o paginar cambia el ancho de las fijas sin pasar por `pintar`.
+                const observador = new ResizeObserver(() => this.pintar());
+                this.$el.querySelectorAll(`thead th:nth-child(-n+${fijas})`).forEach((th) => observador.observe(th));
+            }
         },
 
         pintar() {
             const id = this.$el.id;
 
-            this.$refs.reglas.textContent = Object.entries(this.anchos)
-                .map(
-                    ([columna, ancho]) =>
-                        `#${id} th:nth-child(${columna}),#${id} td:nth-child(${columna})` +
-                        `{width:${ancho}px;max-width:${ancho}px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}`,
-                )
-                .join('');
+            const reglas = Object.entries(this.anchos).map(
+                ([columna, ancho]) =>
+                    `#${id} th:nth-child(${columna}),#${id} td:nth-child(${columna})` +
+                    `{width:${ancho}px;max-width:${ancho}px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}`,
+            );
+            this.$refs.reglas.textContent = reglas.join('');
+
+            if (!fijas) {
+                return;
+            }
+
+            const fija = (n) => `#${id} thead tr>:nth-child(${n}),#${id} tbody tr>:nth-child(${n})`;
+            const todas = fija(`-n+${fijas}`);
+            let izquierda = 0;
+
+            this.$el.querySelectorAll(`thead th:nth-child(-n+${fijas})`).forEach((th, i) => {
+                reglas.push(`${fija(i + 1)}{left:${izquierda}px}`);
+                izquierda += th.getBoundingClientRect().width;
+            });
+
+            // Fondo opaco para que no se transparente lo que pasa por debajo; el
+            // marcado se pinta encima porque en oscuro es translúcido.
+            reglas.push(
+                `${todas}{position:sticky;z-index:1;background-color:var(--panel)}`,
+                `#${id} tbody tr:not(.row-picked):hover>:nth-child(-n+${fijas}){background-color:var(--raised)}`,
+                `#${id} tbody tr.row-picked>:nth-child(-n+${fijas}){background-image:linear-gradient(var(--pick-bg),var(--pick-bg))}`,
+                `${fija(fijas)}{box-shadow:inset -1px 0 0 var(--line)}`,
+                `#${id} tbody tr.row-picked>:first-child{box-shadow:inset 3px 0 0 0 var(--pick-line)}`,
+            );
+            this.$refs.reglas.textContent = reglas.join('');
         },
 
         guardar() {
