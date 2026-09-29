@@ -376,3 +376,96 @@ document.addEventListener('alpine:init', () => {
         },
     }));
 });
+
+/**
+ * Reporte de fallas del navegador.
+ *
+ * Lo que solo ve el navegador no dejaba rastro: un botón que se queda girando
+ * porque la respuesta nunca llegó, una acción que falla o un error de
+ * JavaScript. Se le avisa al servidor (`ReporteDelNavegadorController`), que lo
+ * deja en el log, y una acción sin respuesta además llega por correo.
+ *
+ * Pocas y sin repetir por página: esto no debe convertirse en ruido.
+ */
+(() => {
+    const SIN_RESPUESTA_MS = 35000; // PHP corta a los 30 s: más que esto ya no llega.
+    const LENTA_MS = 10000;
+    const enviados = new Set();
+
+    const reportar = (tipo, mensaje, extra = {}) => {
+        const llave = `${tipo}|${mensaje}`;
+
+        if (enviados.has(llave) || enviados.size >= 10) {
+            return;
+        }
+        enviados.add(llave);
+
+        fetch('/diagnostico/navegador', {
+            method: 'POST',
+            keepalive: true,
+            headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
+            },
+            body: JSON.stringify({ tipo, mensaje: String(mensaje).slice(0, 1000), pantalla: location.href.slice(0, 500), ...extra }),
+        }).catch(() => {});
+    };
+
+    // «booking-detail → confirm», igual que `ContextoPeticion` en el servidor.
+    const accion = (payload) => {
+        try {
+            return JSON.parse(payload)
+                .components.map((c) => {
+                    const metodos = [...(c.calls ?? []).map((x) => x.method), ...Object.keys(c.updates ?? {})];
+
+                    return `${JSON.parse(c.snapshot).memo.name} → ${metodos.join(', ') || 'repintar'}`;
+                })
+                .join(' | ')
+                .slice(0, 500);
+        } catch {
+            return null;
+        }
+    };
+
+    window.addEventListener('error', (e) => {
+        // Las extensiones del navegador también lanzan errores; no son nuestros.
+        if (e.filename && !e.filename.startsWith(location.origin)) {
+            return;
+        }
+        reportar('js', `${e.message} (${e.filename ?? '?'}:${e.lineno ?? '?'})`);
+    });
+
+    window.addEventListener('unhandledrejection', (e) => reportar('js', `Promesa rechazada: ${e.reason?.message ?? e.reason}`));
+
+    document.addEventListener('livewire:init', () => {
+        window.Livewire.hook('request', ({ payload, respond, fail }) => {
+            const inicio = performance.now();
+            const que = accion(payload);
+            const vigia = setTimeout(
+                () => reportar('sin_respuesta', `${que ?? 'acción'} sin respuesta tras ${SIN_RESPUESTA_MS / 1000} s`, { accion: que, ms: SIN_RESPUESTA_MS }),
+                SIN_RESPUESTA_MS,
+            );
+
+            respond(() => {
+                clearTimeout(vigia);
+                const ms = Math.round(performance.now() - inicio);
+
+                if (ms >= LENTA_MS) {
+                    reportar('lenta', `${que ?? 'acción'} tardó ${Math.round(ms / 1000)} s`, { accion: que, ms });
+                }
+            });
+
+            // 419 (sesión caducada) lo resuelve Livewire con su aviso; y un 500 ya
+            // lo registró el servidor. Aquí interesa lo que el servidor no ve,
+            // incluida la red caída (sin estado).
+            fail(({ status }) => {
+                clearTimeout(vigia);
+
+                if (status !== 419 && !(status >= 500)) {
+                    reportar('fallo', `${que ?? 'acción'} falló (HTTP ${status})`, { accion: que });
+                }
+            });
+        });
+    });
+})();

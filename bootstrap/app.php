@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnsureUserIsActive;
+use App\Http\Middleware\RegistraPeticionesLentas;
 use App\Http\Middleware\SetLocale;
 use App\Support\Locale;
 use App\Support\Theme;
@@ -24,7 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Un usuario dado de baja sale en su siguiente clic, como en el sistema
         // original. El idioma se resuelve después de la sesión: la preferencia
         // del usuario vive en la base y hace falta saber quién entra.
-        $middleware->web(append: [EnsureUserIsActive::class, SetLocale::class]);
+        $middleware->web(append: [EnsureUserIsActive::class, SetLocale::class, RegistraPeticionesLentas::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

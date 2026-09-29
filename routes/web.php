@@ -5,6 +5,7 @@ use App\Http\Controllers\BookingFileController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\PaymentRequestDocumentController;
 use App\Http\Controllers\PortalFileController;
+use App\Http\Controllers\ReporteDelNavegadorController;
 use App\Http\Controllers\ServiceContractController;
 use App\Http\Controllers\ThemeController;
 use App\Http\Controllers\TransactionExportController;
@@ -58,6 +59,12 @@ Route::put('/preferencias/tema', ThemeController::class)->name('preferences.them
 
 // Idioma de la interfaz, con la misma regla que el tema.
 Route::put('/preferencias/idioma', LocaleController::class)->name('preferences.locale');
+
+// Fallas que solo ve el navegador (JS, acciones sin respuesta). Sin `auth`: la
+// pantalla de acceso también puede fallar.
+Route::post('/diagnostico/navegador', ReporteDelNavegadorController::class)
+    ->middleware('throttle:30,1')
+    ->name('diagnostico.navegador');
 
 // Seguridad de la cuenta (contraseña + 2FA). Va fuera de los dos bloques porque
 // es de cualquiera con sesión, incluidas las cuentas de portal. Las acciones las

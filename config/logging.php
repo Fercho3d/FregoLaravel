@@ -1,5 +1,6 @@
 <?php
 
+use App\Logging\AlertasPorCorreo;
 use Monolog\Handler\NullHandler;
 use Monolog\Handler\StreamHandler;
 use Monolog\Handler\SyslogUdpHandler;
@@ -50,12 +51,31 @@ return [
     |
     */
 
+    // Una petición que tarda más que esto queda en el log con quién, dónde y
+    // qué botón (`RegistraPeticionesLentas`).
+    'peticion_lenta_ms' => (int) env('LOG_PETICION_LENTA_MS', 5000),
+
     'channels' => [
 
         'stack' => [
             'driver' => 'stack',
-            'channels' => explode(',', (string) env('LOG_STACK', 'single')),
+            // Con `ALERTAS_CORREO` puesto, cada error también llega por correo.
+            'channels' => array_filter([
+                ...explode(',', (string) env('LOG_STACK', 'single')),
+                env('ALERTAS_CORREO') ? 'alertas' : null,
+            ]),
             'ignore_exceptions' => false,
+        ],
+
+        'alertas' => [
+            'driver' => 'monolog',
+            'handler' => AlertasPorCorreo::class,
+            'level' => 'error',
+            'with' => [
+                'para' => env('ALERTAS_CORREO'),
+                // El mismo error no se vuelve a mandar en este rato; se cuenta.
+                'silencioMinutos' => (int) env('ALERTAS_SILENCIO_MINUTOS', 30),
+            ],
         ],
 
         // Facturas mandadas a clientes, salgan o no. Va aparte y en `info` porque
