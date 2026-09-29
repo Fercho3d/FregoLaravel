@@ -203,9 +203,15 @@ document.addEventListener('alpine:init', () => {
 
             if (fijas) {
                 // Filtrar o paginar cambia el ancho de las fijas sin pasar por `pintar`.
-                const observador = new ResizeObserver(() => this.pintar());
-                this.$el.querySelectorAll(`thead th:nth-child(-n+${fijas})`).forEach((th) => observador.observe(th));
+                this.observador = new ResizeObserver(() => this.pintar());
+                this.$el.querySelectorAll(`thead th:nth-child(-n+${fijas})`).forEach((th) => this.observador.observe(th));
             }
+        },
+
+        // Al salir con `wire:navigate` las cabeceras se desprenden y el
+        // observador avisaba una última vez sobre un componente ya destruido.
+        destroy() {
+            this.observador?.disconnect();
         },
 
         pintar() {
