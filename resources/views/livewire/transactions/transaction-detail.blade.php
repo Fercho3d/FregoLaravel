@@ -47,6 +47,12 @@
                         {{ __('Editar') }}
                     </a>
                 @endif
+                @if (auth()->user()?->isAdmin() && ! \App\Actions\Payments\CreatePaymentRequest::rejectionReason($fila))
+                    <a href="{{ route('payments.requests.create', ['ids' => $fila->transc_id, 'volver' => route('transactions.show', $fila->transc_id, absolute: false)]) }}" wire:navigate
+                       class="btn-accent px-3 py-1.5 text-xs">
+                        {{ $esFactura ? __('Cobrar') : __('Pagar') }}
+                    </a>
+                @endif
                 @if ($this->canStamp())
                     <button type="button" wire:click="stamp" wire:loading.attr="disabled" wire:target="stamp"
                             wire:confirm="{{ __('Se timbrará esta factura ante el SAT. Esta operación no se puede deshacer sin cancelarla. ¿Continuar?') }}"

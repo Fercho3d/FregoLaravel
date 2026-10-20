@@ -989,6 +989,22 @@ class PaymentRequestFlowTest extends TestCase
         $solicitud->assertRedirect(route('payments.requests', ['num' => 'CHQ-100', 'nueva' => $id]));
     }
 
+    /** Si se llegó desde una transacción o un listado, el listado ofrece regresar ahí. */
+    public function test_al_guardar_conserva_a_donde_regresar(): void
+    {
+        $this->actingAs($this->usuario());
+
+        Livewire::withQueryParams(['ids' => '1', 'volver' => '/transacciones/1'])
+            ->test(PaymentRequestForm::class)
+            ->set('number', 'CHQ-100')->set('date', '2026-01-20')->set('bankId', '1')
+            ->call('save')
+            ->assertRedirect(route('payments.requests', [
+                'num' => 'CHQ-100',
+                'nueva' => (int) PaymentRequest::first()?->request_id,
+                'volver' => '/transacciones/1',
+            ]));
+    }
+
     public function test_el_verde_señala_solo_a_la_recien_creada(): void
     {
         $id = $this->conSolicitud();

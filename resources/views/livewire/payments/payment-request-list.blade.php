@@ -16,12 +16,12 @@
 
 <div class="space-y-4">
 
-    {{-- Se llegó desde un reporte de cobros y pagos: regreso con su filtro --}}
+    {{-- Se llegó desde un reporte, un listado o una transacción: regreso con su filtro --}}
     @if ($volver !== '')
         <a href="{{ $volver }}" wire:navigate
            class="inline-flex items-center gap-1.5 text-sm text-ink-muted transition hover:text-ink">
             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
-            {{ __('Volver al reporte') }}
+            {{ __('Regresar') }}
         </a>
     @endif
 

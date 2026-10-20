@@ -4,6 +4,7 @@ namespace Tests\Feature\Transactions;
 
 use App\Livewire\Transactions\TransactionDetail;
 use App\Models\Core\Charge;
+use App\Models\Core\Transaction;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
@@ -79,6 +80,21 @@ class TransactionDetailTest extends LegacyDatabaseTestCase
             ->get(route('transactions.show', $id))
             ->assertOk()
             ->assertSee($numero);
+    }
+
+    /** Un costo con saldo se paga desde su detalle y la solicitud sabe regresar a él. */
+    public function test_un_costo_con_saldo_ofrece_pagarlo_ahi_mismo(): void
+    {
+        $id = (int) DB::table('transaction')->where('tran_type', '!=', Transaction::TYPE_INVOICE)
+            ->where('cancelled', 0)->where('paid', 0)->orderByDesc('transc_id')->value('transc_id');
+
+        if (! $id) {
+            $this->markTestSkipped('La base local no tiene costos sin pagar.');
+        }
+
+        $this->actingAs($this->admin())
+            ->get(route('transactions.show', $id))
+            ->assertSee(route('payments.requests.create', ['ids' => $id, 'volver' => route('transactions.show', $id, absolute: false)]));
     }
 
     public function test_una_transaccion_inexistente_responde_404(): void

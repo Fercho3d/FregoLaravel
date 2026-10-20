@@ -220,6 +220,7 @@ class PaymentRequestForm extends Component
         $this->redirectRoute('payments.requests', [
             'num' => $solicitud->number,
             'nueva' => $solicitud->request_id,
+            'volver' => $this->back ?: null,
         ], navigate: true);
     }
 
