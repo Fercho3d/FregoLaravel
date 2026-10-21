@@ -774,6 +774,26 @@ class PaymentRequestFlowTest extends TestCase
         return Livewire::test(PaymentRequestDetail::class, ['request' => $id]);
     }
 
+    /** Un abono de la mitad desglosa la mitad del subtotal y la mitad del IVA. */
+    public function test_el_detalle_desglosa_el_iva_en_proporcion_a_lo_pagado(): void
+    {
+        DB::table('charge_type')->insert(['charge_type_id' => 2, 'charge_type_name' => 'Flete 16', 'tax_rate' => 0.16, 'tax_retention' => 0, 'non_deductible' => 0]);
+        DB::table('charge')->where('charge_id', 1)->update(['type' => 2]);
+
+        // El costo 2 (500 a tasa 0) va completo: no debe mezclarse con el 1.
+        $this->formulario([1, 2])
+            ->set('number', 'CHQ-100')->set('date', '2026-01-20')->set('bankId', '1')
+            ->set('amounts.1', '580')
+            ->call('save');
+
+        $desglose = $this->detalle((int) PaymentRequest::first()?->request_id)->viewData('desglose')->get(1);
+
+        $this->assertSame(
+            [0.0, 500.0, 80.0],
+            [round((float) $desglose->sub_0_paid, 2), round((float) $desglose->sub_16_paid, 2), round((float) $desglose->tax_16_paid, 2)],
+        );
+    }
+
     /** Es el selector de «Add» en Yii2: mismo tipo, mismo tercero, misma divisa, con saldo. */
     public function test_el_panel_solo_ofrece_las_del_mismo_proveedor_y_divisa(): void
     {
