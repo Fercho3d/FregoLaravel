@@ -1,6 +1,8 @@
 @php
     $money = fn ($v) => $v === null ? '—' : number_format((float) $v, 2);
-    $cubetas = [['sub_0_paid', 'Sub 0 %'], ['sub_16_paid', 'Sub 16 %'], ['tax_16_paid', 'IVA 16 %'], ['tax_ret_paid', 'Ret. IVA'], ['non_dec', 'No deducible']];
+    // Las columnas de impuestos del modal de Yii2, pero de lo pagado en esta
+    // solicitud: un abono de la mitad lleva la mitad del IVA.
+    $cubetas = [['sub_0_paid', 'Sub 0 %'], ['sub_16_paid', 'Sub 16 %'], ['tax_16_paid', 'IVA 16 %'], ['tax_ret_paid', 'Ret. IVA'], ['tax_0_mxn', 'IVA 0 %']];
     $esAdmin = auth()->user()?->isAdmin() ?? false;
     $esSuperAdmin = auth()->user()?->isSuperAdmin() ?? false;
     $esCobro = (int) $solicitud->type === 1;
@@ -131,15 +133,20 @@
             <table class="min-w-full text-sm">
                 <thead class="text-[11px] uppercase tracking-wide text-ink-faint">
                     <tr>
-                        <th class="px-3 py-2 text-left font-semibold">{{ __('Transacción') }}</th>
                         <th class="px-3 py-2 text-left font-semibold">{{ __('Booking') }}</th>
+                        <th class="px-3 py-2 text-left font-semibold">{{ __('Tipo') }}</th>
                         <th class="px-3 py-2 text-left font-semibold">{{ __('Fecha') }}</th>
+                        <th class="px-3 py-2 text-left font-semibold">{{ __('Número') }}</th>
+                        <th class="px-3 py-2 text-left font-semibold">{{ __('Divisa') }}</th>
+                        <th class="px-3 py-2 text-right font-semibold">{{ __('Importe') }}</th>
                         <th class="px-3 py-2 text-right font-semibold">{{ __('TC') }}</th>
-                        <th class="px-3 py-2 text-right font-semibold">{{ __('Total') }}</th>
-                        {{-- Lo pagado aquí, desglosado en proporción a lo aplicado --}}
                         @foreach ($cubetas as [, $titulo])
                             <th class="px-3 py-2 text-right font-semibold">{{ __($titulo) }}</th>
                         @endforeach
+                        <th class="px-3 py-2 text-right font-semibold">{{ __('Total') }}</th>
+                        <th class="px-3 py-2 text-center font-semibold">PDF</th>
+                        <th class="px-3 py-2 text-center font-semibold">XML</th>
+                        <th class="px-3 py-2 text-left font-semibold">{{ __('Estado') }}</th>
                         <th class="px-3 py-2 text-right font-semibold">{{ __('Pagado') }}</th>
                         <th class="px-3 py-2 text-right font-semibold">{{ __('Por pagar') }}</th>
                         @if ($editable)
@@ -150,22 +157,30 @@
                 </thead>
                 <tbody class="divide-y divide-line">
                     @forelse ($transacciones as $t)
+                        @php $estado = \App\Support\PaymentStatus::for($t); @endphp
                         <tr class="hover:bg-raised">
+                            <td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ trim((string) $t->booking_number) ?: '—' }}</td>
+                            <td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ \App\Models\Core\Transaction::typeLabel($t->invoice_type, $t->tran_type) }}</td>
+                            <td class="whitespace-nowrap px-3 py-2 text-ink-muted">
+                                {{ $t->tran_date ? \Illuminate\Support\Carbon::parse($t->tran_date)->format('d/m/Y') : '—' }}
+                            </td>
                             <td class="whitespace-nowrap px-3 py-2">
                                 <a href="{{ route('transactions.show', $t->transc_id) }}" wire:navigate
                                    class="text-brand hover:underline">{{ $t->tran_number ?: $t->transc_id }}</a>
                             </td>
-                            <td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ trim((string) $t->booking_number) ?: '—' }}</td>
-                            <td class="whitespace-nowrap px-3 py-2 text-ink-muted">
-                                {{ $t->tran_date ? \Illuminate\Support\Carbon::parse($t->tran_date)->format('d/m/Y') : '—' }}
-                            </td>
+                            <td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ $t->currency }}</td>
+                            <td class="whitespace-nowrap px-3 py-2 text-right tabular-nums text-ink-soft">{{ $money($t->amount_original) }}</td>
                             <td class="whitespace-nowrap px-3 py-2 text-right tabular-nums text-ink-muted">{{ $t->exchange_value === null ? '—' : number_format((float) $t->exchange_value, 4) }}</td>
-                            <td class="whitespace-nowrap px-3 py-2 text-right tabular-nums text-ink-soft">{{ $money($t->total_natural_amount) }}</td>
+                            {{-- Impuestos de lo pagado aquí, en proporción a lo aplicado --}}
                             @foreach ($cubetas as [$campo])
-                                <td class="whitespace-nowrap px-3 py-2 text-right tabular-nums text-ink-muted">{{ $money($desglose->get($t->transc_id)?->{$campo}) }}</td>
+                                <td class="whitespace-nowrap px-3 py-2 text-right tabular-nums text-ink-muted">{{ $money($t->{$campo}) }}</td>
                             @endforeach
-                            <td class="whitespace-nowrap px-3 py-2 text-right tabular-nums text-ink-muted">{{ $money($t->tran_paid_amount) }}</td>
-                            <td class="whitespace-nowrap px-3 py-2 text-right tabular-nums text-ink">{{ $money($t->left_to_pay) }}</td>
+                            <td class="whitespace-nowrap px-3 py-2 text-right tabular-nums text-ink-soft">{{ $money($t->total_natural_amount) }}</td>
+                            <td class="px-3 py-2 text-center">{{ filled($t->pdf_attach) ? '✓' : '—' }}</td>
+                            <td class="px-3 py-2 text-center">{{ filled($t->xml_attach) ? '✓' : '—' }}</td>
+                            <td class="whitespace-nowrap px-3 py-2"><span class="{{ $estado->classes() }}">{{ $estado->label() }}</span></td>
+                            <td class="whitespace-nowrap px-3 py-2 text-right tabular-nums text-ink">{{ $money($t->tran_paid_amount) }}</td>
+                            <td class="whitespace-nowrap px-3 py-2 text-right tabular-nums text-ink-muted">{{ $money($t->left_to_pay) }}</td>
                             @if ($editable)
                                 <td class="whitespace-nowrap px-3 py-2 text-right">
                                     <input type="number" step="0.01" wire:model="amounts.{{ $t->transc_id }}"
@@ -185,7 +200,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="12" class="px-3 py-10 text-center text-ink-faint">{{ __('Esta solicitud no tiene transacciones.') }}</td>
+                            <td colspan="18" class="px-3 py-10 text-center text-ink-faint">{{ __('Esta solicitud no tiene transacciones.') }}</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -193,11 +208,18 @@
                     <tfoot class="border-t border-line font-semibold text-ink">
                         <tr>
                             <td colspan="5" class="px-3 py-2 text-right text-xs uppercase tracking-wide text-ink-faint">{{ __('Totales') }}</td>
+                            <td class="whitespace-nowrap px-3 py-2 text-right tabular-nums">{{ $money($transacciones->sum('amount_original')) }}</td>
+                            <td></td>
                             @foreach ($cubetas as [$campo])
-                                <td class="whitespace-nowrap px-3 py-2 text-right tabular-nums">{{ $money($desglose->sum($campo)) }}</td>
+                                <td class="whitespace-nowrap px-3 py-2 text-right tabular-nums">{{ $money($transacciones->sum($campo)) }}</td>
                             @endforeach
+                            <td class="whitespace-nowrap px-3 py-2 text-right tabular-nums">{{ $money($transacciones->sum('total_natural_amount')) }}</td>
+                            <td colspan="3"></td>
                             <td class="whitespace-nowrap px-3 py-2 text-right tabular-nums">{{ $money($transacciones->sum('tran_paid_amount')) }}</td>
-                            <td colspan="{{ $editable ? 3 : 1 }}"></td>
+                            <td class="whitespace-nowrap px-3 py-2 text-right tabular-nums">{{ $money($transacciones->sum('left_to_pay')) }}</td>
+                            @if ($editable)
+                                <td colspan="2"></td>
+                            @endif
                         </tr>
                     </tfoot>
                 @endif

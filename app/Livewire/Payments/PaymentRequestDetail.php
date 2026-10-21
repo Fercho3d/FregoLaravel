@@ -323,23 +323,6 @@ class PaymentRequestDetail extends Component
     }
 
     /**
-     * Lo pagado en esta solicitud, desglosado por transacción y en su divisa:
-     * cada cubeta (subtotales, IVA, retención, no deducible) en proporción a lo
-     * aplicado, como el listado. Un abono de la mitad lleva la mitad del IVA.
-     *
-     * @return Collection<int, object>
-     */
-    private function breakdown(): Collection
-    {
-        $filtros = PaymentRequestFilters::make(['request_id' => $this->requestId]);
-        $filtros->groupBy = 'transaction';
-        $filtros->noExchange = true;
-        $filtros->noNegative = true;
-
-        return PaymentRequestQuery::make($filtros)->get()->keyBy('transc_id');
-    }
-
-    /**
      * Las mismas transacciones vistas desde fuera: `left_to_pay` contra TODO lo
      * pagado (también por otras solicitudes) y, aparte, lo aplicado aquí.
      *
@@ -429,7 +412,6 @@ class PaymentRequestDetail extends Component
         return view('livewire.payments.payment-request-detail', [
             'solicitud' => $solicitud,
             'transacciones' => $this->transactions(),
-            'desglose' => $this->breakdown(),
             'banks' => Bank::options(),
             'editable' => $editable,
             'tcPropio' => (int) $modelo->custom_tc === 1,

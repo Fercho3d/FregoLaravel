@@ -302,7 +302,6 @@ class PaymentRequestQuery
             'client' => 'pr.client_id',
             'provider' => 'pr.provider_id, pr.currency_id',
             'type' => 'pr.type',
-            'transaction' => 'pr.request_id, pbt.transc_id',
             default => 'pr.request_id',
         };
     }

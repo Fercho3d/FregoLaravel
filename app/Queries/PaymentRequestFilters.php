@@ -49,9 +49,8 @@ class PaymentRequestFilters
     public bool $noNegative = false;
 
     /**
-     * Agrupación: 'request' (una fila por solicitud), 'transaction' (una por
-     * transacción de cada solicitud), 'client', 'provider' (proveedor y
-     * divisa) o 'type'.
+     * Agrupación: 'request' (una fila por solicitud), 'client', 'provider'
+     * (proveedor y divisa) o 'type'.
      */
     public string $groupBy = 'request';
 

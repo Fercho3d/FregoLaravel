@@ -774,7 +774,7 @@ class PaymentRequestFlowTest extends TestCase
         return Livewire::test(PaymentRequestDetail::class, ['request' => $id]);
     }
 
-    /** Un abono de la mitad desglosa la mitad del subtotal y la mitad del IVA. */
+    /** Un abono de la mitad desglosa la mitad del subtotal y la mitad del IVA, como pide contabilidad. */
     public function test_el_detalle_desglosa_el_iva_en_proporcion_a_lo_pagado(): void
     {
         DB::table('charge_type')->insert(['charge_type_id' => 2, 'charge_type_name' => 'Flete 16', 'tax_rate' => 0.16, 'tax_retention' => 0, 'non_deductible' => 0]);
@@ -786,7 +786,7 @@ class PaymentRequestFlowTest extends TestCase
             ->set('amounts.1', '580')
             ->call('save');
 
-        $desglose = $this->detalle((int) PaymentRequest::first()?->request_id)->viewData('desglose')->get(1);
+        $desglose = $this->detalle((int) PaymentRequest::first()?->request_id)->viewData('transacciones')->firstWhere('transc_id', 1);
 
         $this->assertSame(
             [0.0, 500.0, 80.0],
