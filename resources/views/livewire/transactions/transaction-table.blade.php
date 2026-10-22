@@ -361,6 +361,7 @@
                         @foreach ([25, 50, 100, 200, 500, 1000] as $n)
                             <option value="{{ $n }}" @selected($n === $perPage)>{{ $n }}</option>
                         @endforeach
+                        <option value="100000" @selected($perPage === 100000)>{{ __('Todas') }}</option>
                     </select>
                 </label>
             </div>
@@ -861,5 +862,15 @@
         </div>
     @endif
 
-    <div>{{ $rows->links() }}</div>
+    {{-- «Ver todas» también abajo: ahí se llega después de recorrer la página. --}}
+    <div class="flex flex-wrap items-center justify-end gap-3">
+        @if ($rows->hasPages())
+            <button type="button" wire:click="verTodas" wire:loading.attr="disabled" wire:target="verTodas"
+                    class="btn-ghost !py-1.5 !px-3 text-xs">
+                <x-spinner wire:loading wire:target="verTodas" class="h-3.5 w-3.5" />
+                {{ __('Ver todas') }} ({{ number_format($rows->total()) }})
+            </button>
+        @endif
+        <div class="min-w-0 flex-1">{{ $rows->links() }}</div>
+    </div>
 </div>

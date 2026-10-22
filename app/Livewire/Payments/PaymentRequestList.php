@@ -107,7 +107,7 @@ class PaymentRequestList extends Component
         $nueva = request()->query('nueva');
 
         $this->highlight = is_numeric($nueva) ? (int) $nueva : null;
-        $this->showTotals = request()->cookie('mostrar_totales') === '1';
+        $this->showTotals = request()->cookie('mostrar_totales') !== '0';
 
         // Solo se regresa a direcciones propias del sistema.
         if (! str_starts_with($this->volver, '/') || str_starts_with($this->volver, '//')) {

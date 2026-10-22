@@ -157,8 +157,9 @@ class TransactionTable extends Component
     {
         $this->screen = $screen;
         $this->bookingId = $booking;
-        // En un booking la sumatoria va siempre, como en el original: ahí vive el profit.
-        $this->showTotals = $screen === 'booking' || request()->cookie('mostrar_totales') === '1';
+        // Encendida salvo que el usuario la haya apagado, como el pie del
+        // original; en un booking va siempre porque ahí vive el profit.
+        $this->showTotals = $screen === 'booking' || request()->cookie('mostrar_totales') !== '0';
 
         // Por omisión el listado arranca acotado al año en curso (del 1 de enero
         // a hoy): así no trae años de historia de golpe —las pantallas van

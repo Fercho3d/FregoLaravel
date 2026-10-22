@@ -466,21 +466,28 @@ class PaymentRequestFlowTest extends TestCase
         $this->actingAs($this->usuario());
 
         Livewire::test(TransactionTable::class, ['screen' => 'bill'])
+            ->set('showTotals', false)
             ->assertSet('totals', null)
             ->set('showTotals', true)
-            ->assertNotSet('totals', null)
-            ->set('showTotals', false)
-            ->assertSet('totals', null);
+            ->assertNotSet('totals', null);
     }
 
-    /** El switch se recuerda: si la cookie viene puesta, arranca encendido. */
+    /** Como en Yii2, la sumatoria va abajo sin tener que pedirla. */
+    public function test_la_sumatoria_arranca_encendida(): void
+    {
+        $this->actingAs($this->usuario());
+
+        Livewire::test(TransactionTable::class, ['screen' => 'bill'])->assertSet('showTotals', true);
+    }
+
+    /** El switch se recuerda: quien la apagó la sigue viendo apagada. */
     public function test_el_switch_recuerda_su_estado_por_cookie(): void
     {
         $this->actingAs($this->usuario());
 
-        Livewire::withCookies(['mostrar_totales' => '1'])
+        Livewire::withCookies(['mostrar_totales' => '0'])
             ->test(TransactionTable::class, ['screen' => 'bill'])
-            ->assertSet('showTotals', true);
+            ->assertSet('showTotals', false);
     }
 
     public function test_el_listado_de_solicitudes_muestra_la_sumatoria(): void
