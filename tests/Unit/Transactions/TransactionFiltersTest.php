@@ -18,11 +18,16 @@ class TransactionFiltersTest extends TestCase
         );
     }
 
+    /** Como en Yii2, una sola fecha escrita a mano es ese día. */
+    public function test_una_sola_fecha_es_ese_dia(): void
+    {
+        $this->assertSame(['2025-01-05', '2025-01-05'], TransactionFilters::parseRange('05/01/2025'));
+    }
+
     public function test_descarta_rangos_mal_formados(): void
     {
         $this->assertNull(TransactionFilters::parseRange(null));
         $this->assertNull(TransactionFilters::parseRange(''));
-        $this->assertNull(TransactionFilters::parseRange('05/01/2025'), 'falta el segundo extremo');
         $this->assertNull(TransactionFilters::parseRange('2025-01-05 - 2025-03-31'), 'formato ISO, no dd/mm/aaaa');
         $this->assertNull(TransactionFilters::parseRange('31/02/2025 - 31/03/2025'), '31 de febrero no existe');
     }

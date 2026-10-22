@@ -293,10 +293,44 @@
     border-color: var(--color-accent-500);
 }
 
-.flatpickr-day.inRange {
+.flatpickr-day.inRange,
+.flatpickr-day.prevMonthDay.inRange,
+.flatpickr-day.nextMonthDay.inRange {
     background: color-mix(in srgb, var(--color-accent-500) 16%, transparent);
     border-color: transparent;
     box-shadow: none;
+}
+
+/* Atajos del selector de rangos (Hoy, Ayer, Este mes…), arriba del calendario. */
+.fp-atajos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    padding: 0.5rem;
+    border-bottom: 1px solid var(--line);
+}
+
+.fp-atajos button {
+    border-radius: 0.375rem;
+    padding: 0.2rem 0.5rem;
+    font-size: 0.75rem;
+    color: var(--ink-soft);
+    background: var(--raised);
+}
+
+.fp-atajos button:hover {
+    color: #fff;
+    background: var(--color-accent-500);
+}
+
+/* Con dos meses, flatpickr marca el borde de cada semana del rango y la
+   división entre meses con sombras grises fijas. */
+.flatpickr-calendar.multiMonth .flatpickr-day.inRange {
+    box-shadow: none !important;
+}
+
+.flatpickr-calendar.multiMonth .flatpickr-days .dayContainer + .dayContainer {
+    box-shadow: -1px 0 0 var(--line);
 }
 
 .dark .flatpickr-calendar {

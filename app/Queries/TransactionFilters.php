@@ -185,17 +185,17 @@ class TransactionFilters
 
     /**
      * Convierte "dd/mm/aaaa - dd/mm/aaaa" en [inicio, fin] con formato ISO.
-     * Devuelve null si el valor no trae exactamente ese formato.
+     * Una sola fecha es ese día. Devuelve null si el valor no trae ese formato.
      *
      * @return array{0: string, 1: string}|null
      */
     public static function parseRange(?string $range): ?array
     {
-        if (empty($range) || ! str_contains($range, ' - ')) {
+        if (empty($range)) {
             return null;
         }
 
-        [$from, $to] = explode(' - ', $range, 2);
+        [$from, $to] = array_pad(explode(' - ', $range, 2), 2, $range);
 
         $iso = static function (string $date): ?string {
             $parts = explode('/', trim($date));

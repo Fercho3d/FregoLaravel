@@ -244,7 +244,7 @@ class TransactionTable extends Component
             return __('todos los años');
         }
 
-        [$desde, $hasta] = array_pad(explode(' - ', $this->dates, 2), 2, '');
+        [$desde, $hasta] = array_pad(explode(' - ', $this->dates, 2), 2, $this->dates);
 
         return __('del :desde al :hasta', ['desde' => $desde, 'hasta' => $hasta]);
     }

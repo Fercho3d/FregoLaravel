@@ -1,23 +1,66 @@
 import flatpickr from 'flatpickr';
 
+/** Los atajos del selector de rangos, como el daterangepicker de Yii2. */
+function rangosRapidos() {
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const dia = (d) => new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() + d);
+    const anio = hoy.getFullYear();
+    const mes = hoy.getMonth();
+
+    return {
+        hoy: [hoy, hoy],
+        ayer: [dia(-1), dia(-1)],
+        semana: [dia(-6), hoy],
+        treinta: [dia(-29), hoy],
+        mes: [new Date(anio, mes, 1), new Date(anio, mes + 1, 0)],
+        mesPasado: [new Date(anio, mes - 1, 1), new Date(anio, mes, 0)],
+        anio: [new Date(anio, 0, 1), new Date(anio, 11, 31)],
+        anioPasado: [new Date(anio - 1, 0, 1), new Date(anio - 1, 11, 31)],
+    };
+}
+
 /**
  * Selector de rango de fechas (el campo «Fechas» de los listados).
  *
- * Abre un calendario al hacer clic y deja elegir inicio y fin. Escribe el valor
+ * Como el de Yii2: se escribe a mano («01/01/2026 - 31/03/2026», o una sola
+ * fecha para un día) o se elige en un calendario de dos meses con atajos
+ * (hoy, ayer, últimos 7 días…). Escribe el valor
  * en la propiedad de Livewire con el MISMO formato que ya espera el servidor
  * ("dd/mm/aaaa - dd/mm/aaaa"), pero de forma diferida: no dispara la consulta:
  * eso lo hace el botón «Filtrar», para que capturar no se sienta pesado.
  */
 document.addEventListener('alpine:init', () => {
-    window.Alpine.data('dateRangePicker', (valorInicial) => ({
+    window.Alpine.data('dateRangePicker', (valorInicial, atajos = {}) => ({
         fp: null,
 
         init() {
             this.fp = flatpickr(this.$refs.input, {
                 mode: 'range',
                 dateFormat: 'd/m/Y',
+                allowInput: true,
+                showMonths: window.innerWidth >= 768 ? 2 : 1,
                 locale: { rangeSeparator: ' - ', firstDayOfWeek: 1 },
                 defaultDate: this.parse(valorInicial),
+                onReady: (_, __, fp) => this.agregarAtajos(fp, atajos),
+                // Abre en el mes donde termina el rango (con dos meses, ese y el
+                // anterior): el filtro por omisión va de enero a hoy y lo que
+                // se busca casi siempre es lo reciente.
+                onOpen: (fechas, _, fp) => {
+                    // Seleccionado, para que lo que se escriba reemplace el rango.
+                    fp.input.select();
+
+                    if (fechas.length === 2) {
+                        fp.jumpToDate(fechas[1]);
+                        fp.changeMonth(1 - fp.config.showMonths);
+                    }
+                },
+                // Una sola fecha (escrita o con un clic) es ese día completo.
+                onClose: (fechas, _, fp) => {
+                    if (fechas.length === 1) {
+                        fp.setDate([fechas[0], fechas[0]], true);
+                    }
+                },
                 onChange: (fechas, texto) => {
                     // Un rango solo se aplica cuando están las dos fechas; al
                     // limpiar el calendario se vacía el filtro.
@@ -40,6 +83,25 @@ document.addEventListener('alpine:init', () => {
 
         parse(valor) {
             return valor && valor.includes(' - ') ? valor.split(' - ') : null;
+        },
+
+        agregarAtajos(fp, atajos) {
+            const rangos = rangosRapidos();
+            const barra = document.createElement('div');
+            barra.className = 'fp-atajos';
+
+            Object.entries(atajos).forEach(([clave, etiqueta]) => {
+                const boton = document.createElement('button');
+                boton.type = 'button';
+                boton.textContent = etiqueta;
+                boton.addEventListener('click', () => {
+                    fp.setDate(rangos[clave], true);
+                    fp.close();
+                });
+                barra.appendChild(boton);
+            });
+
+            fp.calendarContainer.prepend(barra);
         },
 
         destroy() {
