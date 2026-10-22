@@ -288,7 +288,7 @@ class TransactionTableFixtureTest extends TestCase
     /** El pie de totales sigue a las columnas de cada pantalla, sin desalinearse. */
     public function test_el_pie_de_totales_lleva_una_celda_por_columna(): void
     {
-        $html = $this->pantalla('bill')->set('showTotals', true)->html();
+        $html = $this->pantalla('bill')->html();
 
         preg_match('/<tfoot.*?<\/tfoot>/su', $html, $pie);
         preg_match_all('/<th\b/u', $html, $cabeceras);

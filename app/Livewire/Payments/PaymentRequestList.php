@@ -93,9 +93,6 @@ class PaymentRequestList extends Component
      */
     public ?int $highlight = null;
 
-    /** Switch «mostrar sumatoria»; comparte la cookie con el listado de transacciones. */
-    public bool $showTotals = false;
-
     public float $queryMs = 0;
 
     /**
@@ -107,7 +104,6 @@ class PaymentRequestList extends Component
         $nueva = request()->query('nueva');
 
         $this->highlight = is_numeric($nueva) ? (int) $nueva : null;
-        $this->showTotals = request()->cookie('mostrar_totales') !== '0';
 
         // Solo se regresa a direcciones propias del sistema.
         if (! str_starts_with($this->volver, '/') || str_starts_with($this->volver, '//')) {
@@ -125,14 +121,9 @@ class PaymentRequestList extends Component
         }
     }
 
-    public function updatedShowTotals(bool $value): void
-    {
-        cookie()->queue('mostrar_totales', $value ? '1' : '0', 60 * 24 * 365);
-    }
-
     public function updated(string $property): void
     {
-        if (in_array($property, ['page', 'showTotals'], true)) {
+        if ($property === 'page') {
             return;
         }
 
@@ -316,10 +307,10 @@ class PaymentRequestList extends Component
         $inicio = microtime(true);
         $consulta = PaymentRequestQuery::make($this->filters());
         $filas = $consulta->paginate($this->perPage, $this->getPage());
-        $totals = $this->showTotals ? $consulta->totals([
+        $totals = $consulta->totals([
             'sub_0_paid', 'sub_16_paid', 'tax_16_paid', 'non_dec', 'tax_ret_paid',
             'total_paid', 'total_to_pay', 'diference',
-        ]) : null;
+        ]);
         $this->queryMs = round((microtime(true) - $inicio) * 1000, 1);
 
         return view('livewire.payments.payment-request-list', [

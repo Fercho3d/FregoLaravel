@@ -126,7 +126,6 @@ class PaymentsReportTest extends LegacyDatabaseTestCase
 
         $totales = Livewire::withQueryParams($parametros)
             ->test(PaymentRequestList::class)
-            ->set('showTotals', true)
             ->viewData('totals');
 
         // El renglón viene con el signo del tipo y la lista puede traerlo

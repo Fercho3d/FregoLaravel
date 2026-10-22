@@ -461,33 +461,12 @@ class PaymentRequestFlowTest extends TestCase
             ->assertStatus(422);
     }
 
-    public function test_el_switch_muestra_y_oculta_la_sumatoria(): void
+    /** Como en Yii2, la sumatoria va siempre abajo, sin tener que pedirla. */
+    public function test_el_listado_siempre_trae_la_sumatoria(): void
     {
         $this->actingAs($this->usuario());
 
-        Livewire::test(TransactionTable::class, ['screen' => 'bill'])
-            ->set('showTotals', false)
-            ->assertSet('totals', null)
-            ->set('showTotals', true)
-            ->assertNotSet('totals', null);
-    }
-
-    /** Como en Yii2, la sumatoria va abajo sin tener que pedirla. */
-    public function test_la_sumatoria_arranca_encendida(): void
-    {
-        $this->actingAs($this->usuario());
-
-        Livewire::test(TransactionTable::class, ['screen' => 'bill'])->assertSet('showTotals', true);
-    }
-
-    /** El switch se recuerda: quien la apagó la sigue viendo apagada. */
-    public function test_el_switch_recuerda_su_estado_por_cookie(): void
-    {
-        $this->actingAs($this->usuario());
-
-        Livewire::withCookies(['mostrar_totales' => '0'])
-            ->test(TransactionTable::class, ['screen' => 'bill'])
-            ->assertSet('showTotals', false);
+        Livewire::test(TransactionTable::class, ['screen' => 'bill'])->assertNotSet('totals', null);
     }
 
     public function test_el_listado_de_solicitudes_muestra_la_sumatoria(): void
@@ -497,7 +476,6 @@ class PaymentRequestFlowTest extends TestCase
         $this->actingAs($this->usuario());
 
         Livewire::test(PaymentRequestList::class)
-            ->set('showTotals', true)
             ->assertSee(__('Total del filtro completo'));
     }
 

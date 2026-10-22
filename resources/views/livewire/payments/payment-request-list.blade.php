@@ -111,7 +111,6 @@
 
         <div class="mt-3 flex flex-wrap items-end gap-2">
             <button type="button" wire:click="clearFilters" class="btn-ghost !px-3 !py-1.5 text-xs">{{ __('Limpiar filtros') }}</button>
-            <x-totals-switch />
             <button type="button" wire:click="verTodas" wire:loading.attr="disabled" wire:target="verTodas"
                     class="ml-auto btn-ghost !py-1.5 !px-3 text-xs">
                 <x-spinner wire:loading wire:target="verTodas" class="h-3.5 w-3.5" />

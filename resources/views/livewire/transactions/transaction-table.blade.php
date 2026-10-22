@@ -278,7 +278,6 @@
                 </button>
                 <button type="button" wire:click="clearFilters" class="btn-ghost !py-1.5 !px-3 text-xs">{{ __('Limpiar filtros') }}</button>
 
-                <x-totals-switch />
                 @if ($this->allowsSelection() && auth()->user()?->isAdmin())
                     {{-- Timbrar en lote (Facturas y booking abierto): el «Seal» del sistema viejo. --}}
                     @if ($this->allowsStamping())
