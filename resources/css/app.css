@@ -323,6 +323,12 @@
     background: var(--color-accent-500);
 }
 
+/* Las flechas de mes se posicionan contra el calendario entero; sin esto
+   quedan arriba, encima de los atajos, y no junto al nombre del mes. */
+.flatpickr-months {
+    position: relative;
+}
+
 /* Con dos meses, flatpickr marca el borde de cada semana del rango y la
    división entre meses con sombras grises fijas. */
 .flatpickr-calendar.multiMonth .flatpickr-day.inRange {
