@@ -33,17 +33,18 @@ function rangosRapidos() {
  * `<x-date-range>`.
  */
 document.addEventListener('alpine:init', () => {
-    window.Alpine.data('dateRangePicker', (valorInicial, atajos = {}, propiedad = 'dates', inmediato = false) => ({
+    window.Alpine.data('dateRangePicker', (valorInicial, atajos = {}, propiedad = 'dates', inmediato = false, sencillo = false) => ({
         fp: null,
 
         init() {
             this.fp = flatpickr(this.$refs.input, {
-                mode: 'range',
+                // `sencillo`: una sola fecha (p. ej. «Revaluar al TC del»), un mes.
+                mode: sencillo ? 'single' : 'range',
                 dateFormat: 'd/m/Y',
                 allowInput: true,
-                showMonths: window.innerWidth >= 768 ? 2 : 1,
+                showMonths: !sencillo && window.innerWidth >= 768 ? 2 : 1,
                 locale: { rangeSeparator: ' - ', firstDayOfWeek: 1 },
-                defaultDate: this.parse(valorInicial),
+                defaultDate: sencillo ? valorInicial || null : this.parse(valorInicial),
                 onReady: (_, __, fp) => this.agregarAtajos(fp, atajos),
                 // Abre en el mes donde termina el rango (con dos meses, ese y el
                 // anterior): el filtro por omisión va de enero a hoy y lo que
@@ -53,19 +54,19 @@ document.addEventListener('alpine:init', () => {
                     fp.input.select();
 
                     // Sin rango, el mes actual (y el anterior) en vez del siguiente.
-                    fp.jumpToDate(fechas.length === 2 ? fechas[1] : new Date());
+                    fp.jumpToDate(fechas.length ? fechas[fechas.length - 1] : new Date());
                     fp.changeMonth(1 - fp.config.showMonths);
                 },
                 // Una sola fecha (escrita o con un clic) es ese día completo.
                 onClose: (fechas, _, fp) => {
-                    if (fechas.length === 1) {
+                    if (!sencillo && fechas.length === 1) {
                         fp.setDate([fechas[0], fechas[0]], true);
                     }
                 },
                 onChange: (fechas, texto) => {
                     // Un rango solo se aplica cuando están las dos fechas; al
                     // limpiar el calendario se vacía el filtro.
-                    if (fechas.length === 2) {
+                    if (fechas.length === (sencillo ? 1 : 2)) {
                         this.$wire.set(propiedad, texto, inmediato);
                     } else if (fechas.length === 0) {
                         this.$wire.set(propiedad, '', inmediato);
@@ -80,7 +81,7 @@ document.addEventListener('alpine:init', () => {
                 if (!valor) {
                     this.fp.clear(false);
                 } else if (valor !== this.fp.input.value) {
-                    this.fp.setDate(this.parse(valor) ?? valor, false);
+                    this.fp.setDate(sencillo ? valor : (this.parse(valor) ?? valor), false);
                 }
             });
         },

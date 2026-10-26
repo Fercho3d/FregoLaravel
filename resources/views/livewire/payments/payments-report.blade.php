@@ -63,8 +63,7 @@
 
             <label class="block">
                 <span class="field-label text-xs">{{ __('Revaluar al tipo de cambio del') }} <span class="text-ink-faint">{{ __('(dd/mm/aaaa)') }}</span></span>
-                <input type="text" wire:model.live.debounce.600ms="datePay" value="{{ $datePay }}"
-                       class="field-input mt-1 py-1.5 text-sm" placeholder="31/12/2025">
+                <x-date-range model="datePay" :value="$datePay" live single placeholder="31/12/2025" />
             </label>
 
             <label class="block">

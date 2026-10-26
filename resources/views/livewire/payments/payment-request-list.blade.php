@@ -103,8 +103,7 @@
 
             <label class="block">
                 <span class="field-label text-xs">{{ __('Revaluar al TC del') }} <span class="text-ink-faint">{{ __('(dd/mm/aaaa)') }}</span></span>
-                <input type="text" wire:model.live.debounce.600ms="datePay" value="{{ $datePay }}"
-                       class="field-input mt-1 py-1.5 text-sm" placeholder="{{ now()->format('d/m/Y') }}">
+                <x-date-range model="datePay" :value="$datePay" live single placeholder="{{ now()->format('d/m/Y') }}" />
             </label>
         </div>
 
