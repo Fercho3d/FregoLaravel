@@ -47,8 +47,7 @@
                                 class="font-normal text-brand hover:underline">{{ __('Ver todos los años') }}</button>
                     @endif
                 </span>
-                <input type="text" wire:model.live.debounce.600ms="dates" value="{{ $dates }}"
-                       class="field-input mt-1 py-1.5 text-sm" placeholder="{{ __('Todos los años') }}">
+                <x-date-range model="dates" :value="$dates" live />
             </label>
 
             <label class="block">

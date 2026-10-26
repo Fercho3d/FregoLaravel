@@ -174,13 +174,7 @@
                 <input type="text" wire:model="appliedTo" value="{{ $appliedTo }}" class="field-input mt-1 py-1.5 text-sm" placeholder="{{ __('Nombre') }}">
             </label>
 
-            {{-- El calendario lo maneja flatpickr (ver `dateRangePicker` en app.js);
-                 va en `wire:ignore` para que el repintado de Livewire no lo pise. --}}
-            <div class="block" wire:ignore x-data="dateRangePicker(@js($dates), @js([
-                'hoy' => __('Hoy'), 'ayer' => __('Ayer'), 'semana' => __('Últimos 7 días'),
-                'treinta' => __('Últimos 30 días'), 'mes' => __('Este mes'), 'mesPasado' => __('Mes pasado'),
-                'anio' => __('Este año'), 'anioPasado' => __('Año pasado'),
-            ]))">
+            <div class="block" x-data>
                 <span class="field-label flex items-center justify-between text-xs">
                     {{ __('Fechas') }}
                     {{-- El listado arranca en el año en curso por rendimiento; este
@@ -188,9 +182,7 @@
                     <button type="button" wire:click="showAllYears" x-show="$wire.dates !== ''"
                             class="font-normal text-brand hover:underline">{{ __('Ver todos los años') }}</button>
                 </span>
-                <input type="text" x-ref="input" value="{{ $dates }}" autocomplete="off"
-                       class="field-input mt-1 py-1.5 text-sm bg-panel"
-                       placeholder="{{ __('Todos los años') }}" title="dd/mm/aaaa - dd/mm/aaaa">
+                <x-date-range model="dates" :value="$dates" />
             </div>
 
             <label class="block">

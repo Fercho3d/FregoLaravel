@@ -101,27 +101,23 @@
 
             <label class="block">
                 <span class="field-label text-xs">{{ __('Recolección') }} <span class="text-ink-faint">{{ __('(rango)') }}</span></span>
-                <input type="text" wire:model.live.debounce.600ms="dates" value="{{ $dates }}"
-                       class="field-input mt-1 py-1.5 text-sm" placeholder="01/01/2025 - 31/12/2025">
+                <x-date-range model="dates" :value="$dates" live placeholder="01/01/2025 - 31/12/2025" />
             </label>
 
             <label class="block">
                 <span class="field-label text-xs">{{ __('Carga') }} <span class="text-ink-faint">{{ __('(rango)') }}</span></span>
-                <input type="text" wire:model.live.debounce.600ms="loadingDates" value="{{ $loadingDates }}"
-                       class="field-input mt-1 py-1.5 text-sm" placeholder="01/01/2025 - 31/12/2025">
+                <x-date-range model="loadingDates" :value="$loadingDates" live placeholder="01/01/2025 - 31/12/2025" />
             </label>
 
             <label class="block">
                 <span class="field-label text-xs">{{ __('Arribo') }} <span class="text-ink-faint">{{ __('(rango)') }}</span></span>
-                <input type="text" wire:model.live.debounce.600ms="arrivalDates" value="{{ $arrivalDates }}"
-                       class="field-input mt-1 py-1.5 text-sm" placeholder="01/01/2025 - 31/12/2025">
+                <x-date-range model="arrivalDates" :value="$arrivalDates" live placeholder="01/01/2025 - 31/12/2025" />
             </label>
 
             @if ($verBuque)
                 <label class="block">
                     <span class="field-label text-xs">{{ __('Corte SI') }} <span class="text-ink-faint">{{ __('(rango)') }}</span></span>
-                    <input type="text" wire:model.live.debounce.600ms="siDates" value="{{ $siDates }}"
-                           class="field-input mt-1 py-1.5 text-sm" placeholder="01/01/2025 - 31/12/2025">
+                    <x-date-range model="siDates" :value="$siDates" live placeholder="01/01/2025 - 31/12/2025" />
                 </label>
             @endif
 

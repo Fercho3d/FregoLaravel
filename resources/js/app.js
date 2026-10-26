@@ -27,11 +27,13 @@ function rangosRapidos() {
  * fecha para un día) o se elige en un calendario de dos meses con atajos
  * (hoy, ayer, últimos 7 días…). Escribe el valor
  * en la propiedad de Livewire con el MISMO formato que ya espera el servidor
- * ("dd/mm/aaaa - dd/mm/aaaa"), pero de forma diferida: no dispara la consulta:
- * eso lo hace el botón «Filtrar», para que capturar no se sienta pesado.
+ * ("dd/mm/aaaa - dd/mm/aaaa"). En los listados con botón «Filtrar» va diferido
+ * (no dispara la consulta, para que capturar no se sienta pesado); en los que
+ * filtran al teclear (`inmediato`), filtra al elegir. Se usa con el componente
+ * `<x-date-range>`.
  */
 document.addEventListener('alpine:init', () => {
-    window.Alpine.data('dateRangePicker', (valorInicial, atajos = {}) => ({
+    window.Alpine.data('dateRangePicker', (valorInicial, atajos = {}, propiedad = 'dates', inmediato = false) => ({
         fp: null,
 
         init() {
@@ -50,10 +52,9 @@ document.addEventListener('alpine:init', () => {
                     // Seleccionado, para que lo que se escriba reemplace el rango.
                     fp.input.select();
 
-                    if (fechas.length === 2) {
-                        fp.jumpToDate(fechas[1]);
-                        fp.changeMonth(1 - fp.config.showMonths);
-                    }
+                    // Sin rango, el mes actual (y el anterior) en vez del siguiente.
+                    fp.jumpToDate(fechas.length === 2 ? fechas[1] : new Date());
+                    fp.changeMonth(1 - fp.config.showMonths);
                 },
                 // Una sola fecha (escrita o con un clic) es ese día completo.
                 onClose: (fechas, _, fp) => {
@@ -65,18 +66,21 @@ document.addEventListener('alpine:init', () => {
                     // Un rango solo se aplica cuando están las dos fechas; al
                     // limpiar el calendario se vacía el filtro.
                     if (fechas.length === 2) {
-                        this.$wire.set('dates', texto, false);
+                        this.$wire.set(propiedad, texto, inmediato);
                     } else if (fechas.length === 0) {
-                        this.$wire.set('dates', '', false);
+                        this.$wire.set(propiedad, '', inmediato);
                     }
                 },
             });
 
-            // Si el servidor limpia el filtro («Limpiar filtros»), vaciar también
-            // el calendario, que vive fuera del alcance de Livewire (wire:ignore).
-            this.$watch('$wire.dates', (valor) => {
-                if (!valor && this.fp.selectedDates.length) {
-                    this.fp.clear();
+            // Si el servidor cambia el filtro («Limpiar filtros», «Ver todos los
+            // años»), llevarlo también al calendario, que vive fuera del alcance
+            // de Livewire (wire:ignore).
+            this.$watch(`$wire.${propiedad}`, (valor) => {
+                if (!valor) {
+                    this.fp.clear(false);
+                } else if (valor !== this.fp.input.value) {
+                    this.fp.setDate(this.parse(valor) ?? valor, false);
                 }
             });
         },
