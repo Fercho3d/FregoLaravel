@@ -77,6 +77,14 @@ class BookingList extends Component
     #[Url(as: 'borradores', except: '0')]
     public string $drafts = '0';
 
+    /**
+     * Switch «Mostrar no confirmados»: con él encendido, los borradores salen
+     * revueltos con los confirmados (con su etiqueta «Borrador»). Es un ajuste
+     * de la persona, no un filtro: se guarda en sus preferencias y sobrevive a
+     * «Limpiar filtros» y a cerrar sesión.
+     */
+    public bool $showUnconfirmed = false;
+
     /** 10 = bookings reales, 9 = cotizaciones. */
     #[Url(as: 'modo', except: '10')]
     public string $mode = '10';
@@ -85,6 +93,18 @@ class BookingList extends Component
     public int $perPage = 50;
 
     public float $queryMs = 0;
+
+    public const AJUSTE_NO_CONFIRMADOS = 'bookings.mostrar_no_confirmados';
+
+    public function mount(): void
+    {
+        $this->showUnconfirmed = (bool) auth()->user()?->setting(self::AJUSTE_NO_CONFIRMADOS, false);
+    }
+
+    public function updatedShowUnconfirmed(bool $valor): void
+    {
+        auth()->user()?->saveSetting(self::AJUSTE_NO_CONFIRMADOS, $valor);
+    }
 
     public function updated(string $property): void
     {
@@ -149,7 +169,13 @@ class BookingList extends Component
 
         $filtros->mode = (int) $this->mode;
         $filtros->onlyLocked = $this->onlyLocked === '1';
-        $filtros->is_draft = $this->drafts === '1' ? 1 : 0;
+        // «Solo borradores» manda; si no, el switch decide si los no
+        // confirmados se ven junto a los confirmados (null = sin filtro).
+        $filtros->is_draft = match (true) {
+            $this->drafts === '1' => 1,
+            $this->showUnconfirmed => null,
+            default => 0,
+        };
 
         return $filtros;
     }

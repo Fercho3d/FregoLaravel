@@ -164,7 +164,7 @@
             <label class="block">
                 <span class="field-label text-xs">{{ __('Borradores') }}</span>
                 <select wire:model.live="drafts" class="field-input mt-1 py-1.5 text-sm">
-                    @foreach (['0' => __('Sin borradores'), '1' => __('Solo borradores')] as $valor => $etiqueta)
+                    @foreach (['0' => $showUnconfirmed ? __('Con borradores') : __('Sin borradores'), '1' => __('Solo borradores')] as $valor => $etiqueta)
                         <option value="{{ $valor }}" @selected((string) $valor === $drafts)>{{ $etiqueta }}</option>
                     @endforeach
                 </select>
@@ -192,6 +192,21 @@
                     {{ __('Solo :anio', ['anio' => now()->year]) }}
                 </button>
             @endif
+            {{-- Switch «Mostrar no confirmados»: se guarda en las preferencias
+                 del usuario. Alpine mueve la perilla al instante mientras el
+                 servidor vuelve a consultar. --}}
+            <button type="button" role="switch" x-data
+                    x-on:click="$wire.$set('showUnconfirmed', ! $wire.showUnconfirmed)"
+                    :aria-checked="$wire.showUnconfirmed ? 'true' : 'false'"
+                    aria-checked="{{ $showUnconfirmed ? 'true' : 'false' }}"
+                    class="group inline-flex cursor-pointer select-none items-center gap-2 text-xs text-ink-soft focus:outline-none">
+                <span class="relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition group-focus-visible:ring-2 group-focus-visible:ring-accent-500/50"
+                      :class="$wire.showUnconfirmed ? 'bg-accent-500' : 'bg-ink-faint'">
+                    <span class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition"
+                          :class="$wire.showUnconfirmed ? 'translate-x-4' : 'translate-x-0.5'"></span>
+                </span>
+                {{ __('Mostrar no confirmados') }}
+            </button>
             <label class="ml-auto flex items-center gap-2 text-xs text-ink-muted">
                 {{ __('Por página') }}
                 <select wire:model.live="perPage" class="field-input !w-auto py-1 text-xs">

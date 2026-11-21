@@ -83,6 +83,24 @@ class BookingListFiltrosTest extends TestCase
         $this->assertSame(['BORRADOR-1'], $this->numeros($this->listado()->set('drafts', '1')));
     }
 
+    public function test_el_switch_de_no_confirmados_los_mezcla_y_se_recuerda(): void
+    {
+        $listado = $this->listado()->set('showUnconfirmed', true);
+        $this->assertSame(['BORRADOR-1', 'EXP-1', 'IMP-1'], $this->numeros($listado));
+
+        // Se guarda en las preferencias: al volver a la pantalla sigue encendido,
+        // y «Limpiar filtros» no lo apaga.
+        $this->assertTrue(auth()->user()->fresh()->setting(BookingList::AJUSTE_NO_CONFIRMADOS));
+        $otraVez = Livewire::test(BookingList::class)->assertSet('showUnconfirmed', true)->call('clearFilters');
+        $this->assertTrue($otraVez->get('showUnconfirmed'));
+
+        // «Solo borradores» sigue mandando con el switch encendido.
+        $this->assertSame(['BORRADOR-1'], $this->numeros($otraVez->set('drafts', '1')));
+
+        $otraVez->set('showUnconfirmed', false);
+        $this->assertFalse(auth()->user()->fresh()->setting(BookingList::AJUSTE_NO_CONFIRMADOS));
+    }
+
     public function test_el_filtro_de_tipo_separa_importaciones_de_exportaciones(): void
     {
         $this->assertSame(

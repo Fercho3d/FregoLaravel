@@ -299,4 +299,25 @@ class User extends Authenticatable
     {
         return $this->preference?->theme ?? Theme::System;
     }
+
+    /**
+     * Un ajuste suelto de la interfaz (switches que la persona deja como le
+     * acomodan), guardado en el JSON `settings` de sus preferencias.
+     */
+    public function setting(string $clave, mixed $omision = null): mixed
+    {
+        return data_get($this->preference?->settings ?? [], $clave, $omision);
+    }
+
+    /** Guarda un ajuste suelto; crea el renglón de preferencias si aún no existe. */
+    public function saveSetting(string $clave, mixed $valor): void
+    {
+        $preferencia = $this->preference()->firstOrNew();
+        $ajustes = $preferencia->settings ?? [];
+        data_set($ajustes, $clave, $valor);
+        $preferencia->settings = $ajustes;
+        $preferencia->save();
+
+        $this->setRelation('preference', $preferencia);
+    }
 }
