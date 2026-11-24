@@ -37,7 +37,7 @@ class TransactionsExport
         'Aplicado a' => 'appliedTo',
         'Compañía' => 'companyName',
         'Ccy' => 'currency',
-        'Importe' => 'amount_original',
+        'Importe' => 'document_amount',
         'TC' => 'exchange_value',
         'Sub 0 %' => 'sub_0_mxn',
         'Sub 16 %' => 'sub_16_mxn',
@@ -156,7 +156,7 @@ class TransactionsExport
                     : '',
                 // Los importes, en crudo: con separador de miles Excel los toma
                 // como texto y deja de poder sumarlos.
-                'amount_original', 'exchange_value', 'sub_0_mxn', 'sub_16_mxn', 'tax_16_mxn', 'non_dec',
+                'document_amount', 'exchange_value', 'sub_0_mxn', 'sub_16_mxn', 'tax_16_mxn', 'non_dec',
                 'tax_ret_mxn', 'total_amount', 'total_amount_paid_tc', 'tran_paid_amount',
                 'total_natural_amount', 'left_to_pay' => $fila->{$propiedad} === null
                     ? ''

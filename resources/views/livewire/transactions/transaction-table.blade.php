@@ -20,7 +20,7 @@
         ['applied_to', __('Aplicado a'), 'text-left', null],
         ['company', __('Compañía'), 'text-left', null],
         ['currency', 'Ccy', 'text-left', null],
-        ['amount_original', __('Importe'), 'text-right', 'amount_original'],
+        ['document_amount', __('Importe'), 'text-right', 'document_amount'],
         ['exchange_value', __('TC'), 'text-right', null],
         ['sub_0_mxn', __('Sub 0 %'), 'text-right', 'sub_0_mxn'],
         ['sub_16_mxn', __('Sub 16 %'), 'text-right', 'sub_16_mxn'],
@@ -682,7 +682,7 @@
                             </td>
                             <td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ $row->companyName ?: '—' }}</td>
                             <td class="whitespace-nowrap px-3 py-2 text-ink-muted">{{ $row->currency ?: '—' }}</td>
-                            <td class="whitespace-nowrap px-3 py-2 text-right tabular-nums text-ink-soft">{{ $money($row->amount_original) }}</td>
+                            <td class="whitespace-nowrap px-3 py-2 text-right tabular-nums text-ink-soft">{{ $money($row->document_amount) }}</td>
                             <td class="whitespace-nowrap px-3 py-2 text-right tabular-nums text-ink-faint">
                                 {{ $row->exchange_value === null ? '—' : number_format((float) $row->exchange_value, 4) }}
                             </td>
@@ -810,7 +810,7 @@
                                 @elseif ($totalKey === 'estado')
                                     <td class="whitespace-nowrap px-3 py-2.5 text-ink-muted">{{ __('Por cobrar/pagar') }}: {{ $money($totals['left_to_pay']) }}</td>
                                 @elseif ($totalKey !== null)
-                                    <td class="px-3 py-2.5 text-right tabular-nums {{ in_array($totalKey, ['amount_original', 'total_amount'], true) ? 'text-ink' : 'text-ink-soft' }}">{{ $money($totals[$totalKey]) }}</td>
+                                    <td class="px-3 py-2.5 text-right tabular-nums {{ in_array($totalKey, ['document_amount', 'total_amount'], true) ? 'text-ink' : 'text-ink-soft' }}">{{ $money($totals[$totalKey]) }}</td>
                                 @else
                                     <td></td>
                                 @endif

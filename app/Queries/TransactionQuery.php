@@ -626,6 +626,7 @@ class TransactionQuery
         'company' => ['row' => null, 'agg' => 'companyName'],
         'currency' => ['row' => null, 'agg' => 'currency'],
         'amount_original' => ['row' => null, 'agg' => 'amount_original'],
+        'document_amount' => ['row' => null, 'agg' => 'document_amount'],
         'exchange_value' => ['row' => null, 'agg' => 'exchange_value'],
         'sub_0_mxn' => ['row' => null, 'agg' => 'sub_0_mxn'],
         'sub_16_mxn' => ['row' => null, 'agg' => 'sub_16_mxn'],

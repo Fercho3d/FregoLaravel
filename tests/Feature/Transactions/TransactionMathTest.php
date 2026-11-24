@@ -149,6 +149,19 @@ class TransactionMathTest extends TestCase
         $this->assertEqualsWithDelta(0, (float) $t->income, 0.001);
     }
 
+    /**
+     * «Importe» del listado: lo que dice la factura, con IVA y menos retención,
+     * en su moneda y sin signo (las cubetas en pesos ya desglosan el resto).
+     */
+    public function test_el_importe_es_el_total_del_documento_en_su_moneda(): void
+    {
+        $rows = $this->rows();
+
+        $this->assertEqualsWithDelta(282, (float) $rows[1]->document_amount, 0.001, '200 + 50 + 32 de IVA, en USD');
+        $this->assertEqualsWithDelta(126, (float) $rows[2]->document_amount, 0.001, 'el costo va sin signo');
+        $this->assertEqualsWithDelta(1120, (float) $rows[4]->document_amount, 0.001, '1000 + 160 de IVA - 40 de retención, aun sin TC');
+    }
+
     public function test_la_nota_de_credito_de_proveedor_suma_en_vez_de_restar(): void
     {
         $t = $this->rows()[3];

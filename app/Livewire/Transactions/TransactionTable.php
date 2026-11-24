@@ -718,7 +718,7 @@ class TransactionTable extends Component
     private function calculateTotals(): void
     {
         $this->totals = $this->query()->totals([
-            'amount_original', 'sub_16_mxn', 'sub_0_mxn', 'tax_16_mxn', 'non_dec', 'tax_ret_mxn', 'total_amount',
+            'document_amount', 'sub_16_mxn', 'sub_0_mxn', 'tax_16_mxn', 'non_dec', 'tax_ret_mxn', 'total_amount',
             'total_amount_paid_tc', 'total_natural_amount', 'tran_paid_amount', 'left_to_pay',
         ]);
     }

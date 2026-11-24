@@ -181,6 +181,10 @@ class TransactionExpressions
 
             // --- Totales ---
             "SUM({$sub}) AS amount_original",
+            // Lo que dice la factura: total con IVA y menos retención, en la
+            // moneda del documento y sin signo. Es la columna «Importe» del
+            // listado; las cubetas en pesos ya desglosan el resto.
+            "SUM({$total}) AS document_amount",
             'SUM('.$this->signed($total).') AS total_amount',
             'SUM('.$this->signed($sub).') AS amount_original_mxn',
 
